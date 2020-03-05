@@ -1,2 +1,4 @@
 
 directive @hasRole(role: Role!) on FIELD_DEFINITION
+directive @maxLength(Int) on FIELD_DEFINITION
+directive @isAuthenticated on FIELD_DEFINITION

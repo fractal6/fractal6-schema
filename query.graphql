@@ -1,0 +1,5 @@
+
+type Query {
+  queryUser: [User]
+  queryMandate: [Mandate]
+}
