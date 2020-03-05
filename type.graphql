@@ -1,0 +1,95 @@
+
+#
+# Enum
+#
+
+enum NodeType {
+  Circle
+  Role
+}
+
+enum TensionType {
+  Governance
+  Operational
+  Personnal
+  Help
+}
+
+#
+# User
+#
+
+type User { 
+  id: ID!
+  username: String! @id
+  password: String! @maxLength(39)
+  roles: [Role!] @hasInverse(field: user)
+  #fullname
+  #bio
+  #skills
+}
+
+#
+# Mandate
+#
+
+type Mandate {
+  purpose: String! @search(by: [fulltext])
+  responsabilities: String 
+  domains: [String!] # new type v2?
+  # Interface:
+  #    period:
+  #    canValidateNode
+  #    number of validation to be modified ? ....
+  #    election ???
+}
+
+#
+# Post Interface
+#
+
+interface Post {
+  id: ID!
+  title: String! @search(by: [term])
+  message: String @search(by: [fulltext])
+  createdAt: DateTime @search
+}
+
+type Tension implements Post {
+  nth: Int #@id ...?
+  type_: TensionType! @search(by: [hash])
+  emitter: Node
+  receivers: [Node!]
+  severity: Int
+  isAnonymous: Boolean
+}
+
+#
+# Node Interface
+#
+
+interface Node {
+  id: ID!
+  title: String! @search(by: [hash])
+  mandate: String @search(by: [fulltext])
+  createdAt: DateTime @search
+  createdBy: User
+  # validatedBy
+  parent: Node
+  children: [Node!] @hasInverse(field: parent)
+  tensions_out: [Tension!] @hasInverse(field: emitter)
+  tensions_in: [Tension!] # no bidirectional
+}
+
+type Circle implements Node {
+    n_child: Int
+    n_circles: Int
+    n_roles: Int
+}
+
+type Role implements Node {
+  skills: [String!] @search(by: [term])
+  user: User 
+  second: User
+}
+
