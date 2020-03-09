@@ -1,5 +1,52 @@
+#
+# Queries and Mutations
+#
 
 type Query {
   queryUser: [User]
   queryMandate: [Mandate]
+  queryTension: [Tension]
+}
+
+type Mutation {
+  addUser(input: [AddUserInput!]!): AddUserPayload
+  addTension(input: [AddTensionInput!]!): AddTensionPayload
+}
+
+
+
+#
+# Inputs and payloads
+#
+
+
+input NodeRef {
+  id: ID!
+}
+
+input AddUserInput {
+  username: String!
+  roles: [RoleRef!]
+}
+
+type AddUserPayload {
+  user: [User]
+  numUids: Int
+}
+
+input AddTensionInput {
+  title: String!
+  message: String
+  createdAt: DateTime
+  nth: Int
+  type_: TensionType!
+  emitter: NodeRef
+  receivers: [NodeRef!]
+  severity: Int
+  isAnonymous: Boolean
+}
+
+type AddTensionPayload {
+  tension: [Tension]
+  numUids: Int
 }

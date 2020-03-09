@@ -19,10 +19,10 @@ enum TensionType {
 # User
 #
 
-type User { 
+type User {
   id: ID!
   username: String! @id
-  password: String! @maxLength(39)
+  password: String! @maxLength(n: 39)
   roles: [Role!] @hasInverse(field: user)
   #fullname
   #bio
@@ -82,14 +82,15 @@ interface Node {
 }
 
 type Circle implements Node {
-    n_child: Int
-    n_circles: Int
-    n_roles: Int
+  n_child: Int
+  n_circles: Int
+  n_roles: Int
 }
 
 type Role implements Node {
   skills: [String!] @search(by: [term])
   user: User 
   second: User
+  #rights: Rights
 }
 
