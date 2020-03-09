@@ -11,7 +11,7 @@ enum NodeType {
 enum TensionType {
   Governance
   Operational
-  Personnal
+  Personal
   Help
 }
 

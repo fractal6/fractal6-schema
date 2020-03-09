@@ -1,3 +1,5 @@
+@@grammar::GRAPHQL
+
 
 document
     =
@@ -303,11 +305,11 @@ scalar_type_extension
 object_type_definition
     =
     [description]
-    'type'
-    name
-    [implements_interfaces]
-    [directives]
-    [fields_definition]
+    _cst:'type'
+    _name:name
+    [_implements:implements_interfaces]
+    [_directives:directives]
+    [_fields:fields_definition]
     ;
 
 
@@ -367,7 +369,11 @@ object_type_extension
 
 interface_type_definition
     =
-    [description] 'interface' name [directives] [fields_definition]
+        [description] 
+        _cst:'interface' 
+        _name:name 
+        [_directives:directives] 
+        [_fields:fields_definition]
     ;
 
 
