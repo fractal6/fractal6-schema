@@ -7,6 +7,6 @@ _gram:
 	# nmanual modification here to get this work with ast.py
 
 gen:
-	cp directives.graphql gen/
-	cp type.graphql gen/
-	cp query.graphql gen/
+	cp -v directives.graphql gen/
+	cp -v query.graphql gen/
+	./ast.py type.graphql > gen/type.graphql
