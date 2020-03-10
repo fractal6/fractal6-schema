@@ -14,24 +14,14 @@ type Mutation {
 }
 
 
-
 #
-# Inputs and payloads
+# Inputs
 #
-
-
-input NodeRef {
-  id: ID!
-}
 
 input AddUserInput {
   username: String!
+  password: String!
   roles: [RoleRef!]
-}
-
-type AddUserPayload {
-  user: [User]
-  numUids: Int
 }
 
 input AddTensionInput {
@@ -46,7 +36,61 @@ input AddTensionInput {
   isAnonymous: Boolean
 }
 
+#
+# Payloads
+#
+
+type AddUserPayload {
+  user: [User]
+  numUids: Int
+}
+
 type AddTensionPayload {
   tension: [Tension]
   numUids: Int
+}
+
+
+#
+# References
+#
+
+
+input NodeRef {
+  id: ID!
+}
+
+input RoleRef {
+  id: ID
+  title: String
+  mandate: String
+  createdAt: DateTime
+  createdBy: UserRef
+  parent: NodeRef
+  children: [NodeRef!]
+  tensions_out: [TensionRef!]
+  tensions_in: [TensionRef!]
+  skills: [String!]
+  user: UserRef
+  second: UserRef
+}
+
+input UserRef {
+  id: ID
+  username: String
+  password: String
+  roles: [RoleRef!]
+}
+
+input TensionRef {
+  id: ID
+  title: String
+  message: String
+  createdAt: DateTime
+  nth: Int
+  type_: TensionType
+  emitter: NodeRef
+  receivers: [NodeRef!]
+  severity: Int
+  isAnonymous: Boolean
 }
