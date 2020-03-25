@@ -1,3 +1,4 @@
+.ONESHELL:
 .PHONY: gram gen
 
 default: gen
@@ -18,5 +19,11 @@ gen:
 	cp -v directives.graphql gen/
 	cp -v query.graphql gen/
 	./ast.py type.graphql > gen/type.graphql
+
+dgraph:
+	cd ../database
+	make update_schema
+	make fetch_schema
+	cd -
 
 

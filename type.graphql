@@ -50,18 +50,21 @@ type Mandate {
 
 interface Post {
   id: ID!
-  title: String! @search(by: [term])
   message: String @search(by: [fulltext])
   createdAt: DateTime @search
+  author: User! # remove "!", added in BLL?
 }
 
 type Tension implements Post {
   nth: Int #@id ...?
+  title: String! @search(by: [term])
   type_: TensionType! @search(by: [hash])
   emitter: Node
   receivers: [Node!]
-  severity: Int
   isAnonymous: Boolean
+  severity: Int!
+  n_comments: Int!
+  #comments: [Comment] # comment implements Post
 }
 
 #
