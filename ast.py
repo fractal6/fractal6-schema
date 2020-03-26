@@ -6,6 +6,7 @@ Usage:
     ast.py [--debug] [--nv] [FILE ...]
 
 Parse the FILE input and apply transformations.
+
 Options:
     -d --debug      Show debug informations.
     --nv             silent

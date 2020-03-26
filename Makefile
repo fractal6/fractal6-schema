@@ -22,8 +22,7 @@ gen:
 
 dgraph:
 	cd ../database
-	make update_schema
-	make fetch_schema
+	make all
 	cd -
 
 
