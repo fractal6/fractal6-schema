@@ -1,7 +1,7 @@
 .ONESHELL:
-.PHONY: gram gen
+.PHONY: _gram gqlgen
 
-default: gen
+default: gqlgen
 
 _gram:
 	mkdir -p gram/
@@ -9,20 +9,23 @@ _gram:
 	python3 -m tatsu.g2e graphql.g > graphql.ebnf
 	# nmanual modification here to get this work with ast.py
 	
-parser:
+_parser:
 	python3 -m tatsu gram/graphql.ebnf -o gram/graphql.py
 	# help: gram/graphql.py --help
 	# list rule: gram/graphql.py -l
 	# parse file rule: gram/graphql.py type.graphql document
 
-gen:
+gqlgen:
+	# Generate Gqlgen compatible GraphQL files.
+	cp -v dgraph.graphql gen/
 	cp -v directives.graphql gen/
 	cp -v query.graphql gen/
 	./ast.py type.graphql > gen/type.graphql
 
 dgraph:
+	# populate dgraph
 	cd ../database
-	make all
+	make
 	cd -
 
 

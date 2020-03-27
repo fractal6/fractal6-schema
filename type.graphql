@@ -1,3 +1,93 @@
+#
+# Node Interface
+#
+
+interface Node {
+  id: ID!
+  createdAt: DateTime! @search
+  createdBy: User!
+
+  parent: Node # If parent is null, Node is a root node !
+  children: [Node!] @hasInverse(field: parent)
+
+  name: String! @search(by: [term])
+  nameid: String! @id
+  mandate: Mandate
+  # validatedBy  # @DEBUG: Births logics?
+
+  tensions_out: [Tension!] @hasInverse(field: emitter)
+  tensions_in: [Tension!] # no bidirectional
+}
+
+# Supernode/Hyperedge
+type Circle implements Node {
+  isRoot: Boolean!
+
+  #n_child: Int!    #
+  #n_circles: Int!  # @DEBUG: remove and compute instead (will be cached anyway?)
+  #n_roles: Int!    #
+}
+
+# Leaf
+type Role implements Node {
+  user: User
+  second: User
+  third: User
+  skills: [String!] @search(by: [term])
+  #authority: Authority
+}
+
+#
+# Post Interface
+#
+
+interface Post {
+  id: ID!
+  createdAt: DateTime! @search
+  author: User!
+  message: String @search(by: [fulltext])
+}
+
+type Tension implements Post {
+  nth: Int! # @id
+  title: String! @search(by: [term])
+  type_: TensionType! @search(by: [hash])
+  emitter: Node!
+  receivers: [Node!]
+  isAnonymous: Boolean!
+  severity: Int!
+  comments: [Post!]
+
+  #n_comments: Int!
+}
+
+type Mandate implements Post {
+  purpose: String! @search(by: [fulltext])
+  responsabilities: String
+  domains: [String!] # new type v2?
+  # Interface:
+  #    period:
+  #    canValidateNode
+  #    number of validation to be modified ? ....
+  #    election ???
+}
+
+#
+# User
+#
+
+type User {
+  id: ID!
+  createdAt: DateTime! @search
+  username: String! @id @maxLength(n: 42)
+  fullname: String @maxLength(n: 100)
+  password: String! @maxLength(n: 42)
+  roles: [Role!] @hasInverse(field: user)
+  bio: String
+  #skills
+}
+
+
 
 #
 # Enum
@@ -13,87 +103,5 @@ enum TensionType {
   Operational
   Personal
   Help
+  Alert # BotAlert
 }
-
-#
-# User
-#
-
-type User {
-  id: ID!
-  username: String! @id
-  password: String! @maxLength(n: 39)
-  roles: [Role!] @hasInverse(field: user)
-  #fullname
-  #bio
-  #skills
-}
-
-#
-# Mandate
-#
-
-type Mandate {
-  purpose: String! @search(by: [fulltext])
-  responsabilities: String 
-  domains: [String!] # new type v2?
-  # Interface:
-  #    period:
-  #    canValidateNode
-  #    number of validation to be modified ? ....
-  #    election ???
-}
-
-#
-# Post Interface
-#
-
-interface Post {
-  id: ID!
-  message: String @search(by: [fulltext])
-  createdAt: DateTime @search
-  author: User! # remove "!", added in BLL?
-}
-
-type Tension implements Post {
-  nth: Int #@id ...?
-  title: String! @search(by: [term])
-  type_: TensionType! @search(by: [hash])
-  emitter: Node
-  receivers: [Node!]
-  isAnonymous: Boolean
-  severity: Int!
-  n_comments: Int!
-  #comments: [Comment] # comment implements Post
-}
-
-#
-# Node Interface
-#
-
-interface Node {
-  id: ID!
-  title: String! @search(by: [hash])
-  mandate: String @search(by: [fulltext])
-  createdAt: DateTime @search
-  createdBy: User
-  # validatedBy
-  parent: Node
-  children: [Node!] @hasInverse(field: parent)
-  tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!] # no bidirectional
-}
-
-type Circle implements Node {
-  n_child: Int
-  n_circles: Int
-  n_roles: Int
-}
-
-type Role implements Node {
-  skills: [String!] @search(by: [term])
-  user: User 
-  second: User
-  #rights: Rights
-}
-
