@@ -106,7 +106,7 @@ class SDL:
                         # with '_'.
                         pass
                     elif k.endswith('_'):
-                        # ignore keys taht ends with "_",
+                        # ignore keys that ends with "_",
                         # They are used to postprocess the ast.
                         pass
                     elif k == 'directive':

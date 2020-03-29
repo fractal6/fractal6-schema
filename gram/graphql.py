@@ -744,16 +744,33 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _enum_values_definition_(self):  # noqa
         self._token('{')
-        self._enum_value_definition_()
+
+        def block0():
+            self.__enum_value_definition_()
+        self._positive_closure(block0)
         self._token('}')
 
     @tatsumasu()
+    def __enum_value_definition_(self):  # noqa
+        self._enum_value_definition_()
+        self.name_last_node('field')
+        self.ast._define(
+            ['field'],
+            []
+        )
+
+    @tatsumasu()
     def _enum_value_definition_(self):  # noqa
-        with self._optional():
-            self._description_()
-        self._enum_value_()
-        with self._optional():
-            self._directives_()
+        with self._choice():
+            with self._option():
+                with self._optional():
+                    self._description_()
+                self._enum_value_()
+                with self._optional():
+                    self._directives_()
+            with self._option():
+                self._LINE_COMMENT_()
+            self._error('no available options')
 
     @tatsumasu()
     def _enum_type_extension_(self):  # noqa
@@ -1255,6 +1272,9 @@ class GRAPHQLSemantics(object):
         return ast
 
     def enum_values_definition(self, ast):  # noqa
+        return ast
+
+    def _enum_value_definition(self, ast):  # noqa
         return ast
 
     def enum_value_definition(self, ast):  # noqa

@@ -411,12 +411,15 @@ enum_type_definition
 
 enum_values_definition
     =
-    '{' enum_value_definition '}'
+    '{' {_enum_value_definition}+ '}'
     ;
+
+_enum_value_definition = field:enum_value_definition;
 
 enum_value_definition
     =
     [description] enum_value [directives]
+    | LINE_COMMENT
     ;
 
 

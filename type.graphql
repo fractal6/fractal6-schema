@@ -32,7 +32,6 @@ type Circle implements Node {
 type Role implements Node {
   user: User
   second: User
-  third: User
   skills: [String!] @search(by: [term])
   #authority: Authority
 }
@@ -44,7 +43,7 @@ type Role implements Node {
 interface Post {
   id: ID!
   createdAt: DateTime! @search
-  author: User!
+  createdBy: User!
   message: String @search(by: [fulltext])
 }
 
@@ -83,6 +82,7 @@ type User {
   fullname: String @maxLength(n: 100)
   password: String! @maxLength(n: 42)
   roles: [Role!] @hasInverse(field: user)
+  backed_roles: [Role!] @hasInverse(field: second)
   bio: String
   #skills
 }
