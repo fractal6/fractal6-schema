@@ -1,4 +1,6 @@
 .ONESHELL:
+SHELL := /bin/bash
+
 .PHONY: _gram gqlgen
 
 default: gqlgen
@@ -21,6 +23,11 @@ gqlgen:
 	cp -v directives.graphql gen/
 	cp -v query.graphql gen/
 	./ast.py type.graphql > gen/type.graphql
+
+gqlgen2:
+	# @DEBUG: ensure dgraph rule to fetch schema.graphql
+	cp -v directives.graphql gen2/
+	./ast.py <(cat type.graphql ../database/schema.graphql) > gen2/schema.graphql
 
 dgraph:
 	# populate dgraph

@@ -2,6 +2,9 @@
 
 '''Graphql format manipulation
 
+Remove comments.
+Add interface attributes on implemented types.
+
 Usage:
     ast.py [--debug] [--nv] [FILE ...]
 
@@ -26,6 +29,8 @@ from gram.graphql import GRAPHQLParser
 class GqlSemantics(object):
     def __init__(self):
         self.interfaces = defaultdict(list)
+        self.types = []
+        self.enums = []
 
     def _default(self, ast):
         return ast
@@ -34,6 +39,13 @@ class GqlSemantics(object):
         if isinstance(ast, AST):
             # exists if there is a rulename defined
             interface = ast._name.name
+
+            # Watch out duplicagte !
+            if interface in self.interfaces:
+                return None
+            else:
+                self.interfaces[interface]
+
             for o in ast._fields:
                 if isinstance(o, list):
                     for oo in o:
@@ -44,6 +56,14 @@ class GqlSemantics(object):
 
     def object_type_definition(self, ast):
         if isinstance(ast, AST):
+            name = ast._name.name
+
+            # Watch out duplicagte !
+            if name in self.types:
+                return None
+            else:
+                self.types.append(name)
+
             if ast._implements:
                 for o in ast._implements:
                     # get the interface name
@@ -52,6 +72,22 @@ class GqlSemantics(object):
                         fields = next(a for a in ast._fields if (isinstance(a, list)))
                         fields.extend(self.interfaces[interface])
                         break
+
+        return ast
+
+    def enum_type_definition(self, ast):
+
+        name = ast[1].name
+
+        # Watch out duplicagte !
+        self.enums.append(name)
+        if name in self.enums:
+            return None
+        else:
+            self.enums.append(name)
+
+        if isinstance(ast, AST):
+            raise NotImplementedError("Review this code if we got an AST here !")
 
         return ast
 
@@ -73,7 +109,7 @@ class SDL:
                                      semantics=self.semantics,
                                      parseinfo=False)
 
-    def stringify(self, ast=None, out=None, root=False, _next=None):
+    def stringify(self, ast=None, out=None, root=False, _next=None, ignore_nl=False):
 
         nl = '\n'
 
@@ -86,6 +122,11 @@ class SDL:
             if isinstance(o, dict):
                 # No Context here (nth == 0)
                 for k, v in o.items():
+                    code = None
+                    pack = k.split('__')
+                    if len(pack) == 2:
+                        _type, code = pack
+
                     if k == "comment":
                         # newline after comment
                         #out.append(nl)
@@ -94,6 +135,8 @@ class SDL:
                     elif v is None:
                         # empty choice (only happen with generated parser)
                         continue
+                    elif k == "args":
+                        ignore_nl = True
                     elif k in ("name", "type"):
                         # space around variable names
                         if out[-1] not in ('@', '[', '('):
@@ -101,6 +144,16 @@ class SDL:
                             if isinstance(v, str):
                                 if _next not in ('!', ':'):
                                     v += ' '
+                    elif code == 'bb':
+                        # Blank Before (space)
+                        out.append(' ')
+                    elif code == 'ba':
+                        # Blank After (space)
+                        v += ' '
+                    elif code == 'bs':
+                        # Blank Suround (space)
+                        if isinstance(v, str):
+                            v = ' ' + v + ' '
                     elif k.startswith('_'):
                         # Don't append newline for rulename that starts
                         # with '_'.
@@ -109,17 +162,15 @@ class SDL:
                         # ignore keys that ends with "_",
                         # They are used to postprocess the ast.
                         pass
-                    elif k == 'directive':
-                        # space before directive
-                        out.append(' ')
                     elif k.endswith('_definition'):
                         # indention in field definition
                         out.extend([nl]*2)
                     else:
                         # newline rational
-                        out.append(nl)
+                        if not ignore_nl:
+                            out.append(nl)
 
-                    out = self.stringify([v], out)
+                    out = self.stringify([v], out, ignore_nl=ignore_nl)
 
             elif isinstance(o, list):
                 # Assume Closure
@@ -128,7 +179,7 @@ class SDL:
                         _next = o[mth+1]
                     else:
                         _next = None
-                    out = self.stringify([oo], out, _next=_next)
+                    out = self.stringify([oo], out, _next=_next, ignore_nl=ignore_nl)
             elif isinstance(o, str):
                 if o == '}':
                     o = '\n'+o

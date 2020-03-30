@@ -378,9 +378,9 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _directive_(self):  # noqa
         self._directive__()
-        self.name_last_node('directive')
+        self.name_last_node('directive__bb')
         self.ast._define(
-            ['directive'],
+            ['directive__bb'],
             []
         )
 
@@ -588,23 +588,33 @@ class GRAPHQLParser(Parser):
                 with self._optional():
                     self._description_()
                 self._name_()
+                self.name_last_node('_name')
                 with self._optional():
                     self._arguments_definition_()
+                    self.name_last_node('args')
                 self._token(':')
                 self._type__()
+                self.name_last_node('_type')
                 with self._optional():
                     self._directives_()
+                    self.name_last_node('_directives')
             with self._option():
                 self._LINE_COMMENT_()
             self._error('no available options')
+        self.ast._define(
+            ['_directives', '_name', '_type', 'args'],
+            []
+        )
 
     @tatsumasu()
     def _arguments_definition_(self):  # noqa
         self._token('(')
+        self.__input_value_definition_()
 
         def block0():
+            self._token(',')
             self.__input_value_definition_()
-        self._positive_closure(block0)
+        self._closure(block0)
         self._token(')')
 
     @tatsumasu()
@@ -831,12 +841,22 @@ class GRAPHQLParser(Parser):
         with self._optional():
             self._description_()
         self._token('directive')
+        self.name_last_node('directive__ba')
         self._token('@')
+        self.name_last_node('_cst')
         self._name_()
+        self.name_last_node('_name')
         with self._optional():
             self._arguments_definition_()
+            self.name_last_node('args')
         self._token('on')
+        self.name_last_node('cst__bs')
         self._directive_locations_()
+        self.name_last_node('_locations')
+        self.ast._define(
+            ['_cst', '_locations', '_name', 'args', 'cst__bs', 'directive__ba'],
+            []
+        )
 
     @tatsumasu()
     def _directive_locations_(self):  # noqa
@@ -851,9 +871,9 @@ class GRAPHQLParser(Parser):
     def _directive_location_(self):  # noqa
         with self._choice():
             with self._option():
-                self._executable_directive_location_()
-            with self._option():
                 self._type_system_directive_location_()
+            with self._option():
+                self._executable_directive_location_()
             self._error('no available options')
 
     @tatsumasu()

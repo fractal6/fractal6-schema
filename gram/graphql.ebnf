@@ -1,6 +1,12 @@
 @@grammar::GRAPHQL
 
 
+# Each rule name/marker can be of the form -> name[__code]: 
+#  code is intrepreded for space control
+#  if name starts with a '_' it is ignored,
+# else, a newline is append.
+
+
 document
     =
     {definition}+ 
@@ -214,7 +220,7 @@ directives
     {directive}+
     ;
 
-directive = directive:directive_;
+directive = directive__bb:directive_;
 
 directive_
     =
@@ -331,14 +337,14 @@ _field_definition
 
 field_definition
     =
-    [description] name [arguments_definition] ':' type_ [directives]
+    [description] _name:name [args:arguments_definition] ':' _type:type_ [_directives:directives]
     | LINE_COMMENT
     ;
 
 
 arguments_definition
     =
-    '(' {_input_value_definition}+ ')'
+    '(' _input_value_definition { ',' _input_value_definition} ')'
     ;
 
 _input_value_definition
@@ -452,12 +458,12 @@ input_object_type_extension
 directive_definition
     =
     [description]
-    'directive'
-    '@'
-    name
-    [arguments_definition]
-    'on'
-    directive_locations
+    directive__ba:'directive'
+    _cst:'@'
+    _name:name
+    [args:arguments_definition]
+    cst__bs:'on'
+    _locations:directive_locations
     ;
 
 
@@ -469,7 +475,7 @@ directive_locations
 
 directive_location
     =
-    executable_directive_location | type_system_directive_location
+    type_system_directive_location | executable_directive_location
     ;
 
 
