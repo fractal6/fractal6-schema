@@ -1,0 +1,673 @@
+
+
+
+interface Node {
+ id   ID!
+ createdAt   DateTime! @search
+ createdBy   User!
+ parent   Node 
+
+ children  [Node!] @hasInverse(field: parent )
+ name   String! @search(by:[term])
+ nameid   String! @id
+ mandate   Mandate 
+
+ tensions_out  [Tension!] @hasInverse(field: emitter )
+ tensions_in  [Tension!]
+
+}
+
+type Circle implements Node {
+ isRoot   Boolean!
+
+
+
+ id   ID!
+ createdAt   DateTime! @search
+ createdBy   User!
+ parent   Node 
+
+ children  [Node!] @hasInverse(field: parent )
+ name   String! @search(by:[term])
+ nameid   String! @id
+ mandate   Mandate 
+
+ tensions_out  [Tension!] @hasInverse(field: emitter )
+ tensions_in  [Tension!]
+
+}
+
+type Role implements Node {
+ user   User 
+ second   User 
+ skills  [String!] @search(by:[term])
+
+ id   ID!
+ createdAt   DateTime! @search
+ createdBy   User!
+ parent   Node 
+
+ children  [Node!] @hasInverse(field: parent )
+ name   String! @search(by:[term])
+ nameid   String! @id
+ mandate   Mandate 
+
+ tensions_out  [Tension!] @hasInverse(field: emitter )
+ tensions_in  [Tension!]
+
+}
+
+interface Post {
+ id   ID!
+ createdAt   DateTime! @search
+ createdBy   User!
+ message   String  @search(by:[fulltext])
+}
+
+type Tension implements Post {
+ nth   Int!
+
+ title   String! @search(by:[term])
+ type_   TensionType! @search(by:[hash])
+ emitter   Node!
+ receivers  [Node!]
+ isAnonymous   Boolean!
+ severity   Int!
+ comments  [Post!]
+
+ id   ID!
+ createdAt   DateTime! @search
+ createdBy   User!
+ message   String  @search(by:[fulltext])
+}
+
+type Mandate implements Post {
+ purpose   String! @search(by:[fulltext])
+ responsabilities   String 
+ domains  [String!]
+
+
+
+
+
+
+ id   ID!
+ createdAt   DateTime! @search
+ createdBy   User!
+ message   String  @search(by:[fulltext])
+}
+
+type User {
+ id   ID!
+ createdAt   DateTime! @search
+ username   String! @id @maxLength(n:42)
+ fullname   String  @maxLength(n:100)
+ password   String! @maxLength(n:42)
+ roles  [Role!] @hasInverse(field: user )
+ backed_roles  [Role!] @hasInverse(field: second )
+ bio   String 
+
+}
+
+directive @hasInverse(field:  String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @dgraph(type:  String , pred:  String ) on OBJECT|INTERFACE|FIELD_DEFINITION
+
+directive @id on FIELD_DEFINITION
+
+input AddCircleInput {
+ createdAt:  DateTime!
+ createdBy:  UserRef!
+ parent:  NodeRef 
+ children: [NodeRef!]
+ name:  String!
+ nameid:  String!
+ mandate:  MandateRef 
+ tensions_out: [TensionRef!]
+ tensions_in: [TensionRef!]
+ isRoot:  Boolean!
+}
+
+type AddCirclePayload {
+ circle (filter:  CircleFilter , order:  CircleOrder , first:  Int , offset:  Int ) [Circle]
+ numUids   Int 
+}
+
+input AddMandateInput {
+ createdAt:  DateTime!
+ author:  UserRef!
+ message:  String 
+ purpose:  String!
+ responsabilities:  String 
+ domains: [String!]
+}
+
+type AddMandatePayload {
+ mandate (filter:  MandateFilter , order:  MandateOrder , first:  Int , offset:  Int ) [Mandate]
+ numUids   Int 
+}
+
+input AddRoleInput {
+ createdAt:  DateTime!
+ createdBy:  UserRef!
+ parent:  NodeRef 
+ children: [NodeRef!]
+ name:  String!
+ nameid:  String!
+ mandate:  MandateRef 
+ tensions_out: [TensionRef!]
+ tensions_in: [TensionRef!]
+ user:  UserRef 
+ second:  UserRef 
+ third:  UserRef 
+ skills: [String!]
+}
+
+type AddRolePayload {
+ role (filter:  RoleFilter , order:  RoleOrder , first:  Int , offset:  Int ) [Role]
+ numUids   Int 
+}
+
+input AddTensionInput {
+ createdAt:  DateTime!
+ author:  UserRef!
+ message:  String 
+ nth:  Int!
+ title:  String!
+ type_:  TensionType!
+ emitter:  NodeRef!
+ receivers: [NodeRef!]
+ isAnonymous:  Boolean!
+ severity:  Int!
+ comments: [PostRef!]
+}
+
+type AddTensionPayload {
+ tension (filter:  TensionFilter , order:  TensionOrder , first:  Int , offset:  Int ) [Tension]
+ numUids   Int 
+}
+
+input AddUserInput {
+ createdAt:  DateTime!
+ username:  String!
+ fullname:  String 
+ password:  String!
+ roles: [RoleRef!]
+ bio:  String 
+}
+
+type AddUserPayload {
+ user (filter:  UserFilter , order:  UserOrder , first:  Int , offset:  Int ) [User]
+ numUids   Int 
+}
+
+input CircleFilter {
+ id: [ID!]
+ createdAt:  DateTimeFilter 
+ name:  StringTermFilter 
+ nameid:  StringHashFilter 
+ and:  CircleFilter 
+ or:  CircleFilter 
+ not:  CircleFilter 
+}
+
+input CircleOrder {
+ asc:  CircleOrderable 
+ desc:  CircleOrderable 
+ then:  CircleOrder 
+}
+
+input CirclePatch {
+ createdAt:  DateTime 
+ createdBy:  UserRef 
+ parent:  NodeRef 
+ children: [NodeRef!]
+ name:  String 
+ mandate:  MandateRef 
+ tensions_out: [TensionRef!]
+ tensions_in: [TensionRef!]
+ isRoot:  Boolean 
+}
+
+input CircleRef {
+ id:  ID 
+ createdAt:  DateTime 
+ createdBy:  UserRef 
+ parent:  NodeRef 
+ children: [NodeRef!]
+ name:  String 
+ nameid:  String 
+ mandate:  MandateRef 
+ tensions_out: [TensionRef!]
+ tensions_in: [TensionRef!]
+ isRoot:  Boolean 
+}
+
+scalar DateTime 
+
+input DateTimeFilter {
+ eq:  DateTime 
+ le:  DateTime 
+ lt:  DateTime 
+ ge:  DateTime 
+ gt:  DateTime 
+}
+
+type DeleteCirclePayload {
+ msg   String 
+ numUids   Int 
+}
+
+type DeleteMandatePayload {
+ msg   String 
+ numUids   Int 
+}
+
+type DeleteNodePayload {
+ msg   String 
+ numUids   Int 
+}
+
+type DeletePostPayload {
+ msg   String 
+ numUids   Int 
+}
+
+type DeleteRolePayload {
+ msg   String 
+ numUids   Int 
+}
+
+type DeleteTensionPayload {
+ msg   String 
+ numUids   Int 
+}
+
+type DeleteUserPayload {
+ msg   String 
+ numUids   Int 
+}
+
+input FloatFilter {
+ eq:  Float 
+ le:  Float 
+ lt:  Float 
+ ge:  Float 
+ gt:  Float 
+}
+
+input IntFilter {
+ eq:  Int 
+ le:  Int 
+ lt:  Int 
+ ge:  Int 
+ gt:  Int 
+}
+
+input MandateFilter {
+ id: [ID!]
+ createdAt:  DateTimeFilter 
+ message:  StringFullTextFilter 
+ purpose:  StringFullTextFilter 
+ and:  MandateFilter 
+ or:  MandateFilter 
+ not:  MandateFilter 
+}
+
+input MandateOrder {
+ asc:  MandateOrderable 
+ desc:  MandateOrderable 
+ then:  MandateOrder 
+}
+
+input MandatePatch {
+ createdAt:  DateTime 
+ author:  UserRef 
+ message:  String 
+ purpose:  String 
+ responsabilities:  String 
+ domains: [String!]
+}
+
+input MandateRef {
+ id:  ID 
+ createdAt:  DateTime 
+ author:  UserRef 
+ message:  String 
+ purpose:  String 
+ responsabilities:  String 
+ domains: [String!]
+}
+
+type Mutation {
+ updateNode (input:  UpdateNodeInput!)  UpdateNodePayload 
+ deleteNode (filter:  NodeFilter!)  DeleteNodePayload 
+ addCircle (input: [AddCircleInput!]!)  AddCirclePayload 
+ updateCircle (input:  UpdateCircleInput!)  UpdateCirclePayload 
+ deleteCircle (filter:  CircleFilter!)  DeleteCirclePayload 
+ addRole (input: [AddRoleInput!]!)  AddRolePayload 
+ updateRole (input:  UpdateRoleInput!)  UpdateRolePayload 
+ deleteRole (filter:  RoleFilter!)  DeleteRolePayload 
+ updatePost (input:  UpdatePostInput!)  UpdatePostPayload 
+ deletePost (filter:  PostFilter!)  DeletePostPayload 
+ addTension (input: [AddTensionInput!]!)  AddTensionPayload 
+ updateTension (input:  UpdateTensionInput!)  UpdateTensionPayload 
+ deleteTension (filter:  TensionFilter!)  DeleteTensionPayload 
+ addMandate (input: [AddMandateInput!]!)  AddMandatePayload 
+ updateMandate (input:  UpdateMandateInput!)  UpdateMandatePayload 
+ deleteMandate (filter:  MandateFilter!)  DeleteMandatePayload 
+ addUser (input: [AddUserInput!]!)  AddUserPayload 
+ updateUser (input:  UpdateUserInput!)  UpdateUserPayload 
+ deleteUser (filter:  UserFilter!)  DeleteUserPayload 
+}
+
+input NodeFilter {
+ id: [ID!]
+ createdAt:  DateTimeFilter 
+ name:  StringTermFilter 
+ nameid:  StringHashFilter 
+ and:  NodeFilter 
+ or:  NodeFilter 
+ not:  NodeFilter 
+}
+
+input NodeOrder {
+ asc:  NodeOrderable 
+ desc:  NodeOrderable 
+ then:  NodeOrder 
+}
+
+input NodePatch {
+ createdAt:  DateTime 
+ createdBy:  UserRef 
+ parent:  NodeRef 
+ children: [NodeRef!]
+ name:  String 
+ mandate:  MandateRef 
+ tensions_out: [TensionRef!]
+ tensions_in: [TensionRef!]
+}
+
+input NodeRef {
+ id:  ID 
+ nameid:  String 
+}
+
+input PostFilter {
+ id: [ID!]
+ createdAt:  DateTimeFilter 
+ message:  StringFullTextFilter 
+ and:  PostFilter 
+ or:  PostFilter 
+ not:  PostFilter 
+}
+
+input PostOrder {
+ asc:  PostOrderable 
+ desc:  PostOrderable 
+ then:  PostOrder 
+}
+
+input PostPatch {
+ createdAt:  DateTime 
+ author:  UserRef 
+ message:  String 
+}
+
+input PostRef {
+ id:  ID!
+}
+
+type Query {
+ getNode (id:  ID , nameid:  String )  Node 
+ queryNode (filter:  NodeFilter , order:  NodeOrder , first:  Int , offset:  Int ) [Node]
+ getCircle (id:  ID , nameid:  String )  Circle 
+ queryCircle (filter:  CircleFilter , order:  CircleOrder , first:  Int , offset:  Int ) [Circle]
+ getRole (id:  ID , nameid:  String )  Role 
+ queryRole (filter:  RoleFilter , order:  RoleOrder , first:  Int , offset:  Int ) [Role]
+ getPost (id:  ID!)  Post 
+ queryPost (filter:  PostFilter , order:  PostOrder , first:  Int , offset:  Int ) [Post]
+ getTension (id:  ID!)  Tension 
+ queryTension (filter:  TensionFilter , order:  TensionOrder , first:  Int , offset:  Int ) [Tension]
+ getMandate (id:  ID!)  Mandate 
+ queryMandate (filter:  MandateFilter , order:  MandateOrder , first:  Int , offset:  Int ) [Mandate]
+ getUser (id:  ID , username:  String )  User 
+ queryUser (filter:  UserFilter , order:  UserOrder , first:  Int , offset:  Int ) [User]
+}
+
+input RoleFilter {
+ id: [ID!]
+ createdAt:  DateTimeFilter 
+ name:  StringTermFilter 
+ nameid:  StringHashFilter 
+ skills:  StringTermFilter 
+ and:  RoleFilter 
+ or:  RoleFilter 
+ not:  RoleFilter 
+}
+
+input RoleOrder {
+ asc:  RoleOrderable 
+ desc:  RoleOrderable 
+ then:  RoleOrder 
+}
+
+input RolePatch {
+ createdAt:  DateTime 
+ createdBy:  UserRef 
+ parent:  NodeRef 
+ children: [NodeRef!]
+ name:  String 
+ mandate:  MandateRef 
+ tensions_out: [TensionRef!]
+ tensions_in: [TensionRef!]
+ user:  UserRef 
+ second:  UserRef 
+ third:  UserRef 
+ skills: [String!]
+}
+
+input RoleRef {
+ id:  ID 
+ createdAt:  DateTime 
+ createdBy:  UserRef 
+ parent:  NodeRef 
+ children: [NodeRef!]
+ name:  String 
+ nameid:  String 
+ mandate:  MandateRef 
+ tensions_out: [TensionRef!]
+ tensions_in: [TensionRef!]
+ user:  UserRef 
+ second:  UserRef 
+ third:  UserRef 
+ skills: [String!]
+}
+
+input StringExactFilter {
+ eq:  String 
+ le:  String 
+ lt:  String 
+ ge:  String 
+ gt:  String 
+}
+
+input StringFullTextFilter {
+ alloftext:  String 
+ anyoftext:  String 
+}
+
+input StringHashFilter {
+ eq:  String 
+}
+
+input StringRegExpFilter {
+ regexp:  String 
+}
+
+input StringTermFilter {
+ allofterms:  String 
+ anyofterms:  String 
+}
+
+input TensionFilter {
+ id: [ID!]
+ createdAt:  DateTimeFilter 
+ message:  StringFullTextFilter 
+ title:  StringTermFilter 
+ type_:  TensionType_hash 
+ and:  TensionFilter 
+ or:  TensionFilter 
+ not:  TensionFilter 
+}
+
+input TensionOrder {
+ asc:  TensionOrderable 
+ desc:  TensionOrderable 
+ then:  TensionOrder 
+}
+
+input TensionPatch {
+ createdAt:  DateTime 
+ author:  UserRef 
+ message:  String 
+ nth:  Int 
+ title:  String 
+ type_:  TensionType 
+ emitter:  NodeRef 
+ receivers: [NodeRef!]
+ isAnonymous:  Boolean 
+ severity:  Int 
+ comments: [PostRef!]
+}
+
+input TensionRef {
+ id:  ID 
+ createdAt:  DateTime 
+ author:  UserRef 
+ message:  String 
+ nth:  Int 
+ title:  String 
+ type_:  TensionType 
+ emitter:  NodeRef 
+ receivers: [NodeRef!]
+ isAnonymous:  Boolean 
+ severity:  Int 
+ comments: [PostRef!]
+}
+
+input TensionType_hash {
+ eq:  TensionType!
+}
+
+input UpdateCircleInput {
+ filter:  CircleFilter!
+ set:  CirclePatch 
+ remove:  CirclePatch 
+}
+
+type UpdateCirclePayload {
+ circle (filter:  CircleFilter , order:  CircleOrder , first:  Int , offset:  Int ) [Circle]
+ numUids   Int 
+}
+
+input UpdateMandateInput {
+ filter:  MandateFilter!
+ set:  MandatePatch 
+ remove:  MandatePatch 
+}
+
+type UpdateMandatePayload {
+ mandate (filter:  MandateFilter , order:  MandateOrder , first:  Int , offset:  Int ) [Mandate]
+ numUids   Int 
+}
+
+input UpdateNodeInput {
+ filter:  NodeFilter!
+ set:  NodePatch 
+ remove:  NodePatch 
+}
+
+type UpdateNodePayload {
+ node (filter:  NodeFilter , order:  NodeOrder , first:  Int , offset:  Int ) [Node]
+ numUids   Int 
+}
+
+input UpdatePostInput {
+ filter:  PostFilter!
+ set:  PostPatch 
+ remove:  PostPatch 
+}
+
+type UpdatePostPayload {
+ post (filter:  PostFilter , order:  PostOrder , first:  Int , offset:  Int ) [Post]
+ numUids   Int 
+}
+
+input UpdateRoleInput {
+ filter:  RoleFilter!
+ set:  RolePatch 
+ remove:  RolePatch 
+}
+
+type UpdateRolePayload {
+ role (filter:  RoleFilter , order:  RoleOrder , first:  Int , offset:  Int ) [Role]
+ numUids   Int 
+}
+
+input UpdateTensionInput {
+ filter:  TensionFilter!
+ set:  TensionPatch 
+ remove:  TensionPatch 
+}
+
+type UpdateTensionPayload {
+ tension (filter:  TensionFilter , order:  TensionOrder , first:  Int , offset:  Int ) [Tension]
+ numUids   Int 
+}
+
+input UpdateUserInput {
+ filter:  UserFilter!
+ set:  UserPatch 
+ remove:  UserPatch 
+}
+
+type UpdateUserPayload {
+ user (filter:  UserFilter , order:  UserOrder , first:  Int , offset:  Int ) [User]
+ numUids   Int 
+}
+
+input UserFilter {
+ id: [ID!]
+ createdAt:  DateTimeFilter 
+ username:  StringHashFilter 
+ and:  UserFilter 
+ or:  UserFilter 
+ not:  UserFilter 
+}
+
+input UserOrder {
+ asc:  UserOrderable 
+ desc:  UserOrderable 
+ then:  UserOrder 
+}
+
+input UserPatch {
+ createdAt:  DateTime 
+ fullname:  String 
+ password:  String 
+ roles: [RoleRef!]
+ bio:  String 
+}
+
+input UserRef {
+ id:  ID 
+ createdAt:  DateTime 
+ username:  String 
+ fullname:  String 
+ password:  String 
+ roles: [RoleRef!]
+ bio:  String 
+}

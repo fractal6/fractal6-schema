@@ -1,0 +1,4 @@
+#directive @hasRole(role: Role!) on FIELD_DEFINITION
+#directive @isAuthenticated on FIELD_DEFINITION
+directive @maxLength(n: Int) on FIELD_DEFINITION
+
