@@ -58,7 +58,7 @@ field
 
 arguments
     =
-    '(' {argument}+ ')'
+    '(' argument {',' argument} ')'
     ;
 
 
@@ -344,7 +344,7 @@ field_definition
 
 arguments_definition
     =
-    '(' _input_value_definition { ',' _input_value_definition} ')'
+    '(' _input_value_definition {',' _input_value_definition} ')'
     ;
 
 _input_value_definition

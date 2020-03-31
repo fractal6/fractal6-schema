@@ -108,14 +108,16 @@ class GqlSemantics(object):
 class SDL:
     ''' Parse graphql file with semantics.
 
-        The module interpret the rule name given by tatsu (with the synxax `rule_name:rule`) with the following semantics:
+        The module interpret the rule name given by tatsu
+        (with the synxax `rule_name:rule`) with the following semantics:
             * if rule_name starts with "_", it will be appended to hte output with no special treatment
             * rule_name can be defined as `name__code` where code can be [ba, bb, bs] that stands respectively for:
                 * blank after
                 * blank before
                 * blank surrounded
-            * The `name` rule_name has a special treatment to manage space syntax.
+            * `name` has a special treatment to manage space syntax.
             * `comment` are filtered out.
+            * `args` do not make new line.
             * other rule are appended with a new line.
 
         Furthermore special rule are defined be Semantic class `GqlSemantics`.
@@ -220,10 +222,6 @@ class SDL:
                                 v = ' ' + v + ' '
                     elif _type.startswith('_'):
                         # Don't append newline for rulename that starts with '_'.
-                        pass
-                    elif _type.endswith('_'):
-                        # ignore keys that ends with "_",
-                        # They are used to postprocess the ast.
                         pass
                     elif _type.endswith('_definition'):
                         # indention in field definition

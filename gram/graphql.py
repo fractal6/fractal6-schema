@@ -169,10 +169,12 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _arguments_(self):  # noqa
         self._token('(')
+        self._argument_()
 
         def block0():
+            self._token(',')
             self._argument_()
-        self._positive_closure(block0)
+        self._closure(block0)
         self._token(')')
 
     @tatsumasu()
