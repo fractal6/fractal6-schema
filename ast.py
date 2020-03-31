@@ -35,6 +35,10 @@ class GqlSemantics(object):
         return ast
 
     def interface_type_definition(self, ast):
+        ''' Interface handle
+            * filter ou doublon
+            * add interfaces to inner variables
+        '''
         if isinstance(ast, AST):
             # exists if there is a rulename defined
             interface = ast._name.name
@@ -54,6 +58,10 @@ class GqlSemantics(object):
         return ast
 
     def object_type_definition(self, ast):
+        ''' Type handle
+            * filter ou doublon
+            * add implemented interfaces fields if not already presents
+        '''
         if isinstance(ast, AST):
             name = ast._name.name
 
@@ -79,6 +87,9 @@ class GqlSemantics(object):
         return ast
 
     def enum_type_definition(self, ast):
+        ''' Enum handle
+            * filter ou doublon
+        '''
 
         name = ast[1].name
 
@@ -95,6 +106,21 @@ class GqlSemantics(object):
 
 
 class SDL:
+    ''' Parse graphql file with semantics.
+
+        The module interpret the rule name given by tatsu (with the synxax `rule_name:rule`) with the following semantics:
+            * if rule_name starts with "_", it will be appended to hte output with no special treatment
+            * rule_name can be defined as `name__code` where code can be [ba, bb, bs] that stands respectively for:
+                * blank after
+                * blank before
+                * blank surrounded
+            * The `name` rule_name has a special treatment to manage space syntax.
+            * `comment` are filtered out.
+            * other rule are appended with a new line.
+
+        Furthermore special rule are defined be Semantic class `GqlSemantics`.
+        Reports to the methods documentation for further informantion.
+    '''
 
     def __init__(self, grammar, infile):
         self._grammar = open("gram/graphql.ebnf").read()
