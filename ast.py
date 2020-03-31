@@ -20,7 +20,6 @@ from tatsu.util import asjsons
 from tatsu.ast import AST
 from pprint import pprint
 import re
-from collections import defaultdict
 from docopt import docopt
 
 from gram.graphql import GRAPHQLParser
@@ -28,7 +27,7 @@ from gram.graphql import GRAPHQLParser
 
 class GqlSemantics(object):
     def __init__(self):
-        self.interfaces = defaultdict(list)
+        self.interfaces = {}
         self.types = []
         self.enums = []
 
@@ -44,7 +43,7 @@ class GqlSemantics(object):
             if interface in self.interfaces:
                 return None
             else:
-                self.interfaces[interface]
+                self.interfaces[interface] = []
 
             for o in ast._fields:
                 if isinstance(o, list):
@@ -70,8 +69,12 @@ class GqlSemantics(object):
                     if isinstance(o, dict) and 'name' in o:
                         interface = o.name
                         fields = next(a for a in ast._fields if (isinstance(a, list)))
-                        fields.extend(self.interfaces[interface])
-                        break
+                        if interface in self.interfaces:
+                            for fd in self.interfaces[interface]:
+                                if fd not in fields:
+                                    fields.append(fd)
+                            # @DEBUG: can implements multiple interface ?
+                            break
 
         return ast
 
@@ -80,7 +83,6 @@ class GqlSemantics(object):
         name = ast[1].name
 
         # Watch out duplicagte !
-        self.enums.append(name)
         if name in self.enums:
             return None
         else:
@@ -109,7 +111,7 @@ class SDL:
                                      semantics=self.semantics,
                                      parseinfo=False)
 
-    def stringify(self, ast=None, out=None, root=False, _next=None, ignore_nl=False):
+    def stringify(self, ast=None, out=None, root=False, _prev=None, _next=None, ignore_nl=False):
 
         nl = '\n'
 
@@ -121,13 +123,26 @@ class SDL:
         for nth, o in enumerate(ast):
             if isinstance(o, dict):
                 # No Context here (nth == 0)
-                for k, v in o.items():
+                keys = list(o)
+                update = False
+                if len(keys) > 1:
+                    update = True
+                for ith, k in enumerate(keys):
                     code = None
                     pack = k.split('__')
                     if len(pack) == 2:
                         _type, code = pack
+                    else:
+                        _type = k
+                    v = o[k]
 
-                    if k == "comment":
+                    if update:
+                        if ith > 0:
+                            _prev = o[keys[ith-1]]
+                        if ith < len(o) - 1:
+                            _next = o[keys[ith+1]]
+
+                    if _type in "comment":
                         # newline after comment
                         #out.append(nl)
                         # ignore comments
@@ -135,34 +150,56 @@ class SDL:
                     elif v is None:
                         # empty choice (only happen with generated parser)
                         continue
-                    elif k == "args":
+                    elif _type == "args":
                         ignore_nl = True
-                    elif k in ("name", "type"):
-                        # space around variable names
-                        if out[-1] not in ('@', '[', '('):
+                    elif _type in ("name"):
+                        # Manage space btween names
+
+                        if out[-1] == '\n':
+                            # field indentation
+                            if _prev in ('{',) and out[-3][-1] != ' ':
+                                out[-3] += ' '
+                            out.append('  ')
+                        elif out[-1] not in ('[', '(', '@'):
+                            # Space separator between words.
                             out.append(' ')
-                            if isinstance(v, str):
-                                if _next not in ('!', ':'):
-                                    v += ' '
+                        elif _prev in ("[",):
+                            out[-2] += ' '
+
+                        # space after object definition
+                        if _next == '{':
+                            # without AST
+                            v += ' '
+                        elif isinstance(_next, list) and _next[0] == '{':
+                            # with AST
+                            v += ' '
+                        elif isinstance(_next, list) and _next[0] == 'implements':
+                            v += ' '
+
+                        #print("dict-- ", k, v, _prev, _next)
+
                     elif code == 'bb':
                         # Blank Before (space)
-                        out.append(' ')
+                        if out[-1] != ' ':
+                            out.append(' ')
                     elif code == 'ba':
                         # Blank After (space)
                         v += ' '
                     elif code == 'bs':
                         # Blank Suround (space)
                         if isinstance(v, str):
-                            v = ' ' + v + ' '
-                    elif k.startswith('_'):
-                        # Don't append newline for rulename that starts
-                        # with '_'.
+                            if out[-1] == ' ':
+                                v += ' '
+                            else:
+                                v = ' ' + v + ' '
+                    elif _type.startswith('_'):
+                        # Don't append newline for rulename that starts with '_'.
                         pass
-                    elif k.endswith('_'):
+                    elif _type.endswith('_'):
                         # ignore keys that ends with "_",
                         # They are used to postprocess the ast.
                         pass
-                    elif k.endswith('_definition'):
+                    elif _type.endswith('_definition'):
                         # indention in field definition
                         out.extend([nl]*2)
                     else:
@@ -170,16 +207,17 @@ class SDL:
                         if not ignore_nl:
                             out.append(nl)
 
-                    out = self.stringify([v], out, ignore_nl=ignore_nl)
+                    out = self.stringify([v], out, ignore_nl=ignore_nl, _prev=_prev, _next=_next)
 
             elif isinstance(o, list):
                 # Assume Closure
                 for mth, oo in enumerate(o):
                     if mth < len(o)-1:
                         _next = o[mth+1]
-                    else:
-                        _next = None
-                    out = self.stringify([oo], out, _next=_next, ignore_nl=ignore_nl)
+
+                    if mth > 0:
+                        _prev = o[mth-1]
+                    out = self.stringify([oo], out, _prev=_prev, _next=_next, ignore_nl=ignore_nl)
             elif isinstance(o, str):
                 if o == '}':
                     o = '\n'+o

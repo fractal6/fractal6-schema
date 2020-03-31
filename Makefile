@@ -26,8 +26,7 @@ gqlgen:
 
 gqlgen2:
 	# @DEBUG: ensure dgraph rule to fetch schema.graphql
-	cp -v directives.graphql gen2/
-	./ast.py <(cat type.graphql ../database/schema.graphql) > gen2/schema.graphql
+	./ast.py <(cat directives.graphql type.graphql ../database/schema.graphql) > gen2/schema.graphql
 
 dgraph:
 	# populate dgraph

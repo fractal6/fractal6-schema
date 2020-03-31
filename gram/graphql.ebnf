@@ -1,7 +1,7 @@
 @@grammar::GRAPHQL
 
 
-# Each rule name/marker can be of the form -> name[__code]: 
+# Each rule name/marker can be of the form -> name[__code]:
 #  code is intrepreded for space control
 #  if name starts with a '_' it is ignored,
 # else, a newline is append.
@@ -186,7 +186,7 @@ variable_definitions
 
 variable_definition
     =
-    variable ':' type_ [default_value]
+    variable ':' type [default_value]
     ;
 
 
@@ -195,9 +195,9 @@ default_value
     '=' value
     ;
 
-type_ = type:_type_;
+type = _type:type_;
 
-_type_
+type_
     =
     named_type ['!'] | list_type ['!']
     ;
@@ -211,7 +211,7 @@ named_type
 
 list_type
     =
-    '[' type_ ']'
+    '[' type ']'
     ;
 
 
@@ -337,7 +337,7 @@ _field_definition
 
 field_definition
     =
-    [description] _name:name [args:arguments_definition] ':' _type:type_ [_directives:directives]
+    [description] _name:name [args:arguments_definition] _cst:':' _type:type [_directives:directives]
     | LINE_COMMENT
     ;
 
@@ -354,7 +354,7 @@ _input_value_definition
 
 input_value_definition
     =
-    [description] name ':' type_ [default_value] [directives]
+    [description] name ':' type [default_value] [directives]
     ;
 
 
@@ -438,7 +438,7 @@ enum_type_extension
 
 input_object_type_definition
     =
-    [description] 'input' name [directives] [input_fields_definition]
+    [description] _cst:'input' _name:name [_directives:directives] [_inputs:input_fields_definition]
     ;
 
 

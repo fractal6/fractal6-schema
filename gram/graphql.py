@@ -327,7 +327,7 @@ class GRAPHQLParser(Parser):
     def _variable_definition_(self):  # noqa
         self._variable_()
         self._token(':')
-        self._type__()
+        self._type_()
         with self._optional():
             self._default_value_()
 
@@ -337,16 +337,16 @@ class GRAPHQLParser(Parser):
         self._value_()
 
     @tatsumasu()
-    def _type__(self):  # noqa
-        self.__type__()
-        self.name_last_node('type')
+    def _type_(self):  # noqa
+        self._type__()
+        self.name_last_node('_type')
         self.ast._define(
-            ['type'],
+            ['_type'],
             []
         )
 
     @tatsumasu()
-    def __type__(self):  # noqa
+    def _type__(self):  # noqa
         with self._choice():
             with self._option():
                 self._named_type_()
@@ -365,7 +365,7 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _list_type_(self):  # noqa
         self._token('[')
-        self._type__()
+        self._type_()
         self._token(']')
 
     @tatsumasu()
@@ -593,7 +593,8 @@ class GRAPHQLParser(Parser):
                     self._arguments_definition_()
                     self.name_last_node('args')
                 self._token(':')
-                self._type__()
+                self.name_last_node('_cst')
+                self._type_()
                 self.name_last_node('_type')
                 with self._optional():
                     self._directives_()
@@ -602,7 +603,7 @@ class GRAPHQLParser(Parser):
                 self._LINE_COMMENT_()
             self._error('no available options')
         self.ast._define(
-            ['_directives', '_name', '_type', 'args'],
+            ['_cst', '_directives', '_name', '_type', 'args'],
             []
         )
 
@@ -632,7 +633,7 @@ class GRAPHQLParser(Parser):
             self._description_()
         self._name_()
         self._token(':')
-        self._type__()
+        self._type_()
         with self._optional():
             self._default_value_()
         with self._optional():
@@ -804,11 +805,19 @@ class GRAPHQLParser(Parser):
         with self._optional():
             self._description_()
         self._token('input')
+        self.name_last_node('_cst')
         self._name_()
+        self.name_last_node('_name')
         with self._optional():
             self._directives_()
+            self.name_last_node('_directives')
         with self._optional():
             self._input_fields_definition_()
+            self.name_last_node('_inputs')
+        self.ast._define(
+            ['_cst', '_directives', '_inputs', '_name'],
+            []
+        )
 
     @tatsumasu()
     def _input_fields_definition_(self):  # noqa
@@ -1192,10 +1201,10 @@ class GRAPHQLSemantics(object):
     def default_value(self, ast):  # noqa
         return ast
 
-    def type_(self, ast):  # noqa
+    def type(self, ast):  # noqa
         return ast
 
-    def _type_(self, ast):  # noqa
+    def type_(self, ast):  # noqa
         return ast
 
     def named_type(self, ast):  # noqa
