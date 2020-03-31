@@ -1,7 +1,8 @@
 
 
 
-directive @maxLength(n: Int) on FIELD_DEFINITION
+directive @hidden on FIELD_DEFINITION
+directive @input_maxLength(n: Int, f: String) on INPUT_FIELD_DEFINITION
 
 interface Node {
   id: ID!
@@ -96,9 +97,9 @@ type Mandate implements Post {
 type User {
   id: ID!
   createdAt: DateTime! @search
-  username: String! @id @maxLength(n:42)
-  fullname: String @maxLength(n:100)
-  password: String! @maxLength(n:42)
+  username: String! @id
+  fullname: String 
+  password: String! @hidden
   roles: [Role!] @hasInverse(field: user)
   backed_roles: [Role!] @hasInverse(field: second)
   bio: String
@@ -201,9 +202,9 @@ type AddTensionPayload {
 
 input AddUserInput {
   createdAt: DateTime!
-  username: String!
-  fullname: String
-  password: String!
+  username: String!  @input_maxLength(n: 42, f: "username")
+  fullname: String   @input_maxLength(n: 100, f: "fullname")
+  password: String!  @input_maxLength(n: 42, f: "password")
   roles: [RoleRef!]
   bio: String
 }
