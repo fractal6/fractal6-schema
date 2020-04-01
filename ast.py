@@ -18,6 +18,7 @@ Options:
 from tatsu import compile
 from tatsu.util import asjsons
 from tatsu.ast import AST
+from collections import OrderedDict, defaultdict
 from pprint import pprint
 import re
 from docopt import docopt
@@ -25,35 +26,79 @@ from docopt import docopt
 from gram.graphql import GRAPHQLParser
 
 
+def populate_type_data(ast, data, type_name):
+    ''' Populate data from ast parsing. '''
+
+    # Assumes non empty type
+    assert(len(ast._fields) == 3)
+    fields = ast._fields[1]
+    # ===
+    #fields = next(a for a in ast._fields if (isinstance(a, list)))
+
+    for f in fields:
+        field = f.field
+        if not field.get('_name'):
+            # Comments
+            continue
+
+        # Add field
+        field_data = {'name': field._name.name,
+                      'ast': f,
+                      'data': f.copy(),
+                      'directives': [],
+                     }
+
+        if field.get("_directives"):
+            # Add and filter directives
+            for d in field._directives:
+                # build directive lookup
+                field_data['directives'].append({
+                    'name': d._name.name,
+                    'ast': d,
+                    'data': d.copy(),
+                })
+
+        data[type_name].append(field_data)
+
+
 class GqlSemantics(object):
     def __init__(self):
-        self.interfaces = {}
-        self.types = []
+        self.interfaces = OrderedDict()
+        self.types = OrderedDict()
         self.enums = []
+
+    #
+    # Util semantic
+    #
 
     def _default(self, ast):
         return ast
+
+    def CHARACTER(self, ast):
+        ast = AST(_string=''.join(ast._string))
+        return ast
+
+    #
+    # Graphql Semantic
+    #
 
     def interface_type_definition(self, ast):
         ''' Interface handle
             * filter ou doublon
             * add interfaces to inner variables
         '''
-        if isinstance(ast, AST):
-            # exists if there is a rulename defined
-            interface = ast._name.name
 
-            # Watch out duplicagte !
-            if interface in self.interfaces:
-                return None
-            else:
-                self.interfaces[interface] = []
+        if not isinstance(ast, AST):
+            return ast
 
-            for o in ast._fields:
-                if isinstance(o, list):
-                    for oo in o:
-                        if 'field' in oo:
-                            self.interfaces[interface].append(oo)
+        name = ast._name.name
+        # Watch out duplicate !
+        if name in self.interfaces:
+            return None
+        else:
+            self.interfaces[name] = []
+
+        populate_type_data(ast, self.interfaces, name)
 
         return ast
 
@@ -62,27 +107,31 @@ class GqlSemantics(object):
             * filter ou doublon
             * add implemented interfaces fields if not already presents
         '''
-        if isinstance(ast, AST):
-            name = ast._name.name
+        if not isinstance(ast, AST):
+            return ast
 
-            # Watch out duplicagte !
-            if name in self.types:
-                return None
-            else:
-                self.types.append(name)
+        name = ast._name.name
+        # Watch out duplicate !
+        if name in self.types:
+            return None
+        else:
+            self.types[name] = []
 
-            if ast._implements:
-                for o in ast._implements:
-                    # get the interface name
-                    if isinstance(o, dict) and 'name' in o:
-                        interface = o.name
-                        fields = next(a for a in ast._fields if (isinstance(a, list)))
-                        if interface in self.interfaces:
-                            for fd in self.interfaces[interface]:
-                                if fd not in fields:
-                                    fields.append(fd)
-                            # @DEBUG: can implements multiple interface ?
-                            break
+        populate_type_data(ast, self.types, name)
+
+        # Inherits implemteted interface
+        if ast._implements:
+            # get fields ast
+            fields = next(a for a in ast._fields if (isinstance(a, list)))
+            if len(ast._implements) > 2:
+                raise NotImplementedError("Review this code for multiple inheritance.")
+            for o in ast._implements:
+                if hasattr(o, 'name'):
+                    interface_name = o.name
+                    for itf_fd in self.interfaces[interface_name]:
+                        fd = itf_fd['ast']
+                        if fd not in fields:
+                            fields.append(fd)
 
         return ast
 
@@ -91,16 +140,15 @@ class GqlSemantics(object):
             * filter ou doublon
         '''
 
-        name = ast[1].name
+        if isinstance(ast, AST):
+            raise NotImplementedError("Review this code if we got an AST here !")
 
-        # Watch out duplicagte !
+        name = ast[1].name
+        # Watch out duplicate !
         if name in self.enums:
             return None
         else:
             self.enums.append(name)
-
-        if isinstance(ast, AST):
-            raise NotImplementedError("Review this code if we got an AST here !")
 
         return ast
 
@@ -110,15 +158,18 @@ class SDL:
 
         The module interpret the rule name given by tatsu
         (with the synxax `rule_name:rule`) with the following semantics:
-            * if rule_name starts with "_", it will be appended to hte output with no special treatment
-            * rule_name can be defined as `name__code` where code can be [ba, bb, bs] that stands respectively for:
+            * if rule_name starts with "_", it will be appended to
+                the output with no special treatment.
+            * rule_name can be defined as `name__code` where code
+              can be [ba, bb, bs] that stands respectively for:
                 * blank after
                 * blank before
                 * blank surrounded
             * `name` has a special treatment to manage space syntax.
             * `comment` are filtered out.
             * `args` do not make new line.
-            * other rule are appended with a new line.
+            * other rule are appended with a new line,
+              specially the `field` rule name.
 
         Furthermore special rule are defined be Semantic class `GqlSemantics`.
         Reports to the methods documentation for further informantion.
@@ -150,7 +201,6 @@ class SDL:
 
         for nth, o in enumerate(ast):
             if isinstance(o, dict):
-                # No Context here (nth == 0)
                 keys = list(o)
                 update = False
                 if len(keys) > 1:
@@ -170,9 +220,24 @@ class SDL:
                         if ith < len(o) - 1:
                             _next = o[keys[ith+1]]
 
+                    # Code filtering
+                    if code == 'bb':
+                        # Blank Before (space)
+                        if out[-1] != ' ':
+                            out.append(' ')
+                    elif code == 'ba':
+                        # Blank After (space)
+                        v += ' '
+                    elif code == 'bs':
+                        # Blank Suround (space)
+                        if isinstance(v, str):
+                            if out[-1] == ' ':
+                                v += ' '
+                            else:
+                                v = ' ' + v + ' '
+
+                    # type/rule_name filtering
                     if _type in "comment":
-                        # newline after comment
-                        #out.append(nl)
                         # ignore comments
                         continue
                     elif v is None:
@@ -206,20 +271,6 @@ class SDL:
 
                         #print("dict-- ", k, v, _prev, _next)
 
-                    elif code == 'bb':
-                        # Blank Before (space)
-                        if out[-1] != ' ':
-                            out.append(' ')
-                    elif code == 'ba':
-                        # Blank After (space)
-                        v += ' '
-                    elif code == 'bs':
-                        # Blank Suround (space)
-                        if isinstance(v, str):
-                            if out[-1] == ' ':
-                                v += ' '
-                            else:
-                                v = ' ' + v + ' '
                     elif _type.startswith('_'):
                         # Don't append newline for rulename that starts with '_'.
                         pass

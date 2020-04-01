@@ -58,7 +58,7 @@ field
 
 arguments
     =
-    '(' argument {',' argument} ')'
+    _arguments:('(' argument {',' argument} ')')
     ;
 
 
@@ -195,11 +195,10 @@ default_value
     '=' value
     ;
 
-type = _type:type_;
 
-type_
+type
     =
-    named_type ['!'] | list_type ['!']
+    _type:(named_type ['!'] | list_type ['!'])
     ;
 
 
@@ -220,11 +219,9 @@ directives
     {directive}+
     ;
 
-directive = directive__bb:directive_;
-
-directive_
+directive
     =
-    '@' name [arguments]
+   _cst__bb:'@' _name:name _args:[arguments]
     ;
 
 
@@ -264,18 +261,14 @@ root_operation_type_definition
 
 schema_extension
     =
-    | 'extend' 'schema' [directives] '{' {_operation_type_definition}+ '}'
+    | 'extend' 'schema' [directives] '{' {operation_type_definition}+ '}'
     | 'extend' 'schema' directives
     ;
 
-_operation_type_definition
-    =
-    field:operation_type_definition
-;
 
 operation_type_definition
     =
-    operation_type ':' named_type
+    field:(operation_type ':' named_type)
     ;
 
 
@@ -458,11 +451,11 @@ input_object_type_extension
 directive_definition
     =
     [description]
-    directive__ba:'directive'
+    _directive__ba:'directive'
     _cst:'@'
     _name:name
     [args:arguments_definition]
-    cst__bs:'on'
+    _cst__bs:'on'
     _locations:directive_locations
     ;
 
@@ -518,13 +511,13 @@ _name
 
 CHARACTER
     =
-    (ESC | /[^"\\]/)
+    _string:{ (ESC | /[^"\\]/) }
     ;
 
 
 STRING
     =
-    '"' {CHARACTER} '"'
+    '"' CHARACTER '"'
     ;
 
 

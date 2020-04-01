@@ -168,14 +168,20 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _arguments_(self):  # noqa
-        self._token('(')
-        self._argument_()
-
-        def block0():
-            self._token(',')
+        with self._group():
+            self._token('(')
             self._argument_()
-        self._closure(block0)
-        self._token(')')
+
+            def block1():
+                self._token(',')
+                self._argument_()
+            self._closure(block1)
+            self._token(')')
+        self.name_last_node('_arguments')
+        self.ast._define(
+            ['_arguments'],
+            []
+        )
 
     @tatsumasu()
     def _argument_(self):  # noqa
@@ -340,25 +346,22 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _type_(self):  # noqa
-        self._type__()
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._named_type_()
+                    with self._optional():
+                        self._token('!')
+                with self._option():
+                    self._list_type_()
+                    with self._optional():
+                        self._token('!')
+                self._error('no available options')
         self.name_last_node('_type')
         self.ast._define(
             ['_type'],
             []
         )
-
-    @tatsumasu()
-    def _type__(self):  # noqa
-        with self._choice():
-            with self._option():
-                self._named_type_()
-                with self._optional():
-                    self._token('!')
-            with self._option():
-                self._list_type_()
-                with self._optional():
-                    self._token('!')
-            self._error('no available options')
 
     @tatsumasu()
     def _named_type_(self):  # noqa
@@ -379,19 +382,17 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _directive_(self):  # noqa
-        self._directive__()
-        self.name_last_node('directive__bb')
-        self.ast._define(
-            ['directive__bb'],
-            []
-        )
-
-    @tatsumasu()
-    def _directive__(self):  # noqa
         self._token('@')
+        self.name_last_node('_cst__bb')
         self._name_()
+        self.name_last_node('_name')
         with self._optional():
             self._arguments_()
+        self.name_last_node('_args')
+        self.ast._define(
+            ['_args', '_cst__bb', '_name'],
+            []
+        )
 
     @tatsumasu()
     def _type_system_definition_(self):  # noqa
@@ -467,7 +468,7 @@ class GRAPHQLParser(Parser):
                 self._token('{')
 
                 def block0():
-                    self.__operation_type_definition_()
+                    self._operation_type_definition_()
                 self._positive_closure(block0)
                 self._token('}')
             with self._option():
@@ -477,19 +478,16 @@ class GRAPHQLParser(Parser):
             self._error('no available options')
 
     @tatsumasu()
-    def __operation_type_definition_(self):  # noqa
-        self._operation_type_definition_()
+    def _operation_type_definition_(self):  # noqa
+        with self._group():
+            self._operation_type_()
+            self._token(':')
+            self._named_type_()
         self.name_last_node('field')
         self.ast._define(
             ['field'],
             []
         )
-
-    @tatsumasu()
-    def _operation_type_definition_(self):  # noqa
-        self._operation_type_()
-        self._token(':')
-        self._named_type_()
 
     @tatsumasu()
     def _description_(self):  # noqa
@@ -852,7 +850,7 @@ class GRAPHQLParser(Parser):
         with self._optional():
             self._description_()
         self._token('directive')
-        self.name_last_node('directive__ba')
+        self.name_last_node('_directive__ba')
         self._token('@')
         self.name_last_node('_cst')
         self._name_()
@@ -861,11 +859,11 @@ class GRAPHQLParser(Parser):
             self._arguments_definition_()
             self.name_last_node('args')
         self._token('on')
-        self.name_last_node('cst__bs')
+        self.name_last_node('_cst__bs')
         self._directive_locations_()
         self.name_last_node('_locations')
         self.ast._define(
-            ['_cst', '_locations', '_name', 'args', 'cst__bs', 'directive__ba'],
+            ['_cst', '_cst__bs', '_directive__ba', '_locations', '_name', 'args'],
             []
         )
 
@@ -948,21 +946,26 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _CHARACTER_(self):  # noqa
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._ESC_()
-                with self._option():
-                    self._pattern('[^"\\\\]')
-                self._error('no available options')
+
+        def block1():
+            with self._group():
+                with self._choice():
+                    with self._option():
+                        self._ESC_()
+                    with self._option():
+                        self._pattern('[^"\\\\]')
+                    self._error('no available options')
+        self._closure(block1)
+        self.name_last_node('_string')
+        self.ast._define(
+            ['_string'],
+            []
+        )
 
     @tatsumasu()
     def _STRING_(self):  # noqa
         self._token('"')
-
-        def block0():
-            self._CHARACTER_()
-        self._closure(block0)
+        self._CHARACTER_()
         self._token('"')
 
     @tatsumasu()
@@ -1206,9 +1209,6 @@ class GRAPHQLSemantics(object):
     def type(self, ast):  # noqa
         return ast
 
-    def type_(self, ast):  # noqa
-        return ast
-
     def named_type(self, ast):  # noqa
         return ast
 
@@ -1219,9 +1219,6 @@ class GRAPHQLSemantics(object):
         return ast
 
     def directive(self, ast):  # noqa
-        return ast
-
-    def directive_(self, ast):  # noqa
         return ast
 
     def type_system_definition(self, ast):  # noqa
@@ -1237,9 +1234,6 @@ class GRAPHQLSemantics(object):
         return ast
 
     def schema_extension(self, ast):  # noqa
-        return ast
-
-    def _operation_type_definition(self, ast):  # noqa
         return ast
 
     def operation_type_definition(self, ast):  # noqa
