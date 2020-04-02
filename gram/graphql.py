@@ -168,20 +168,14 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _arguments_(self):  # noqa
-        with self._group():
-            self._token('(')
-            self._argument_()
+        self._token('(')
+        self._argument_()
 
-            def block1():
-                self._token(',')
-                self._argument_()
-            self._closure(block1)
-            self._token(')')
-        self.name_last_node('_arguments')
-        self.ast._define(
-            ['_arguments'],
-            []
-        )
+        def block0():
+            self._token(',')
+            self._argument_()
+        self._closure(block0)
+        self._token(')')
 
     @tatsumasu()
     def _argument_(self):  # noqa
@@ -263,10 +257,20 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _int_value_(self):  # noqa
         self._int_()
+        self.name_last_node('_join')
+        self.ast._define(
+            ['_join'],
+            []
+        )
 
     @tatsumasu()
     def _float_value_(self):  # noqa
         self._float_()
+        self.name_last_node('_join')
+        self.ast._define(
+            ['_join'],
+            []
+        )
 
     @tatsumasu()
     def _boolean_value_(self):  # noqa
@@ -388,7 +392,7 @@ class GRAPHQLParser(Parser):
         self.name_last_node('_name')
         with self._optional():
             self._arguments_()
-        self.name_last_node('_args')
+            self.name_last_node('_args')
         self.ast._define(
             ['_args', '_cst__bb', '_name'],
             []
@@ -632,12 +636,21 @@ class GRAPHQLParser(Parser):
         with self._optional():
             self._description_()
         self._name_()
+        self.name_last_node('_name')
         self._token(':')
+        self.name_last_node('_cst')
         self._type_()
+        self.name_last_node('_type')
         with self._optional():
             self._default_value_()
+            self.name_last_node('_dv')
         with self._optional():
             self._directives_()
+            self.name_last_node('_directives')
+        self.ast._define(
+            ['_cst', '_directives', '_dv', '_name', '_type'],
+            []
+        )
 
     @tatsumasu()
     def _object_type_extension_(self):  # noqa
@@ -813,9 +826,9 @@ class GRAPHQLParser(Parser):
             self.name_last_node('_directives')
         with self._optional():
             self._input_fields_definition_()
-            self.name_last_node('_inputs')
+            self.name_last_node('_fields')
         self.ast._define(
-            ['_cst', '_directives', '_inputs', '_name'],
+            ['_cst', '_directives', '_fields', '_name'],
             []
         )
 
@@ -956,9 +969,9 @@ class GRAPHQLParser(Parser):
                         self._pattern('[^"\\\\]')
                     self._error('no available options')
         self._closure(block1)
-        self.name_last_node('_string')
+        self.name_last_node('_join')
         self.ast._define(
-            ['_string'],
+            ['_join'],
             []
         )
 

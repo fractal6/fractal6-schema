@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 .PHONY: _gram gqlgen
 
-default: gqlgen
+default: dgraph gqlgen2
 
 _gram:
 	mkdir -p gram/

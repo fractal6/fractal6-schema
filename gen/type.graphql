@@ -94,9 +94,9 @@ type Mandate implements Post {
 type User {
   id: ID!
   createdAt: DateTime! @search
-  username: String! @id @input_maxLength(n:42, f:"username")
-  fullname: String @input_maxLength(n:100, f:"fullname")
-  password: String! @hidden @input_maxLength(n:42, f:"password")
+  username: String! @id
+  fullname: String
+  password: String! @hidden
   roles: [Role!] @hasInverse(field: user)
   backed_roles: [Role!] @hasInverse(field: second)
   bio: String

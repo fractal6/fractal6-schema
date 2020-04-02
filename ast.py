@@ -18,23 +18,31 @@ Options:
 from tatsu import compile
 from tatsu.util import asjsons
 from tatsu.ast import AST
+import sys
+import re
+import itertools
 from collections import OrderedDict, defaultdict
 from pprint import pprint
-import re
 from docopt import docopt
 
 from gram.graphql import GRAPHQLParser
 
+sys.setrecursionlimit(10**4)
 
-def populate_type_data(ast, data, type_name):
-    ''' Populate data from ast parsing. '''
 
+def get_fields(ast):
     # Assumes non empty type
     assert(len(ast._fields) == 3)
     fields = ast._fields[1]
     # ===
     #fields = next(a for a in ast._fields if (isinstance(a, list)))
+    return fields
 
+
+def populate_type_data(ast, data, type_name, filter_directives=True):
+    ''' Populate data from ast parsing. '''
+
+    fields = get_fields(ast)
     for f in fields:
         field = f.field
         if not field.get('_name'):
@@ -50,21 +58,36 @@ def populate_type_data(ast, data, type_name):
 
         if field.get("_directives"):
             # Add and filter directives
-            for d in field._directives:
+            to_remove = []
+            for i, d in enumerate(field._directives):
                 # build directive lookup
                 field_data['directives'].append({
                     'name': d._name.name,
                     'ast': d,
                     'data': d.copy(),
                 })
+                if d._name.name.startswith('input_'):
+                    to_remove.append(i)
+
+            # filter directives
+            for i in to_remove[::-1]:
+                if filter_directives:
+                    field._directives.pop(i)
 
         data[type_name].append(field_data)
+    return
+
+
+def populate_input_data(ast, data, type_name):
+    populate_type_data(ast, data, type_name, filter_directives=False)
+    return
 
 
 class GqlSemantics(object):
     def __init__(self):
         self.interfaces = OrderedDict()
         self.types = OrderedDict()
+        self.inputs = OrderedDict()
         self.enums = []
 
     #
@@ -75,7 +98,17 @@ class GqlSemantics(object):
         return ast
 
     def CHARACTER(self, ast):
-        ast = AST(_string=''.join(ast._string))
+        ast = AST(_join=''.join(ast._join))
+        return ast
+
+    def int_value(self, ast):
+        flatten = itertools.chain.from_iterable
+        ast = AST(_join=''.join(flatten(ast._join)))
+        return ast
+
+    def float_value(self, ast):
+        flatten = itertools.chain.from_iterable
+        ast = AST(_join=''.join(flatten(ast._join)))
         return ast
 
     #
@@ -85,7 +118,6 @@ class GqlSemantics(object):
     def interface_type_definition(self, ast):
         ''' Interface handle
             * filter ou doublon
-            * add interfaces to inner variables
         '''
 
         if not isinstance(ast, AST):
@@ -122,7 +154,7 @@ class GqlSemantics(object):
         # Inherits implemteted interface
         if ast._implements:
             # get fields ast
-            fields = next(a for a in ast._fields if (isinstance(a, list)))
+            fields = get_fields(ast)
             if len(ast._implements) > 2:
                 raise NotImplementedError("Review this code for multiple inheritance.")
             for o in ast._implements:
@@ -132,6 +164,53 @@ class GqlSemantics(object):
                         fd = itf_fd['ast']
                         if fd not in fields:
                             fields.append(fd)
+
+        return ast
+
+    def input_object_type_definition(self, ast):
+        ''' Input handle
+            * filter ou doublon
+            * add filtered directive
+        '''
+        if not isinstance(ast, AST):
+            return ast
+
+        name = ast._name.name
+        # Watch out duplicate !
+        if name in self.inputs:
+            return None
+        else:
+            self.inputs[name] = []
+
+        populate_input_data(ast, self.inputs, name)
+
+        type_name = None
+        if name.endswith('Patch'):
+            type_name = re.match(r"(\w*)Patch", name).groups()[0]
+        elif name.startswith('Add') and name.endswith('Input'):
+            type_name = re.match(r"Add(\w*)Input", name).groups()[0]
+
+        if type_name:
+            if type_name in self.types:
+                _fields = self.types[type_name]
+            elif type_name in self.interfaces:
+                _fields = self.interfaces[type_name]
+            else:
+                raise ValueError("Type `%s' unknown" % type_name)
+
+            for f in self.inputs[name]:
+                for _f in _fields:
+                    if f['name'] != _f['name']:
+                        continue
+
+                    for d in _f['directives']:
+                        dn = d['name']
+                        if dn.startswith('input_'):
+                            if not f['ast'].field._directives:
+                                del f['ast'].field['_directives']
+                                f['ast'].field.set('_directives', [], force_list=True)
+
+                            f['ast'].field._directives.append(d['ast'])
 
         return ast
 
@@ -190,11 +269,12 @@ class SDL:
                                      semantics=self.semantics,
                                      parseinfo=False)
 
-    def stringify(self, ast=None, out=None, root=False, _prev=None, _next=None, ignore_nl=False):
+    def stringify(self, ast=None, out=None, root=False,
+                  _prev=None, _next=None, ignore_nl=False):
 
         nl = '\n'
 
-        if not ast:
+        if ast is None:
             root = True
             ast = self.ast
             out = [nl]
@@ -205,14 +285,16 @@ class SDL:
                 update = False
                 if len(keys) > 1:
                     update = True
+
                 for ith, k in enumerate(keys):
-                    code = None
                     pack = k.split('__')
+                    v = o[k]
+
                     if len(pack) == 2:
                         _type, code = pack
                     else:
                         _type = k
-                    v = o[k]
+                        code = None
 
                     if update:
                         if ith > 0:
@@ -236,12 +318,13 @@ class SDL:
                             else:
                                 v = ' ' + v + ' '
 
+                    if v is None:
+                        # empty choice (only happen with generated parser)
+                        continue
+
                     # type/rule_name filtering
                     if _type in "comment":
                         # ignore comments
-                        continue
-                    elif v is None:
-                        # empty choice (only happen with generated parser)
                         continue
                     elif _type == "args":
                         ignore_nl = True
@@ -260,13 +343,13 @@ class SDL:
                             out[-2] += ' '
 
                         # space after object definition
-                        if _next == '{':
+                        if _next and _next == '{':
                             # without AST
                             v += ' '
-                        elif isinstance(_next, list) and _next[0] == '{':
+                        elif _next and isinstance(_next, list) and _next[0] == '{':
                             # with AST
                             v += ' '
-                        elif isinstance(_next, list) and _next[0] == 'implements':
+                        elif _next and isinstance(_next, list) and _next[0] == 'implements':
                             v += ' '
 
                         #print("dict-- ", k, v, _prev, _next)
@@ -282,7 +365,11 @@ class SDL:
                         if not ignore_nl:
                             out.append(nl)
 
-                    out = self.stringify([v], out, ignore_nl=ignore_nl, _prev=_prev, _next=_next)
+                    out = self.stringify([v], # removing list breaks the space logics
+                                         out,
+                                         _prev=_prev, _next=_next,
+                                         ignore_nl=ignore_nl,
+                               )
 
             elif isinstance(o, list):
                 # Assume Closure
@@ -292,11 +379,17 @@ class SDL:
 
                     if mth > 0:
                         _prev = o[mth-1]
-                    out = self.stringify([oo], out, _prev=_prev, _next=_next, ignore_nl=ignore_nl)
+
+                    out = self.stringify([oo], # removing list breaks the space logics
+                                         out,
+                                         _prev=_prev, _next=_next,
+                                         ignore_nl=ignore_nl)
             elif isinstance(o, str):
                 if o == '}':
                     o = '\n'+o
                 out.append(o)
+            else:
+                raise NotImplementedError("Unknown type: %s" % type(o))
 
         if root:
             out = ''.join(out)

@@ -2,6 +2,7 @@
 
 
 directive @hidden on FIELD_DEFINITION
+
 directive @input_maxLength(n: Int, f: String) on INPUT_FIELD_DEFINITION
 
 interface Node {
@@ -98,7 +99,7 @@ type User {
   id: ID!
   createdAt: DateTime! @search
   username: String! @id
-  fullname: String 
+  fullname: String
   password: String! @hidden
   roles: [Role!] @hasInverse(field: user)
   backed_roles: [Role!] @hasInverse(field: second)
@@ -148,7 +149,7 @@ type AddCirclePayload {
 
 input AddMandateInput {
   createdAt: DateTime!
-  author: UserRef!
+  createdBy: UserRef!
   message: String
   purpose: String!
   responsabilities: String
@@ -172,7 +173,6 @@ input AddRoleInput {
   tensions_in: [TensionRef!]
   user: UserRef
   second: UserRef
-  third: UserRef
   skills: [String!]
 }
 
@@ -183,7 +183,7 @@ type AddRolePayload {
 
 input AddTensionInput {
   createdAt: DateTime!
-  author: UserRef!
+  createdBy: UserRef!
   message: String
   nth: Int!
   title: String!
@@ -202,10 +202,11 @@ type AddTensionPayload {
 
 input AddUserInput {
   createdAt: DateTime!
-  username: String!  @input_maxLength(n: 42, f: "username")
-  fullname: String   @input_maxLength(n: 100, f: "fullname")
-  password: String!  @input_maxLength(n: 42, f: "password")
+  username: String! @input_maxLength(n:42, f:"username")
+  fullname: String @input_maxLength(n:100, f:"fullname")
+  password: String! @input_maxLength(n:42, f:"password")
   roles: [RoleRef!]
+  backed_roles: [RoleRef!]
   bio: String
 }
 
@@ -365,7 +366,7 @@ enum MandateOrderable {
 
 input MandatePatch {
   createdAt: DateTime
-  author: UserRef
+  createdBy: UserRef
   message: String
   purpose: String
   responsabilities: String
@@ -375,7 +376,7 @@ input MandatePatch {
 input MandateRef {
   id: ID
   createdAt: DateTime
-  author: UserRef
+  createdBy: UserRef
   message: String
   purpose: String
   responsabilities: String
@@ -464,7 +465,7 @@ enum PostOrderable {
 
 input PostPatch {
   createdAt: DateTime
-  author: UserRef
+  createdBy: UserRef
   message: String
 }
 
@@ -524,7 +525,6 @@ input RolePatch {
   tensions_in: [TensionRef!]
   user: UserRef
   second: UserRef
-  third: UserRef
   skills: [String!]
 }
 
@@ -541,7 +541,6 @@ input RoleRef {
   tensions_in: [TensionRef!]
   user: UserRef
   second: UserRef
-  third: UserRef
   skills: [String!]
 }
 
@@ -598,7 +597,7 @@ enum TensionOrderable {
 
 input TensionPatch {
   createdAt: DateTime
-  author: UserRef
+  createdBy: UserRef
   message: String
   nth: Int
   title: String
@@ -613,7 +612,7 @@ input TensionPatch {
 input TensionRef {
   id: ID
   createdAt: DateTime
-  author: UserRef
+  createdBy: UserRef
   message: String
   nth: Int
   title: String
@@ -731,9 +730,10 @@ enum UserOrderable {
 
 input UserPatch {
   createdAt: DateTime
-  fullname: String
-  password: String
+  fullname: String @input_maxLength(n:100, f:"fullname")
+  password: String @input_maxLength(n:42, f:"password")
   roles: [RoleRef!]
+  backed_roles: [RoleRef!]
   bio: String
 }
 
@@ -744,5 +744,6 @@ input UserRef {
   fullname: String
   password: String
   roles: [RoleRef!]
+  backed_roles: [RoleRef!]
   bio: String
 }

@@ -58,7 +58,7 @@ field
 
 arguments
     =
-    _arguments:('(' argument {',' argument} ')')
+    '(' argument {',' argument} ')'
     ;
 
 
@@ -120,13 +120,13 @@ value
 
 int_value
     =
-    int
+    _join:int
     ;
 
 
 float_value
     =
-    float
+    _join:float
     ;
 
 
@@ -221,7 +221,8 @@ directives
 
 directive
     =
-   _cst__bb:'@' _name:name _args:[arguments]
+   _cst__bb:'@'
+   _name:name [_args:arguments]
     ;
 
 
@@ -330,7 +331,11 @@ _field_definition
 
 field_definition
     =
-    [description] _name:name [args:arguments_definition] _cst:':' _type:type [_directives:directives]
+    [description]
+    _name:name 
+    [args:arguments_definition] 
+    _cst:':' 
+    _type:type [_directives:directives]
     | LINE_COMMENT
     ;
 
@@ -347,7 +352,11 @@ _input_value_definition
 
 input_value_definition
     =
-    [description] name ':' type [default_value] [directives]
+    [description] 
+    _name:name 
+    _cst:':' 
+    _type:type [_dv:default_value] 
+    [_directives:directives]
     ;
 
 
@@ -368,11 +377,11 @@ object_type_extension
 
 interface_type_definition
     =
-        [description] 
-        _cst:'interface' 
-        _name:name 
-        [_directives:directives] 
-        [_fields:fields_definition]
+    [description] 
+    _cst:'interface' 
+    _name:name 
+    [_directives:directives] 
+    [_fields:fields_definition]
     ;
 
 
@@ -431,7 +440,11 @@ enum_type_extension
 
 input_object_type_definition
     =
-    [description] _cst:'input' _name:name [_directives:directives] [_inputs:input_fields_definition]
+    [description]
+    _cst:'input'
+    _name:name 
+    [_directives:directives] 
+    [_fields:input_fields_definition]
     ;
 
 
@@ -511,7 +524,7 @@ _name
 
 CHARACTER
     =
-    _string:{ (ESC | /[^"\\]/) }
+    _join:{ (ESC | /[^"\\]/) }
     ;
 
 
