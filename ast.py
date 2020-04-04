@@ -35,11 +35,7 @@ class AST2(AST):
         super().__init__(self, *args, **kwargs)
 
     def clear(self):
-        while len(self) > 0:
-            self._clear()
-
-    def _clear(self):
-        for k in self:
+        for k in list(self):
             del self[k]
 
 
