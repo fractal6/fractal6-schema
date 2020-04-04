@@ -30,71 +30,197 @@ from gram.graphql import GRAPHQLParser
 sys.setrecursionlimit(10**4)
 
 
-def get_fields(ast):
-    # Assumes non empty type
-    assert(len(ast._fields) == 3)
-    fields = ast._fields[1]
-    # ===
-    #fields = next(a for a in ast._fields if (isinstance(a, list)))
-    return fields
+class AST2(AST):
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+
+    def clear(self):
+        while len(self) > 0:
+            self._clear()
+
+    def _clear(self):
+        for k in self:
+            del self[k]
 
 
-def populate_type_data(ast, data, type_name, filter_directives=True):
-    ''' Populate data from ast parsing. '''
+class SemanticFilter:
 
-    fields = get_fields(ast)
-    for f in fields:
-        field = f.field
-        if not field.get('_name'):
-            # Comments
-            continue
-
-        # Add field
-        field_data = {'name': field._name.name,
-                      'ast': f,
-                      'data': f.copy(),
-                      'directives': [],
-                     }
-
-        if field.get("_directives"):
-            # Add and filter directives
-            to_remove = []
-            for i, d in enumerate(field._directives):
-                # build directive lookup
-                field_data['directives'].append({
-                    'name': d._name.name,
-                    'ast': d,
-                    'data': d.copy(),
-                })
-                if d._name.name.startswith('input_'):
-                    to_remove.append(i)
-
-            # filter directives
-            for i in to_remove[::-1]:
-                if filter_directives:
-                    field._directives.pop(i)
-
-        data[type_name].append(field_data)
-    return
-
-
-def populate_input_data(ast, data, type_name):
-    populate_type_data(ast, data, type_name, filter_directives=False)
-    return
-
-
-class GqlSemantics(object):
     def __init__(self):
         self.interfaces = OrderedDict()
         self.types = OrderedDict()
         self.inputs = OrderedDict()
         self.enums = []
 
+    @staticmethod
+    def get_name(ast):
+        return ast._name.name
+
+    @staticmethod
+    def get_fields(ast):
+        ''' Returns the fields of a object. '''
+        # Assumes non empty type
+        assert(len(ast._fields) == 3)
+        fields = ast._fields[1]
+        # ===
+        #fields = next(a for a in ast._fields if (isinstance(a, list)))
+        return fields
+
+    @staticmethod
+    def get_args(field):
+        ''' field is an ast.
+            Returns an ast representing the args
+        '''
+
+        if field.get('args'):
+            assert(field.args[0] == '(')
+            assert(field.args[-1] == ')')
+            return field.args
+        else:
+            return None
+
+    @staticmethod
+    def _ast_set(ast, rule_name, value, pos=None):
+        assert(isinstance(ast, AST))
+        items = list(ast.items())
+        if pos:
+            # DEBUG AST, assumen empty rule are push at the end
+            i = list(ast).index(rule_name)
+            items.pop(i)
+            assert(list(ast)[pos] != rule_name)
+            assert(i > pos)
+            items = items[:pos] + [(rule_name, value)] + items[pos:]
+
+        ast.clear()
+
+        for k, _v in items:
+            v = _v
+            if k == rule_name:
+                v = value
+            ast[k] = v
+
+    def populate_data(self, data_type, name, ast, filter_directives=True):
+        data = getattr(self, data_type)
+        data[name] = []
+        self._populate_data(data, name, ast, filter_directives=filter_directives)
+        return
+
+    def _populate_data(self, data, name, ast, filter_directives=True):
+        ''' Populate data from ast parsing. '''
+
+        fields = self.get_fields(ast)
+        for f in fields:
+            field = f.field
+            if not field.get('_name'):
+                # Comments
+                continue
+
+            # Add field
+            fn = self.get_name(field)
+            field_data = {'name': fn,
+                          'ast': f,
+                          'ast_copy': f.copy(),
+                          'args': None, # list of AST
+                          'directives': [], # list of structured AST
+                         }
+
+            # Add and filter arguments
+            field_data['args'] = self.get_args(field)
+
+            # Add and filter directives
+            if field.get("_directives"):
+                to_remove = []
+                for i, d in enumerate(field._directives):
+                    # build directive lookup
+                    dn = self.get_name(d)
+                    field_data['directives'].append({
+                        'name': dn,
+                        'ast': d,
+                        'ast_cpy': d.copy(),
+                    })
+                    if dn.startswith('input_'):
+                        to_remove.append(i)
+
+                # filter directives
+                for i in to_remove[::-1]:
+                    if filter_directives:
+                        field._directives.pop(i)
+
+            data[name].append(field_data)
+        return
+
+    def inherit_interface(self, ast):
+
+        # Inherits implemented interface
+        if ast._implements:
+            # get fields ast
+            fields = self.get_fields(ast)
+            if len(ast._implements) > 2:
+                raise NotImplementedError("Review this code for multiple inheritance.")
+            for o in ast._implements:
+                if hasattr(o, 'name'):
+                    interface_name = o.name
+                    for itf_fd in self.interfaces[interface_name]:
+                        fd = itf_fd['ast']
+                        if fd not in fields:
+                            fields.append(fd)
+
+    def move_directives(self, name_in, data_types_in,
+                        name_out, data_type_out,
+                        directive_name):
+        _fields = None
+        for data_type in data_types_in:
+            data_in = getattr(self, data_type)
+            if name_in in data_in:
+                _fields = data_in[name_in]
+                break
+
+        if not _fields:
+            raise ValueError("Type `%s' unknown" % name_in)
+
+        data_out = getattr(self, data_type_out)
+        for f in data_out[name_out]:
+            for _f in _fields:
+                if f['name'] != _f['name']:
+                    continue
+
+                for d in _f['directives']:
+                    dn = d['name']
+                    if re.search(directive_name, dn):
+                        if not f['ast'].field._directives:
+                            self._ast_set(f['ast'].field, '_directives', [])
+
+                        f['ast'].field['_directives'].append(d['ast'])
+        return
+
+    def update_args(self, data_type, name, ast):
+
+        data = getattr(self, data_type)
+        for f in data[name]:
+            for _ff in self.get_fields(ast):
+                args = f['args']
+                _field = _ff.field
+
+                if f['name'] != self.get_name(_field):
+                    continue
+
+                new_args = self.get_args(_field)
+                if not args and new_args:
+                    pos = list(_field).index('args')
+                    self._ast_set(f['ast'].field, 'args', new_args, pos)
+        return
+
+
+class GqlSemantics(object):
+    def __init__(self):
+        self.sf = SemanticFilter()
+
     #
     # Util semantic
     #
 
     def _default(self, ast):
+        if isinstance(ast, AST):
+            ast = AST2(ast)
         return ast
 
     def CHARACTER(self, ast):
@@ -119,18 +245,16 @@ class GqlSemantics(object):
         ''' Interface handle
             * filter ou doublon
         '''
+        assert(isinstance(ast, AST))
+        ast = AST2(ast)
 
-        if not isinstance(ast, AST):
-            return ast
-
-        name = ast._name.name
+        name = self.sf.get_name(ast)
         # Watch out duplicate !
-        if name in self.interfaces:
+        if name in self.sf.interfaces:
+            self.sf.update_args('interfaces', name, ast)
             return None
         else:
-            self.interfaces[name] = []
-
-        populate_type_data(ast, self.interfaces, name)
+            self.sf.populate_data('interfaces', name, ast)
 
         return ast
 
@@ -139,31 +263,17 @@ class GqlSemantics(object):
             * filter ou doublon
             * add implemented interfaces fields if not already presents
         '''
-        if not isinstance(ast, AST):
-            return ast
+        assert(isinstance(ast, AST))
+        ast = AST2(ast)
 
-        name = ast._name.name
+        name = self.sf.get_name(ast)
         # Watch out duplicate !
-        if name in self.types:
+        if name in self.sf.types:
+            self.sf.update_args('types', name, ast)
             return None
         else:
-            self.types[name] = []
-
-        populate_type_data(ast, self.types, name)
-
-        # Inherits implemteted interface
-        if ast._implements:
-            # get fields ast
-            fields = get_fields(ast)
-            if len(ast._implements) > 2:
-                raise NotImplementedError("Review this code for multiple inheritance.")
-            for o in ast._implements:
-                if hasattr(o, 'name'):
-                    interface_name = o.name
-                    for itf_fd in self.interfaces[interface_name]:
-                        fd = itf_fd['ast']
-                        if fd not in fields:
-                            fields.append(fd)
+            self.sf.populate_data('types', name, ast)
+            self.sf.inherit_interface(ast)
 
         return ast
 
@@ -172,17 +282,15 @@ class GqlSemantics(object):
             * filter ou doublon
             * add filtered directive
         '''
-        if not isinstance(ast, AST):
-            return ast
+        assert(isinstance(ast, AST))
+        ast = AST2(ast)
 
-        name = ast._name.name
+        name = self.sf.get_name(ast)
         # Watch out duplicate !
-        if name in self.inputs:
+        if name in self.sf.inputs:
             return None
         else:
-            self.inputs[name] = []
-
-        populate_input_data(ast, self.inputs, name)
+            self.sf.populate_data('inputs', name, ast, filter_directives=False)
 
         type_name = None
         if name.endswith('Patch'):
@@ -191,27 +299,9 @@ class GqlSemantics(object):
             type_name = re.match(r"Add(\w*)Input", name).groups()[0]
 
         if type_name:
-            if type_name in self.types:
-                _fields = self.types[type_name]
-            elif type_name in self.interfaces:
-                _fields = self.interfaces[type_name]
-            else:
-                raise ValueError("Type `%s' unknown" % type_name)
-
-            for f in self.inputs[name]:
-                for _f in _fields:
-                    if f['name'] != _f['name']:
-                        continue
-
-                    for d in _f['directives']:
-                        dn = d['name']
-                        if dn.startswith('input_'):
-                            if not f['ast'].field._directives:
-                                del f['ast'].field['_directives']
-                                f['ast'].field.set('_directives', [], force_list=True)
-
-                            f['ast'].field._directives.append(d['ast'])
-
+            self.sf.move_directives(type_name, ['types', 'interfaces'],
+                                    name, 'inputs',
+                                    r'^input_')
         return ast
 
     def enum_type_definition(self, ast):
@@ -219,15 +309,14 @@ class GqlSemantics(object):
             * filter ou doublon
         '''
 
-        if isinstance(ast, AST):
-            raise NotImplementedError("Review this code if we got an AST here !")
+        assert(not isinstance(ast, AST))
 
         name = ast[1].name
         # Watch out duplicate !
-        if name in self.enums:
+        if name in self.sf.enums:
             return None
         else:
-            self.enums.append(name)
+            self.sf.enums.append(name)
 
         return ast
 
@@ -269,6 +358,8 @@ class SDL:
                                      semantics=self.semantics,
                                      parseinfo=False)
 
+        self.sf = self.semantics.sf
+
     def stringify(self, ast=None, out=None, root=False,
                   _prev=None, _next=None, ignore_nl=False):
 
@@ -280,9 +371,13 @@ class SDL:
             out = [nl]
 
         for nth, o in enumerate(ast):
-            if isinstance(o, dict):
+            if isinstance(o, AST):
                 keys = list(o)
                 update = False
+                if len(keys) != len(set(keys)):
+                    # @DEBUG: duplicate keys in AST (caused by AST updates!)
+                    raise ValueError('Related to tatsu.AST issue #164..')
+
                 if len(keys) > 1:
                     update = True
 

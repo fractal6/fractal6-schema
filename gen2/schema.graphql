@@ -8,16 +8,16 @@ directive @input_maxLength(n: Int, f: String) on INPUT_FIELD_DEFINITION
 interface Node {
   id: ID!
   createdAt: DateTime! @search
-  createdBy: User!
-  parent: Node
+  createdBy(filter: UserFilter): User!
+  parent(filter: NodeFilter): Node
 
-  children: [Node!] @hasInverse(field: parent)
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
   name: String! @search(by: [term])
   nameid: String! @id
-  mandate: Mandate
+  mandate(filter: MandateFilter): Mandate
 
-  tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!]
+  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
+  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
 
 }
 
@@ -28,37 +28,37 @@ type Circle implements Node {
 
   id: ID!
   createdAt: DateTime! @search
-  createdBy: User!
-  parent: Node
-  children: [Node!] @hasInverse(field: parent)
+  createdBy(filter: UserFilter): User!
+  parent(filter: NodeFilter): Node
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
   name: String! @search(by: [term])
   nameid: String! @id
-  mandate: Mandate
-  tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!]
+  mandate(filter: MandateFilter): Mandate
+  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
+  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
 }
 
 type Role implements Node {
-  user: User
-  second: User
+  user(filter: UserFilter): User
+  second(filter: UserFilter): User
   skills: [String!] @search(by: [term])
 
   id: ID!
   createdAt: DateTime! @search
-  createdBy: User!
-  parent: Node
-  children: [Node!] @hasInverse(field: parent)
+  createdBy(filter: UserFilter): User!
+  parent(filter: NodeFilter): Node
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
   name: String! @search(by: [term])
   nameid: String! @id
-  mandate: Mandate
-  tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!]
+  mandate(filter: MandateFilter): Mandate
+  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
+  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
 }
 
 interface Post {
   id: ID!
   createdAt: DateTime! @search
-  createdBy: User!
+  createdBy(filter: UserFilter): User!
   message: String @search(by: [fulltext])
 }
 
@@ -67,15 +67,15 @@ type Tension implements Post {
 
   title: String! @search(by: [term])
   type_: TensionType! @search(by: [hash])
-  emitter: Node!
-  receivers: [Node!]
+  emitter(filter: NodeFilter): Node!
+  receivers(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   isAnonymous: Boolean!
   severity: Int!
-  comments: [Post!]
+  comments(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post!]
 
   id: ID!
   createdAt: DateTime! @search
-  createdBy: User!
+  createdBy(filter: UserFilter): User!
   message: String @search(by: [fulltext])
 }
 
@@ -91,7 +91,7 @@ type Mandate implements Post {
 
   id: ID!
   createdAt: DateTime! @search
-  createdBy: User!
+  createdBy(filter: UserFilter): User!
   message: String @search(by: [fulltext])
 }
 
@@ -101,8 +101,8 @@ type User {
   username: String! @id
   fullname: String
   password: String! @hidden
-  roles: [Role!] @hasInverse(field: user)
-  backed_roles: [Role!] @hasInverse(field: second)
+  roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!] @hasInverse(field: user)
+  backed_roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!] @hasInverse(field: second)
   bio: String
 
 }
@@ -121,13 +121,13 @@ enum TensionType {
 
 }
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddCircleInput {
   createdAt: DateTime!
