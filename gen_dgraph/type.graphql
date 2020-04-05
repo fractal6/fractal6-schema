@@ -1,0 +1,107 @@
+
+
+
+
+interface Node {
+  id: ID!
+  createdAt: DateTime! @search
+  createdBy: User!
+
+  parent: Node 
+  children: [Node!] @hasInverse(field: parent)
+
+  name: String! @search(by: [term])
+  nameid: String! @id
+  mandate: Mandate
+  
+
+  tensions_out: [Tension!] @hasInverse(field: emitter)
+  tensions_in: [Tension!] 
+}
+
+
+type Circle implements Node {
+  isRoot: Boolean!
+
+  
+  
+  
+}
+
+
+type Role implements Node {
+  user: User
+  second: User
+  skills: [String!] @search(by: [term])
+  
+}
+
+
+
+
+
+interface Post {
+  id: ID!
+  createdAt: DateTime! @search
+  createdBy: User!
+  message: String @search(by: [fulltext])
+}
+
+type Tension implements Post {
+  nth: Int! 
+  title: String! @search(by: [term])
+  type_: TensionType! @search(by: [hash])
+  emitter: Node!
+  receivers: [Node!]
+  isAnonymous: Boolean!
+  severity: Int!
+  comments: [Post!]
+
+  
+}
+
+type Mandate implements Post {
+  purpose: String! @search(by: [fulltext])
+  responsabilities: String
+  domains: [String!] 
+  
+  
+  
+  
+  
+}
+
+
+
+
+
+type User {
+  id: ID!
+  createdAt: DateTime! @search
+  username: String! @id      
+  fullname: String           
+  password: String!   
+  roles: [Role!] @hasInverse(field: user)
+  backed_roles: [Role!] @hasInverse(field: second)
+  bio: String
+  
+}
+
+
+
+
+
+
+
+enum NodeType {
+  Circle
+  Role
+}
+
+enum TensionType {
+  Governance
+  Operational
+  Personal
+  Help
+  Alert 
+}
