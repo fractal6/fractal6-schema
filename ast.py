@@ -252,6 +252,9 @@ class GqlSemantics(object):
         else:
             self.sf.populate_data('interfaces', name, ast)
 
+        # rename interface to type for gqlgen compatibility !
+        self.sf._ast_set(ast, '_cst', 'type')
+
         return ast
 
     def object_type_definition(self, ast):
@@ -270,6 +273,9 @@ class GqlSemantics(object):
         else:
             self.sf.populate_data('types', name, ast)
             self.sf.inherit_interface(ast)
+
+        # remove interface gqlgen compatibility !
+        self.sf._ast_set(ast, '_implements', None)
 
         return ast
 

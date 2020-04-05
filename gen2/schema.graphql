@@ -5,7 +5,7 @@ directive @hidden on FIELD_DEFINITION
 
 directive @input_maxLength(n: Int, f: String) on INPUT_FIELD_DEFINITION
 
-interface Node {
+type Node {
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
@@ -21,7 +21,7 @@ interface Node {
 
 }
 
-type Circle implements Node {
+type Circle {
   isRoot: Boolean!
 
 
@@ -38,7 +38,7 @@ type Circle implements Node {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
 }
 
-type Role implements Node {
+type Role {
   user(filter: UserFilter): User
   second(filter: UserFilter): User
   skills: [String!] @search(by: [term])
@@ -55,14 +55,14 @@ type Role implements Node {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
 }
 
-interface Post {
+type Post {
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
   message: String @search(by: [fulltext])
 }
 
-type Tension implements Post {
+type Tension {
   nth: Int!
 
   title: String! @search(by: [term])
@@ -79,7 +79,7 @@ type Tension implements Post {
   message: String @search(by: [fulltext])
 }
 
-type Mandate implements Post {
+type Mandate {
   purpose: String! @search(by: [fulltext])
   responsabilities: String
   domains: [String!]

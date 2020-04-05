@@ -1,7 +1,7 @@
 
 
 
-interface Node {
+type Node {
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
@@ -17,7 +17,7 @@ interface Node {
 
 }
 
-type Circle implements Node {
+type Circle {
   isRoot: Boolean!
 
 
@@ -34,7 +34,7 @@ type Circle implements Node {
   tensions_in: [Tension!]
 }
 
-type Role implements Node {
+type Role {
   user: User
   second: User
   skills: [String!] @search(by: [term])
@@ -51,14 +51,14 @@ type Role implements Node {
   tensions_in: [Tension!]
 }
 
-interface Post {
+type Post {
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
   message: String @search(by: [fulltext])
 }
 
-type Tension implements Post {
+type Tension {
   nth: Int!
 
   title: String! @search(by: [term])
@@ -75,7 +75,7 @@ type Tension implements Post {
   message: String @search(by: [fulltext])
 }
 
-type Mandate implements Post {
+type Mandate {
   purpose: String! @search(by: [fulltext])
   responsabilities: String
   domains: [String!]
