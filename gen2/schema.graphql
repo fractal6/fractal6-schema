@@ -12,22 +12,16 @@ type Node {
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
   parent(filter: NodeFilter): Node
-
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
   name: String! @search(by: [term])
   nameid: String! @id
   mandate(filter: MandateFilter): Mandate
-
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-
 }
 
 type Circle {
   isRoot: Boolean!
-
-
-
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
@@ -44,7 +38,6 @@ type Role {
   user(filter: UserFilter): User
   second(filter: UserFilter): User
   skills: [String!] @search(by: [term])
-
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
@@ -66,15 +59,13 @@ type Post {
 
 type Tension {
   nth: Int!
-
   title: String! @search(by: [term])
   type_: TensionType! @search(by: [hash])
   emitter(filter: NodeFilter): Node!
   receivers(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   isAnonymous: Boolean!
   severity: Int!
-  comments(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post!]
-
+  comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   n_comments: Int @count(f: comments)
   id: ID!
   createdAt: DateTime! @search
@@ -82,16 +73,17 @@ type Tension {
   message: String @search(by: [fulltext])
 }
 
+type Comment {
+  message: String! @search(by: [fulltext])
+  id: ID!
+  createdAt: DateTime! @search
+  createdBy(filter: UserFilter): User!
+}
+
 type Mandate {
   purpose: String! @search(by: [fulltext])
   responsabilities: String
   domains: [String!]
-
-
-
-
-
-
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
@@ -107,7 +99,6 @@ type User {
   roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!] @hasInverse(field: user)
   backed_roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!] @hasInverse(field: second)
   bio: String
-
 }
 
 enum NodeType {
@@ -124,13 +115,13 @@ enum TensionType {
 
 }
 
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 input AddCircleInput {
   createdAt: DateTime!
@@ -147,6 +138,18 @@ input AddCircleInput {
 
 type AddCirclePayload {
   circle(filter: CircleFilter, order: CircleOrder, first: Int, offset: Int): [Circle]
+  numUids: Int
+}
+
+input AddCommentInput {
+  createdAt: DateTime!
+  createdBy: UserRef!
+  message: String
+  _VOID: String
+}
+
+type AddCommentPayload {
+  comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
   numUids: Int
 }
 
@@ -195,7 +198,8 @@ input AddTensionInput {
   receivers: [NodeRef!]
   isAnonymous: Boolean!
   severity: Int!
-  comments: [PostRef!]
+  comments: [CommentRef!]
+  n_comments: Int
 }
 
 type AddTensionPayload {
@@ -266,6 +270,42 @@ input CircleRef {
   isRoot: Boolean
 }
 
+input CommentFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  message: StringFullTextFilter
+  and: CommentFilter
+  or: CommentFilter
+  not: CommentFilter
+}
+
+input CommentOrder {
+  asc: CommentOrderable
+  desc: CommentOrderable
+  then: CommentOrder
+}
+
+enum CommentOrderable {
+  createdAt
+  message
+  _VOID
+}
+
+input CommentPatch {
+  createdAt: DateTime
+  createdBy: UserRef
+  message: String
+  _VOID: String
+}
+
+input CommentRef {
+  id: ID
+  createdAt: DateTime
+  createdBy: UserRef
+  message: String
+  _VOID: String
+}
+
 scalar DateTime
 
 input DateTimeFilter {
@@ -277,6 +317,11 @@ input DateTimeFilter {
 }
 
 type DeleteCirclePayload {
+  msg: String
+  numUids: Int
+}
+
+type DeleteCommentPayload {
   msg: String
   numUids: Int
 }
@@ -400,6 +445,9 @@ type Mutation {
   addTension(input: [AddTensionInput!]!): AddTensionPayload
   updateTension(input: UpdateTensionInput!): UpdateTensionPayload
   deleteTension(filter: TensionFilter!): DeleteTensionPayload
+  addComment(input: [AddCommentInput!]!): AddCommentPayload
+  updateComment(input: UpdateCommentInput!): UpdateCommentPayload
+  deleteComment(filter: CommentFilter!): DeleteCommentPayload
   addMandate(input: [AddMandateInput!]!): AddMandatePayload
   updateMandate(input: UpdateMandateInput!): UpdateMandatePayload
   deleteMandate(filter: MandateFilter!): DeleteMandatePayload
@@ -487,6 +535,8 @@ type Query {
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
   queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
+  getComment(id: ID!): Comment
+  queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
   getMandate(id: ID!): Mandate
   queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   getUser(id: ID, username: String): User
@@ -596,6 +646,7 @@ enum TensionOrderable {
   nth
   title
   severity
+  n_comments
 }
 
 input TensionPatch {
@@ -609,7 +660,8 @@ input TensionPatch {
   receivers: [NodeRef!]
   isAnonymous: Boolean
   severity: Int
-  comments: [PostRef!]
+  comments: [CommentRef!]
+  n_comments: Int
 }
 
 input TensionRef {
@@ -624,7 +676,8 @@ input TensionRef {
   receivers: [NodeRef!]
   isAnonymous: Boolean
   severity: Int
-  comments: [PostRef!]
+  comments: [CommentRef!]
+  n_comments: Int
 }
 
 input TensionType_hash {
@@ -639,6 +692,17 @@ input UpdateCircleInput {
 
 type UpdateCirclePayload {
   circle(filter: CircleFilter, order: CircleOrder, first: Int, offset: Int): [Circle]
+  numUids: Int
+}
+
+input UpdateCommentInput {
+  filter: CommentFilter!
+  set: CommentPatch
+  remove: CommentPatch
+}
+
+type UpdateCommentPayload {
+  comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
   numUids: Int
 }
 

@@ -6,13 +6,14 @@ Remove comments.
 Add interface attributes on implemented types.
 
 Usage:
-    ast.py [--debug] [--nv] [FILE ...]
+    ast.py [--debug] [--dgraph] [--nv] [FILE ...]
 
 Parse the FILE input and apply transformations.
 
 Options:
     -d --debug      Show debug informations.
-    --nv             silent
+    ---dgraph       Filter schema for dgraph.
+    --nv            Silent output.
 '''
 
 from tatsu import compile
@@ -40,7 +41,6 @@ class AST2(AST):
 
 
 class SemanticFilter:
-
     def __init__(self):
         self.interfaces = OrderedDict()
         self.types = OrderedDict()
@@ -53,12 +53,20 @@ class SemanticFilter:
 
     @staticmethod
     def get_fields(ast):
-        ''' Returns the fields of a object. '''
+        ''' Returns the fields of a object.
+            * remove comments
+        '''
         # Assumes non empty type
         assert(len(ast._fields) == 3)
         fields = ast._fields[1]
         # ===
         #fields = next(a for a in ast._fields if (isinstance(a, list)))
+
+        # Filter Comments
+        to_remove = [i for i, f in enumerate(fields) if not f.field.get('_name')]
+        for i in to_remove[::-1]:
+            fields.pop(i)
+
         return fields
 
     @staticmethod
@@ -106,9 +114,6 @@ class SemanticFilter:
         fields = self.get_fields(ast)
         for f in fields:
             field = f.field
-            if not field.get('_name'):
-                # Comments
-                continue
 
             # Add field
             fn = self.get_name(field)
@@ -145,20 +150,55 @@ class SemanticFilter:
         return
 
     def inherit_interface(self, ast):
+        '''Inherits implemented interface '''
 
-        # Inherits implemented interface
-        if ast._implements:
-            # get fields ast
-            fields = self.get_fields(ast)
-            if len(ast._implements) > 2:
-                raise NotImplementedError("Review this code for multiple inheritance.")
-            for o in ast._implements:
-                if hasattr(o, 'name'):
-                    interface_name = o.name
-                    for itf_fd in self.interfaces[interface_name]:
-                        fd = itf_fd['ast']
-                        if fd not in fields:
-                            fields.append(fd)
+        if not ast._implements:
+            return
+
+        if len(ast._implements) > 2:
+            raise NotImplementedError("Review this code for multiple inheritance.")
+        else:
+            interface_name = ast._implements[1].name
+
+        # Get ast fields
+        fields = self.get_fields(ast)
+        field_names = [self.get_name(f.field) for f in fields]
+        for itf_fd in self.interfaces[interface_name]:
+            fd = itf_fd['ast']
+            if self.get_name(fd.field) not in field_names:
+                fields.append(fd)
+
+        return
+
+    def inherit_interface_dgraph(self, ast):
+        '''Inherits implemented interface.
+            * if field is already defined in interface, removed it.
+            * If type if empty add a dummy field.
+        '''
+
+        if not ast._implements:
+            return
+
+        if len(ast._implements) > 2:
+            raise NotImplementedError("Review this code for multiple inheritance.")
+        else:
+            interface_name = ast._implements[1].name
+
+        # Get ast fields
+        fields = self.get_fields(ast)
+        fd_names = [self.get_name(f['ast'].field) for f in self.interfaces[interface_name]]
+        to_remove = []
+        for i, f in enumerate(fields):
+            if self.get_name(f.field) in fd_names:
+                to_remove.append(i)
+
+        for i in to_remove[::-1]:
+            fields.pop(i)
+
+        if len(fields) == 0:
+            fields.append(AST(field="_VOID: String"))
+
+        return
 
     def move_directives(self, name_in, data_types_in,
                         name_out, data_type_out,
@@ -206,10 +246,9 @@ class SemanticFilter:
         return
 
 
-class GqlSemantics(object):
+class GraphqlSemantics:
     def __init__(self):
         self.sf = SemanticFilter()
-
     #
     # Util semantic
     #
@@ -233,9 +272,10 @@ class GqlSemantics(object):
         ast = AST(_join=''.join(flatten(ast._join)))
         return ast
 
-    #
-    # Graphql Semantic
-    #
+
+class GqlgenSemantics(GraphqlSemantics):
+
+    '''Gqlgen Semantic'''
 
     def interface_type_definition(self, ast):
         ''' Interface handle
@@ -323,8 +363,51 @@ class GqlSemantics(object):
         return ast
 
 
+class DgraphSemantics(GraphqlSemantics):
+
+    '''Dgraph semantic.
+        * The Removal of custom directives are done with sed outside.
+    '''
+
+    def interface_type_definition(self, ast):
+        ''' Interface handle
+            * filter ou doublon
+        '''
+        assert(isinstance(ast, AST))
+        ast = AST2(ast)
+
+        name = self.sf.get_name(ast)
+        # Watch out duplicate !
+        if name in self.sf.interfaces:
+            self.sf.update_args('interfaces', name, ast)
+            return None
+        else:
+            self.sf.populate_data('interfaces', name, ast)
+
+        return ast
+
+    def object_type_definition(self, ast):
+        '''Type handle
+            * filter ou doublon
+            * add implemented interfaces fields if not already presents
+        '''
+        assert(isinstance(ast, AST))
+        ast = AST2(ast)
+
+        name = self.sf.get_name(ast)
+        # Watch out duplicate !
+        if name in self.sf.types:
+            self.sf.update_args('types', name, ast)
+            return None
+        else:
+            self.sf.populate_data('types', name, ast)
+            self.sf.inherit_interface_dgraph(ast)
+
+        return ast
+
+
 class SDL:
-    ''' Parse graphql file with semantics.
+    '''Parse graphql file with semantics.
 
         The module interpret the rule name given by tatsu
         (with the synxax `rule_name:rule`) with the following semantics:
@@ -341,16 +424,26 @@ class SDL:
             * other rule are appended with a new line,
               specially the `field` rule name.
 
-        Furthermore special rule are defined be Semantic class `GqlSemantics`.
+        Furthermore special rule are defined be Semantic class `*Semantics`.
         Reports to the methods documentation for further informantion.
     '''
 
-    def __init__(self, grammar, infile):
+    def __init__(self, settings):
+        self.s = settings
+
+        if not self.s['FILE']:
+            infile = "type.graphql"
+        else:
+            infile = self.s['FILE'][0]
+
         self._grammar = open("gram/graphql.ebnf").read()
         self._target = open(infile).read()
-
-        self.semantics = GqlSemantics()
         self.rew = re.compile(r'^\w+$')
+
+        if self.s['--dgraph']:
+            self.semantics = DgraphSemantics()
+        else:
+            self.semantics = GqlgenSemantics()
 
         #self.parser = compile(self._grammar)
         self.parser = GRAPHQLParser()
@@ -496,19 +589,14 @@ class SDL:
 
 if __name__ == "__main__":
     args = docopt(__doc__, version='0.0')
-
-    grammar = 'gram/graphql.ebnf'
-    if not args['FILE']:
-        infile = "type.graphql"
-    else:
-        infile = args['FILE'][0]
-
-    parser = SDL(grammar, infile)
+    parser = SDL(args)
     sdl = parser.stringify()
 
     if not args['--nv']:
         print(sdl)
 
     if args['--debug']:
+        print(args)
+        print()
         #asj = asjsons(ast)
         pprint(parser.ast, indent=2)

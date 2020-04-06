@@ -6,22 +6,16 @@ type Node {
   createdAt: DateTime! @search
   createdBy: User!
   parent: Node
-
   children: [Node!] @hasInverse(field: parent)
   name: String! @search(by: [term])
   nameid: String! @id
   mandate: Mandate
-
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!]
-
 }
 
 type Circle {
   isRoot: Boolean!
-
-
-
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
@@ -38,7 +32,6 @@ type Role {
   user: User
   second: User
   skills: [String!] @search(by: [term])
-
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
@@ -60,15 +53,13 @@ type Post {
 
 type Tension {
   nth: Int!
-
   title: String! @search(by: [term])
   type_: TensionType! @search(by: [hash])
   emitter: Node!
   receivers: [Node!]
   isAnonymous: Boolean!
   severity: Int!
-  comments: [Post!]
-
+  comments: [Comment!]
   n_comments: Int @count(f: comments)
   id: ID!
   createdAt: DateTime! @search
@@ -76,16 +67,17 @@ type Tension {
   message: String @search(by: [fulltext])
 }
 
+type Comment {
+  message: String! @search(by: [fulltext])
+  id: ID!
+  createdAt: DateTime! @search
+  createdBy: User!
+}
+
 type Mandate {
   purpose: String! @search(by: [fulltext])
   responsabilities: String
   domains: [String!]
-
-
-
-
-
-
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
@@ -101,7 +93,6 @@ type User {
   roles: [Role!] @hasInverse(field: user)
   backed_roles: [Role!] @hasInverse(field: second)
   bio: String
-
 }
 
 enum NodeType {
