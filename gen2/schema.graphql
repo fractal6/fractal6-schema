@@ -3,6 +3,8 @@
 
 directive @hidden on FIELD_DEFINITION
 
+directive @count(f: String) on FIELD_DEFINITION
+
 directive @input_maxLength(n: Int, f: String) on INPUT_FIELD_DEFINITION
 
 type Node {
@@ -73,6 +75,7 @@ type Tension {
   severity: Int!
   comments(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post!]
 
+  n_comments: Int @count(f: comments)
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
@@ -121,13 +124,13 @@ enum TensionType {
 
 }
 
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddCircleInput {
   createdAt: DateTime!

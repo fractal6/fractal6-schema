@@ -47,6 +47,7 @@ interface Post {
   message: String @search(by: [fulltext])
 }
 
+
 type Tension implements Post {
   nth: Int! # @id
   title: String! @search(by: [term])
@@ -55,9 +56,15 @@ type Tension implements Post {
   receivers: [Node!]
   isAnonymous: Boolean!
   severity: Int!
-  comments: [Post!]
+  comments: [Comment!]
 
-  #n_comments: Int!
+  # Automatic field
+  n_comments: Int  @count(f: comments)
+}
+
+
+type Comment implements Post {
+  message: String! @search(by: [fulltext])
 }
 
 type Mandate implements Post {

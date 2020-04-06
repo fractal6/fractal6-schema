@@ -58,6 +58,7 @@ type Tension implements Post {
   comments: [Post!]
 
   
+  n_comments: Int  
 }
 
 type Mandate implements Post {

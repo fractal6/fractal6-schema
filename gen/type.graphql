@@ -69,6 +69,7 @@ type Tension {
   severity: Int!
   comments: [Post!]
 
+  n_comments: Int @count(f: comments)
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
