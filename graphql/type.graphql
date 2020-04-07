@@ -17,6 +17,9 @@ interface Node {
 
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!] # no bidirectional
+
+  n_tensions_out: Int @count(f: tensions_out)
+  n_tensions_in: Int  @count(f: tensions_in)
 }
 
 # Supernode/Hyperedge
@@ -55,8 +58,8 @@ type Tension implements Post {
   emitter: Node!
   receivers: [Node!]
   isAnonymous: Boolean!
-  severity: Int!
   comments: [Comment!]
+  labels: [Label!]
 
   # Automatic field
   n_comments: Int  @count(f: comments)
@@ -92,6 +95,15 @@ type User {
   backed_roles: [Role!] @hasInverse(field: second)
   bio: String
   #skills
+}
+
+#
+# Labels
+#
+
+type Label {
+  id: ID!
+  name: String! @id @search(by: [hash])
 }
 
 

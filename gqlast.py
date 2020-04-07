@@ -6,7 +6,7 @@ Remove comments.
 Add interface attributes on implemented types.
 
 Usage:
-    ast.py [--debug] [--dgraph] [--nv] [FILE ...]
+    gqlast.py [--debug] [--dgraph] [--nv] [FILE ...]
 
 Parse the FILE input and apply transformations.
 

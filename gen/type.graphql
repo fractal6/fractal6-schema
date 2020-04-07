@@ -12,6 +12,8 @@ type Node {
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!]
+  n_tensions_out: Int @count(f: tensions_out)
+  n_tensions_in: Int @count(f: tensions_in)
 }
 
 type Circle {
@@ -26,6 +28,8 @@ type Circle {
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!]
+  n_tensions_out: Int @count(f: tensions_out)
+  n_tensions_in: Int @count(f: tensions_in)
 }
 
 type Role {
@@ -42,6 +46,8 @@ type Role {
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!]
+  n_tensions_out: Int @count(f: tensions_out)
+  n_tensions_in: Int @count(f: tensions_in)
 }
 
 type Post {
@@ -58,8 +64,8 @@ type Tension {
   emitter: Node!
   receivers: [Node!]
   isAnonymous: Boolean!
-  severity: Int!
   comments: [Comment!]
+  labels: [Label!]
   n_comments: Int @count(f: comments)
   id: ID!
   createdAt: DateTime! @search
@@ -93,6 +99,11 @@ type User {
   roles: [Role!] @hasInverse(field: user)
   backed_roles: [Role!] @hasInverse(field: second)
   bio: String
+}
+
+type Label {
+  id: ID!
+  name: String! @id @search(by: [hash])
 }
 
 enum NodeType {

@@ -1,134 +1,6 @@
-
-
-
-directive @hidden on FIELD_DEFINITION
-
-directive @count(f: String) on FIELD_DEFINITION
-
-directive @input_maxLength(n: Int, f: String) on INPUT_FIELD_DEFINITION
-
-type Node {
-  id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-  parent(filter: NodeFilter): Node
-  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
-  name: String! @search(by: [term])
-  nameid: String! @id
-  mandate(filter: MandateFilter): Mandate
-  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
-  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-  n_tensions_out: Int @count(f: tensions_out)
-  n_tensions_in: Int @count(f: tensions_in)
-}
-
-type Circle {
-  isRoot: Boolean!
-  id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-  parent(filter: NodeFilter): Node
-  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
-  name: String! @search(by: [term])
-  nameid: String! @id
-  mandate(filter: MandateFilter): Mandate
-  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
-  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-  n_tensions_out: Int @count(f: tensions_out)
-  n_tensions_in: Int @count(f: tensions_in)
-}
-
-type Role {
-  user(filter: UserFilter): User
-  second(filter: UserFilter): User
-  skills: [String!] @search(by: [term])
-  id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-  parent(filter: NodeFilter): Node
-  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
-  name: String! @search(by: [term])
-  nameid: String! @id
-  mandate(filter: MandateFilter): Mandate
-  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
-  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-  n_tensions_out: Int @count(f: tensions_out)
-  n_tensions_in: Int @count(f: tensions_in)
-}
-
-type Post {
-  id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-  message: String @search(by: [fulltext])
-}
-
-type Tension {
-  nth: Int!
-  title: String! @search(by: [term])
-  type_: TensionType! @search(by: [hash])
-  emitter(filter: NodeFilter): Node!
-  receivers(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
-  isAnonymous: Boolean!
-  comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
-  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
-  n_comments: Int @count(f: comments)
-  id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-  message: String @search(by: [fulltext])
-}
-
-type Comment {
-  message: String! @search(by: [fulltext])
-  id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-}
-
-type Mandate {
-  purpose: String! @search(by: [fulltext])
-  responsabilities: String
-  domains: [String!]
-  id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-  message: String @search(by: [fulltext])
-}
-
-type User {
-  id: ID!
-  createdAt: DateTime! @search
-  username: String! @id
-  fullname: String
-  password: String! @hidden
-  roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!] @hasInverse(field: user)
-  backed_roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!] @hasInverse(field: second)
-  bio: String
-}
-
-type Label {
-  id: ID!
-  name: String! @id @search(by: [hash])
-}
-
-enum NodeType {
-  Circle
-  Role
-}
-
-enum TensionType {
-  Governance
-  Operational
-  Personal
-  Help
-  Alert
-
-}
-
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
@@ -233,9 +105,9 @@ type AddTensionPayload {
 
 input AddUserInput {
   createdAt: DateTime!
-  username: String! @input_maxLength(n:42, f:"username")
-  fullname: String @input_maxLength(n:100, f:"fullname")
-  password: String! @input_maxLength(n:42, f:"password")
+  username: String!
+  fullname: String
+  password: String!
   roles: [RoleRef!]
   backed_roles: [RoleRef!]
   bio: String
@@ -244,6 +116,22 @@ input AddUserInput {
 type AddUserPayload {
   user(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   numUids: Int
+}
+
+type Circle implements Node {
+  id: ID!
+  createdAt: DateTime!
+  createdBy(filter: UserFilter): User!
+  parent(filter: NodeFilter): Node
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  name: String!
+  nameid: String!
+  mandate(filter: MandateFilter): Mandate
+  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  n_tensions_out: Int
+  n_tensions_in: Int
+  isRoot: Boolean!
 }
 
 input CircleFilter {
@@ -298,6 +186,14 @@ input CircleRef {
   n_tensions_out: Int
   n_tensions_in: Int
   isRoot: Boolean
+}
+
+type Comment implements Post {
+  id: ID!
+  createdAt: DateTime!
+  createdBy(filter: UserFilter): User!
+  message: String
+  _VOID: String
 }
 
 input CommentFilter {
@@ -423,6 +319,11 @@ input IntFilter {
   gt: Int
 }
 
+type Label {
+  id: ID!
+  name: String!
+}
+
 input LabelFilter {
   id: [ID!]
   name: StringHashFilter
@@ -444,6 +345,16 @@ enum LabelOrderable {
 input LabelRef {
   id: ID
   name: String
+}
+
+type Mandate implements Post {
+  id: ID!
+  createdAt: DateTime!
+  createdBy(filter: UserFilter): User!
+  message: String
+  purpose: String!
+  responsabilities: String
+  domains: [String!]
 }
 
 input MandateFilter {
@@ -516,6 +427,21 @@ type Mutation {
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
 }
 
+interface Node {
+  id: ID!
+  createdAt: DateTime!
+  createdBy(filter: UserFilter): User!
+  parent(filter: NodeFilter): Node
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  name: String!
+  nameid: String!
+  mandate(filter: MandateFilter): Mandate
+  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  n_tensions_out: Int
+  n_tensions_in: Int
+}
+
 input NodeFilter {
   id: [ID!]
   createdAt: DateTimeFilter
@@ -556,6 +482,18 @@ input NodePatch {
 input NodeRef {
   id: ID
   nameid: String
+}
+
+enum NodeType {
+  Circle
+  Role
+}
+
+interface Post {
+  id: ID!
+  createdAt: DateTime!
+  createdBy(filter: UserFilter): User!
+  message: String
 }
 
 input PostFilter {
@@ -607,6 +545,24 @@ type Query {
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   getLabel(id: ID, name: String): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
+}
+
+type Role implements Node {
+  id: ID!
+  createdAt: DateTime!
+  createdBy(filter: UserFilter): User!
+  parent(filter: NodeFilter): Node
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  name: String!
+  nameid: String!
+  mandate(filter: MandateFilter): Mandate
+  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  n_tensions_out: Int
+  n_tensions_in: Int
+  user(filter: UserFilter): User
+  second(filter: UserFilter): User
+  skills: [String!]
 }
 
 input RoleFilter {
@@ -695,6 +651,22 @@ input StringTermFilter {
   anyofterms: String
 }
 
+type Tension implements Post {
+  id: ID!
+  createdAt: DateTime!
+  createdBy(filter: UserFilter): User!
+  message: String
+  nth: Int!
+  title: String!
+  type_: TensionType!
+  emitter(filter: NodeFilter): Node!
+  receivers(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  isAnonymous: Boolean!
+  comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
+  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
+  n_comments: Int
+}
+
 input TensionFilter {
   id: [ID!]
   createdAt: DateTimeFilter
@@ -749,6 +721,14 @@ input TensionRef {
   comments: [CommentRef!]
   labels: [LabelRef!]
   n_comments: Int
+}
+
+enum TensionType {
+  Governance
+  Operational
+  Personal
+  Help
+  Alert
 }
 
 input TensionType_hash {
@@ -843,6 +823,17 @@ type UpdateUserPayload {
   numUids: Int
 }
 
+type User {
+  id: ID!
+  createdAt: DateTime!
+  username: String!
+  fullname: String
+  password: String!
+  roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!]
+  backed_roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!]
+  bio: String
+}
+
 input UserFilter {
   id: [ID!]
   createdAt: DateTimeFilter
@@ -868,8 +859,8 @@ enum UserOrderable {
 
 input UserPatch {
   createdAt: DateTime
-  fullname: String @input_maxLength(n:100, f:"fullname")
-  password: String @input_maxLength(n:42, f:"password")
+  fullname: String
+  password: String
   roles: [RoleRef!]
   backed_roles: [RoleRef!]
   bio: String
@@ -885,3 +876,4 @@ input UserRef {
   backed_roles: [RoleRef!]
   bio: String
 }
+

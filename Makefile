@@ -3,7 +3,9 @@ SHELL := /bin/bash
 dgraphDirectives := $(shell echo "id search hasInverse" | tr " " "|")
 
 .PHONY: graphql/type.graphql
-default: gqlgen gqlgen2 graphql/type.graphql
+default: schema
+schema: gqlgen gqlgen2 graphql/type.graphql
+all: dgraph schema
 
 #
 # Generate Schemas
@@ -14,19 +16,21 @@ gqlgen:
 	cp -v graphql/dgraph.graphql gen/
 	cp -v graphql/directives.graphql gen/
 	cp -v graphql/query.graphql gen/
-	./ast.py graphql/type.graphql > gen/type.graphql
+	./gqlast.py graphql/type.graphql > gen/type.graphql
 
 gqlgen2:
 	# Generate Gqlgen compatible GraphQL files with dgraph generated Query and Mutation.
-	./ast.py <(cat graphql/directives.graphql graphql/type.graphql ../database/schema.graphql) > gen2/schema.graphql
+	./gqlast.py <(cat graphql/directives.graphql graphql/type.graphql gen_dgraph_out/schema.graphql) > gen2/schema.graphql
 
 dgraph: 
-	./ast.py --dgraph graphql/type.graphql > gen_dgraph/type.graphql
-	@sed -Ei "s/#.*$$//g; s/^directive .*$$//g; s/@($(dgraphDirectives))/§\1/Ig; s/@[[:alnum:]_]+\([^\)]+\)//g; s/@[[:alnum:]_]+//g; s/§(id|search|hasinverse)/@\1/Ig;" gen_dgraph/type.graphql
+	./gqlast.py --dgraph graphql/type.graphql > gen_dgraph_in/type.graphql
+	@sed -Ei "s/#.*$$//g; s/^directive .*$$//g; s/@($(dgraphDirectives))/§\1/Ig; s/@[[:alnum:]_]+\([^\)]+\)//g; s/@[[:alnum:]_]+//g; s/§(id|search|hasinverse)/@\1/Ig;" gen_dgraph_in/type.graphql
 	# Populate dgraph
 	cd ../database
-	make
+	make update
+	make fetch_schema 
 	cd -
+	cp ../database/schema.graphql gen_dgraph_out/schema.graphql
 
 #graphql/type.graphql:
 #	# Filter graphql files
@@ -51,4 +55,4 @@ _gram:
 	wget https://raw.githubusercontent.com/antlr/grammars-v4/master/graphql/GraphQL.g4 -O gram/graphql.g
 	python3 -m tatsu.g2e graphql.g > gram/graphql.ebnf
 	# /!\ Warning:
-	#	 Manual modification here to get this work with ast.py
+	#	 Manual modification here to get this work with gqlast.py
