@@ -11,13 +11,14 @@ interface Node {
   nameid: String! @id
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!]
+  tensions_in: [Tension!] @hasInverse(field: receivers)
   n_tensions_out: Int 
   n_tensions_in: Int 
+  n_children: Int 
 }
 
 type Circle implements Node {
-  isRoot: Boolean!
+  isRoot: Boolean! @search
 }
 
 type Role implements Node {
@@ -34,7 +35,7 @@ interface Post {
 }
 
 type Tension implements Post {
-  nth: Int!
+  nth: Int! @search
   title: String! @search(by: [term])
   type_: TensionType! @search(by: [hash])
   emitter: Node!
@@ -69,6 +70,7 @@ type User {
 type Label {
   id: ID!
   name: String! @id @search(by: [hash])
+  color: String
 }
 
 enum NodeType {

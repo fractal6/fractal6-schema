@@ -1,10 +1,12 @@
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
 input AddCircleInput {
   createdAt: DateTime!
@@ -18,6 +20,7 @@ input AddCircleInput {
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   isRoot: Boolean!
 }
 
@@ -40,6 +43,7 @@ type AddCommentPayload {
 
 input AddLabelInput {
   name: String!
+  color: String
 }
 
 type AddLabelPayload {
@@ -73,6 +77,7 @@ input AddRoleInput {
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   user: UserRef
   second: UserRef
   skills: [String!]
@@ -131,6 +136,7 @@ type Circle implements Node {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   isRoot: Boolean!
 }
 
@@ -139,6 +145,7 @@ input CircleFilter {
   createdAt: DateTimeFilter
   name: StringTermFilter
   nameid: StringHashFilter
+  isRoot: Boolean
   and: CircleFilter
   or: CircleFilter
   not: CircleFilter
@@ -156,6 +163,7 @@ enum CircleOrderable {
   nameid
   n_tensions_out
   n_tensions_in
+  n_children
 }
 
 input CirclePatch {
@@ -169,6 +177,7 @@ input CirclePatch {
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   isRoot: Boolean
 }
 
@@ -185,6 +194,7 @@ input CircleRef {
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   isRoot: Boolean
 }
 
@@ -322,6 +332,7 @@ input IntFilter {
 type Label {
   id: ID!
   name: String!
+  color: String
 }
 
 input LabelFilter {
@@ -340,11 +351,17 @@ input LabelOrder {
 
 enum LabelOrderable {
   name
+  color
+}
+
+input LabelPatch {
+  color: String
 }
 
 input LabelRef {
   id: ID
   name: String
+  color: String
 }
 
 type Mandate implements Post {
@@ -424,6 +441,7 @@ type Mutation {
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
   addLabel(input: [AddLabelInput!]!): AddLabelPayload
+  updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
 }
 
@@ -440,6 +458,7 @@ interface Node {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
 }
 
 input NodeFilter {
@@ -464,6 +483,7 @@ enum NodeOrderable {
   nameid
   n_tensions_out
   n_tensions_in
+  n_children
 }
 
 input NodePatch {
@@ -477,6 +497,7 @@ input NodePatch {
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
 }
 
 input NodeRef {
@@ -560,6 +581,7 @@ type Role implements Node {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   user(filter: UserFilter): User
   second(filter: UserFilter): User
   skills: [String!]
@@ -588,6 +610,7 @@ enum RoleOrderable {
   nameid
   n_tensions_out
   n_tensions_in
+  n_children
   skills
 }
 
@@ -602,6 +625,7 @@ input RolePatch {
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   user: UserRef
   second: UserRef
   skills: [String!]
@@ -620,6 +644,7 @@ input RoleRef {
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
+  n_children: Int
   user: UserRef
   second: UserRef
   skills: [String!]
@@ -671,6 +696,7 @@ input TensionFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
+  nth: IntFilter
   title: StringTermFilter
   type_: TensionType_hash
   and: TensionFilter
@@ -754,6 +780,17 @@ input UpdateCommentInput {
 
 type UpdateCommentPayload {
   comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  numUids: Int
+}
+
+input UpdateLabelInput {
+  filter: LabelFilter!
+  set: LabelPatch
+  remove: LabelPatch
+}
+
+type UpdateLabelPayload {
+  label(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
   numUids: Int
 }
 

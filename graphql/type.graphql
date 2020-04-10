@@ -8,27 +8,24 @@ interface Node {
   createdBy: User!
 
   parent: Node # If parent is null, Node is a root node !
-  children: [Node!] @hasInverse(field: parent)
+  children: [NodeUnion!] @hasInverse(field: parent)
 
   name: String! @search(by: [term])
-  nameid: String! @id
+  nameid: String! @id # Used for URI
   mandate: Mandate
   # validatedBy  # @DEBUG: Birth logics?
 
   tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!] # no bidirectional
+  tensions_in: [Tension!] @hasInverse(field: receivers)
 
   n_tensions_out: Int @count(f: tensions_out)
-  n_tensions_in: Int  @count(f: tensions_in)
+  n_tensions_in: Int @count(f: tensions_in)
+  n_children: Int @count(f: children)
 }
 
 # Supernode/Hyperedge
 type Circle implements Node {
-  isRoot: Boolean!
-
-  #n_child: Int!    #
-  #n_circles: Int!  # @DEBUG: remove and compute instead (will be cached anyway?)
-  #n_roles: Int!    #
+  isRoot: Boolean! @search
 }
 
 # Leaf
@@ -38,6 +35,8 @@ type Role implements Node {
   skills: [String!] @search(by: [term])
   #authority: Authority
 }
+
+union NodeUnion = Circle | Role
 
 #
 # Post Interface
@@ -52,11 +51,11 @@ interface Post {
 
 
 type Tension implements Post {
-  nth: Int! # @id
+  nth: Int! @search # @id... Used for URI
   title: String! @search(by: [term])
   type_: TensionType! @search(by: [hash])
   emitter: Node!
-  receivers: [Node!]
+  receivers: [NodeUnion!]
   isAnonymous: Boolean!
   comments: [Comment!]
   labels: [Label!]
@@ -104,6 +103,7 @@ type User {
 type Label {
   id: ID!
   name: String! @id @search(by: [hash])
+  color: String
 }
 
 
