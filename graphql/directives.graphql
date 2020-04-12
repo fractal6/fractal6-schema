@@ -4,10 +4,13 @@ directive @hidden on FIELD_DEFINITION
 
 # Count the occurence of the field given in arg (should be list) and add the result in
 # the current field definition.
-directive @count(f: String) on FIELD_DEFINITION
+directive @count(f: String!) on FIELD_DEFINITION
 
-# Limit the max sire of the string given in input
-directive @input_maxLength(n: Int, f: String) on INPUT_FIELD_DEFINITION
+# Limit the max size of the string given in input
+directive @input_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
+
+# Ensure the `type_` of a the given (list) Node/Object .See @Debug(#3a99e49)
+directive @input_ensureType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
 
 # Ensure that the user making the request has the given role.
 #directive @hasRole(role: Role!) on FIELD_DEFINITION

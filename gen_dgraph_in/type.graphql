@@ -1,12 +1,14 @@
 
 
 
-interface Node {
+type Node {
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
+  root: Node
   parent: Node
   children: [Node!] @hasInverse(field: parent)
+  type_: NodeType! @search
   name: String! @search(by: [term])
   nameid: String! @id
   mandate: Mandate
@@ -15,13 +17,7 @@ interface Node {
   n_tensions_out: Int 
   n_tensions_in: Int 
   n_children: Int 
-}
-
-type Circle implements Node {
   isRoot: Boolean! @search
-}
-
-type Role implements Node {
   user: User
   second: User
   skills: [String!] @search(by: [term])
@@ -37,7 +33,7 @@ interface Post {
 type Tension implements Post {
   nth: Int! @search
   title: String! @search(by: [term])
-  type_: TensionType! @search(by: [hash])
+  type_: TensionType! @search
   emitter: Node!
   receivers: [Node!]
   isAnonymous: Boolean!
@@ -62,8 +58,8 @@ type User {
   username: String! @id
   fullname: String
   password: String! 
-  roles: [Role!] @hasInverse(field: user)
-  backed_roles: [Role!] @hasInverse(field: second)
+  roles: [Node!] @hasInverse(field: user)
+  backed_roles: [Node!] @hasInverse(field: second)
   bio: String
 }
 

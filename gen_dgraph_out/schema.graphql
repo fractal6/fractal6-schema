@@ -8,27 +8,6 @@ directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
-input AddCircleInput {
-  createdAt: DateTime!
-  createdBy: UserRef!
-  parent: NodeRef
-  children: [NodeRef!]
-  name: String!
-  nameid: String!
-  mandate: MandateRef
-  tensions_out: [TensionRef!]
-  tensions_in: [TensionRef!]
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  isRoot: Boolean!
-}
-
-type AddCirclePayload {
-  circle(filter: CircleFilter, order: CircleOrder, first: Int, offset: Int): [Circle]
-  numUids: Int
-}
-
 input AddCommentInput {
   createdAt: DateTime!
   createdBy: UserRef!
@@ -65,11 +44,13 @@ type AddMandatePayload {
   numUids: Int
 }
 
-input AddRoleInput {
+input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef!
+  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
+  type_: NodeType!
   name: String!
   nameid: String!
   mandate: MandateRef
@@ -78,13 +59,14 @@ input AddRoleInput {
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
+  isRoot: Boolean!
   user: UserRef
   second: UserRef
   skills: [String!]
 }
 
-type AddRolePayload {
-  role(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role]
+type AddNodePayload {
+  node(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
   numUids: Int
 }
 
@@ -113,89 +95,14 @@ input AddUserInput {
   username: String!
   fullname: String
   password: String!
-  roles: [RoleRef!]
-  backed_roles: [RoleRef!]
+  roles: [NodeRef!]
+  backed_roles: [NodeRef!]
   bio: String
 }
 
 type AddUserPayload {
   user(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   numUids: Int
-}
-
-type Circle implements Node {
-  id: ID!
-  createdAt: DateTime!
-  createdBy(filter: UserFilter): User!
-  parent(filter: NodeFilter): Node
-  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
-  name: String!
-  nameid: String!
-  mandate(filter: MandateFilter): Mandate
-  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  isRoot: Boolean!
-}
-
-input CircleFilter {
-  id: [ID!]
-  createdAt: DateTimeFilter
-  name: StringTermFilter
-  nameid: StringHashFilter
-  isRoot: Boolean
-  and: CircleFilter
-  or: CircleFilter
-  not: CircleFilter
-}
-
-input CircleOrder {
-  asc: CircleOrderable
-  desc: CircleOrderable
-  then: CircleOrder
-}
-
-enum CircleOrderable {
-  createdAt
-  name
-  nameid
-  n_tensions_out
-  n_tensions_in
-  n_children
-}
-
-input CirclePatch {
-  createdAt: DateTime
-  createdBy: UserRef
-  parent: NodeRef
-  children: [NodeRef!]
-  name: String
-  mandate: MandateRef
-  tensions_out: [TensionRef!]
-  tensions_in: [TensionRef!]
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  isRoot: Boolean
-}
-
-input CircleRef {
-  id: ID
-  createdAt: DateTime
-  createdBy: UserRef
-  parent: NodeRef
-  children: [NodeRef!]
-  name: String
-  nameid: String
-  mandate: MandateRef
-  tensions_out: [TensionRef!]
-  tensions_in: [TensionRef!]
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  isRoot: Boolean
 }
 
 type Comment implements Post {
@@ -252,11 +159,6 @@ input DateTimeFilter {
   gt: DateTime
 }
 
-type DeleteCirclePayload {
-  msg: String
-  numUids: Int
-}
-
 type DeleteCommentPayload {
   msg: String
   numUids: Int
@@ -278,11 +180,6 @@ type DeleteNodePayload {
 }
 
 type DeletePostPayload {
-  msg: String
-  numUids: Int
-}
-
-type DeleteRolePayload {
   msg: String
   numUids: Int
 }
@@ -418,14 +315,9 @@ input MandateRef {
 }
 
 type Mutation {
+  addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
-  addCircle(input: [AddCircleInput!]!): AddCirclePayload
-  updateCircle(input: UpdateCircleInput!): UpdateCirclePayload
-  deleteCircle(filter: CircleFilter!): DeleteCirclePayload
-  addRole(input: [AddRoleInput!]!): AddRolePayload
-  updateRole(input: UpdateRoleInput!): UpdateRolePayload
-  deleteRole(filter: RoleFilter!): DeleteRolePayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -445,12 +337,14 @@ type Mutation {
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
 }
 
-interface Node {
+type Node {
   id: ID!
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
+  root(filter: NodeFilter): Node
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  type_: NodeType!
   name: String!
   nameid: String!
   mandate(filter: MandateFilter): Mandate
@@ -459,13 +353,20 @@ interface Node {
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
+  isRoot: Boolean!
+  user(filter: UserFilter): User
+  second(filter: UserFilter): User
+  skills: [String!]
 }
 
 input NodeFilter {
   id: [ID!]
   createdAt: DateTimeFilter
+  type_: NodeType_hash
   name: StringTermFilter
   nameid: StringHashFilter
+  isRoot: Boolean
+  skills: StringTermFilter
   and: NodeFilter
   or: NodeFilter
   not: NodeFilter
@@ -484,13 +385,16 @@ enum NodeOrderable {
   n_tensions_out
   n_tensions_in
   n_children
+  skills
 }
 
 input NodePatch {
   createdAt: DateTime
   createdBy: UserRef
+  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
+  type_: NodeType
   name: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
@@ -498,16 +402,41 @@ input NodePatch {
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
+  isRoot: Boolean
+  user: UserRef
+  second: UserRef
+  skills: [String!]
 }
 
 input NodeRef {
   id: ID
+  createdAt: DateTime
+  createdBy: UserRef
+  root: NodeRef
+  parent: NodeRef
+  children: [NodeRef!]
+  type_: NodeType
+  name: String
   nameid: String
+  mandate: MandateRef
+  tensions_out: [TensionRef!]
+  tensions_in: [TensionRef!]
+  n_tensions_out: Int
+  n_tensions_in: Int
+  n_children: Int
+  isRoot: Boolean
+  user: UserRef
+  second: UserRef
+  skills: [String!]
 }
 
 enum NodeType {
   Circle
   Role
+}
+
+input NodeType_hash {
+  eq: NodeType!
 }
 
 interface Post {
@@ -550,10 +479,6 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
-  getCircle(id: ID, nameid: String): Circle
-  queryCircle(filter: CircleFilter, order: CircleOrder, first: Int, offset: Int): [Circle]
-  getRole(id: ID, nameid: String): Role
-  queryRole(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
@@ -566,88 +491,6 @@ type Query {
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   getLabel(id: ID, name: String): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
-}
-
-type Role implements Node {
-  id: ID!
-  createdAt: DateTime!
-  createdBy(filter: UserFilter): User!
-  parent(filter: NodeFilter): Node
-  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
-  name: String!
-  nameid: String!
-  mandate(filter: MandateFilter): Mandate
-  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  user(filter: UserFilter): User
-  second(filter: UserFilter): User
-  skills: [String!]
-}
-
-input RoleFilter {
-  id: [ID!]
-  createdAt: DateTimeFilter
-  name: StringTermFilter
-  nameid: StringHashFilter
-  skills: StringTermFilter
-  and: RoleFilter
-  or: RoleFilter
-  not: RoleFilter
-}
-
-input RoleOrder {
-  asc: RoleOrderable
-  desc: RoleOrderable
-  then: RoleOrder
-}
-
-enum RoleOrderable {
-  createdAt
-  name
-  nameid
-  n_tensions_out
-  n_tensions_in
-  n_children
-  skills
-}
-
-input RolePatch {
-  createdAt: DateTime
-  createdBy: UserRef
-  parent: NodeRef
-  children: [NodeRef!]
-  name: String
-  mandate: MandateRef
-  tensions_out: [TensionRef!]
-  tensions_in: [TensionRef!]
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  user: UserRef
-  second: UserRef
-  skills: [String!]
-}
-
-input RoleRef {
-  id: ID
-  createdAt: DateTime
-  createdBy: UserRef
-  parent: NodeRef
-  children: [NodeRef!]
-  name: String
-  nameid: String
-  mandate: MandateRef
-  tensions_out: [TensionRef!]
-  tensions_in: [TensionRef!]
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  user: UserRef
-  second: UserRef
-  skills: [String!]
 }
 
 input StringExactFilter {
@@ -761,17 +604,6 @@ input TensionType_hash {
   eq: TensionType!
 }
 
-input UpdateCircleInput {
-  filter: CircleFilter!
-  set: CirclePatch
-  remove: CirclePatch
-}
-
-type UpdateCirclePayload {
-  circle(filter: CircleFilter, order: CircleOrder, first: Int, offset: Int): [Circle]
-  numUids: Int
-}
-
 input UpdateCommentInput {
   filter: CommentFilter!
   set: CommentPatch
@@ -827,17 +659,6 @@ type UpdatePostPayload {
   numUids: Int
 }
 
-input UpdateRoleInput {
-  filter: RoleFilter!
-  set: RolePatch
-  remove: RolePatch
-}
-
-type UpdateRolePayload {
-  role(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role]
-  numUids: Int
-}
-
 input UpdateTensionInput {
   filter: TensionFilter!
   set: TensionPatch
@@ -866,8 +687,8 @@ type User {
   username: String!
   fullname: String
   password: String!
-  roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!]
-  backed_roles(filter: RoleFilter, order: RoleOrder, first: Int, offset: Int): [Role!]
+  roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   bio: String
 }
 
@@ -898,8 +719,8 @@ input UserPatch {
   createdAt: DateTime
   fullname: String
   password: String
-  roles: [RoleRef!]
-  backed_roles: [RoleRef!]
+  roles: [NodeRef!]
+  backed_roles: [NodeRef!]
   bio: String
 }
 
@@ -909,8 +730,8 @@ input UserRef {
   username: String
   fullname: String
   password: String
-  roles: [RoleRef!]
-  backed_roles: [RoleRef!]
+  roles: [NodeRef!]
+  backed_roles: [NodeRef!]
   bio: String
 }
 
