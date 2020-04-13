@@ -47,12 +47,12 @@ type AddMandatePayload {
 input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef!
-  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType!
   name: String!
   nameid: String!
+  rootnameid: String!
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -341,12 +341,12 @@ type Node {
   id: ID!
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
-  root(filter: NodeFilter): Node
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   type_: NodeType!
   name: String!
   nameid: String!
+  rootnameid: String!
   mandate(filter: MandateFilter): Mandate
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
@@ -365,6 +365,7 @@ input NodeFilter {
   type_: NodeType_hash
   name: StringTermFilter
   nameid: StringHashFilter
+  rootnameid: StringHashFilter
   isRoot: Boolean
   skills: StringTermFilter
   and: NodeFilter
@@ -382,6 +383,7 @@ enum NodeOrderable {
   createdAt
   name
   nameid
+  rootnameid
   n_tensions_out
   n_tensions_in
   n_children
@@ -391,11 +393,11 @@ enum NodeOrderable {
 input NodePatch {
   createdAt: DateTime
   createdBy: UserRef
-  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
   name: String
+  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -412,12 +414,12 @@ input NodeRef {
   id: ID
   createdAt: DateTime
   createdBy: UserRef
-  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
   name: String
   nameid: String
+  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]

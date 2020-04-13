@@ -8,13 +8,14 @@ type Node {
   createdBy: User!
 
   # DEBUG union for multi edge.
-  root: Node
   parent: Node # If parent is null, Node is a root node !
   children: [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
 
   name: String! @search(by: [term])
   nameid: String! @id # Used for URI
+  rootnameid: String! @search(by: [hash]) # Index organisation nodes.
+
   mandate: Mandate
   # validatedBy  # @DEBUG: Birth logics?
 

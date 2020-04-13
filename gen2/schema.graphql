@@ -13,12 +13,12 @@ type Node {
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
-  root(filter: NodeFilter): Node
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
   name: String! @search(by: [term])
   nameid: String! @id
+  rootnameid: String! @search(by: [hash])
   mandate(filter: MandateFilter): Mandate
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: receivers)
@@ -151,12 +151,12 @@ type AddMandatePayload {
 input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef!
-  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType!
   name: String!
   nameid: String!
+  rootnameid: String!
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -423,6 +423,7 @@ input NodeFilter {
   type_: NodeType_hash
   name: StringTermFilter
   nameid: StringHashFilter
+  rootnameid: StringHashFilter
   isRoot: Boolean
   skills: StringTermFilter
   and: NodeFilter
@@ -440,6 +441,7 @@ enum NodeOrderable {
   createdAt
   name
   nameid
+  rootnameid
   n_tensions_out
   n_tensions_in
   n_children
@@ -449,11 +451,11 @@ enum NodeOrderable {
 input NodePatch {
   createdAt: DateTime
   createdBy: UserRef
-  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
   name: String
+  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -470,12 +472,12 @@ input NodeRef {
   id: ID
   createdAt: DateTime
   createdBy: UserRef
-  root: NodeRef
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
   name: String
   nameid: String
+  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
