@@ -4,8 +4,8 @@ dgraphDirectives := $(shell echo "id search hasInverse" | tr " " "|")
 
 .PHONY: gen_dgraph_in/type.graphql
 default: schema
-all: dgraph schema
 schema: gqlgen gqlgen2 gen_dgraph_in/type.graphql
+all: dgraph schema # Contains gen_dgraph_in/type.graphql
 
 #
 # Generate Schemas
@@ -45,7 +45,6 @@ _parser:
 	# help: gram/graphql.py --help
 	# list rule: gram/graphql.py -l
 	# parse file rule: gram/graphql.py type.graphql document
-	#
 
 _gram:
 	mkdir -p gram/

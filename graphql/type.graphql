@@ -1,7 +1,6 @@
 #
 # Node Interface
 #
-
 type Node {
   id: ID!
   createdAt: DateTime! @search
@@ -14,7 +13,9 @@ type Node {
 
   name: String! @search(by: [term])
   nameid: String! @id # Used for URI
-  rootnameid: String! @search(by: [hash]) # Index organisation nodes.
+  # Index organisation nodes. We use it since it an open issue to get 
+  # recursive object from root node.
+  rootnameid: String! @search(by: [hash]) 
 
   mandate: Mandate
   # validatedBy  # @DEBUG: Birth logics?
@@ -27,11 +28,11 @@ type Node {
   n_children: Int @count(f: children)
 
   # see @Debug(#3a99e49)
-  # Circle
+  # Circle...
   isRoot: Boolean! @search
-  # Role
-  user: User
-  second: User
+  # Role...
+  first_link: User
+  second_link: User
   skills: [String!] @search(by: [term])
 }
 
@@ -45,8 +46,8 @@ type Node {
 #
 ## Leaf
 #type Role implements Node {
-#  user: User
-#  second: User
+#  first_link: User
+#  second_link: User
 #  skills: [String!] @search(by: [term])
 #  #authority: Authority
 #}
@@ -55,7 +56,6 @@ type Node {
 #
 # Post Interface
 #
-
 interface Post {
   id: ID!
   createdAt: DateTime! @search
@@ -65,12 +65,12 @@ interface Post {
 
 
 type Tension implements Post {
-  nth: Int! @search # @id... Used for URI
+  #isAnonymous: Boolean!
+  #nth: Int! @search # @id... Used for URI
   title: String! @search(by: [term])
   type_: TensionType! @search
   emitter: Node! # union @debug: circle can emit tensoin (botAlert)
   receivers: [Node!] # union @debug (circle or tension can receive tension
-  isAnonymous: Boolean!
   comments: [Comment!]
   labels: [Label!]
 
@@ -104,8 +104,8 @@ type User {
   username: String! @id      @input_maxLength(f: "username", n: 42)
   fullname: String           @input_maxLength(f: "fullname", n: 100)
   password: String! @hidden  @input_maxLength(f: "password", n: 42)
-  roles: [Node!] @hasInverse(field: user) @input_ensureType(f: "roles", t: Role)
-  backed_roles: [Node!] @hasInverse(field: second) @input_ensureType(f: "backed_roles", t: Role)
+  roles: [Node!] @hasInverse(field: first_link) @input_ensureType(f: "roles", t: Role)
+  backed_roles: [Node!] @hasInverse(field: second_link) @input_ensureType(f: "backed_roles", t: Role)
   bio: String
   #skills
 }

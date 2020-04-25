@@ -18,8 +18,8 @@ type Node {
   n_tensions_in: Int 
   n_children: Int 
   isRoot: Boolean! @search
-  user: User
-  second: User
+  first_link: User
+  second_link: User
   skills: [String!] @search(by: [term])
 }
 
@@ -31,12 +31,10 @@ interface Post {
 }
 
 type Tension implements Post {
-  nth: Int! @search
   title: String! @search(by: [term])
   type_: TensionType! @search
   emitter: Node!
   receivers: [Node!]
-  isAnonymous: Boolean!
   comments: [Comment!]
   labels: [Label!]
   n_comments: Int 
@@ -58,8 +56,8 @@ type User {
   username: String! @id
   fullname: String
   password: String! 
-  roles: [Node!] @hasInverse(field: user)
-  backed_roles: [Node!] @hasInverse(field: second)
+  roles: [Node!] @hasInverse(field: first_link)
+  backed_roles: [Node!] @hasInverse(field: second_link)
   bio: String
 }
 

@@ -1,12 +1,12 @@
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -60,8 +60,8 @@ input AddNodeInput {
   n_tensions_in: Int
   n_children: Int
   isRoot: Boolean!
-  user: UserRef
-  second: UserRef
+  first_link: UserRef
+  second_link: UserRef
   skills: [String!]
 }
 
@@ -74,12 +74,10 @@ input AddTensionInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
-  nth: Int!
   title: String!
   type_: TensionType!
   emitter: NodeRef!
   receivers: [NodeRef!]
-  isAnonymous: Boolean!
   comments: [CommentRef!]
   labels: [LabelRef!]
   n_comments: Int
@@ -354,8 +352,8 @@ type Node {
   n_tensions_in: Int
   n_children: Int
   isRoot: Boolean!
-  user(filter: UserFilter): User
-  second(filter: UserFilter): User
+  first_link(filter: UserFilter): User
+  second_link(filter: UserFilter): User
   skills: [String!]
 }
 
@@ -405,8 +403,8 @@ input NodePatch {
   n_tensions_in: Int
   n_children: Int
   isRoot: Boolean
-  user: UserRef
-  second: UserRef
+  first_link: UserRef
+  second_link: UserRef
   skills: [String!]
 }
 
@@ -427,8 +425,8 @@ input NodeRef {
   n_tensions_in: Int
   n_children: Int
   isRoot: Boolean
-  user: UserRef
-  second: UserRef
+  first_link: UserRef
+  second_link: UserRef
   skills: [String!]
 }
 
@@ -526,12 +524,10 @@ type Tension implements Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
-  nth: Int!
   title: String!
   type_: TensionType!
   emitter(filter: NodeFilter): Node!
   receivers(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
-  isAnonymous: Boolean!
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   n_comments: Int
@@ -541,7 +537,6 @@ input TensionFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  nth: IntFilter
   title: StringTermFilter
   type_: TensionType_hash
   and: TensionFilter
@@ -558,7 +553,6 @@ input TensionOrder {
 enum TensionOrderable {
   createdAt
   message
-  nth
   title
   n_comments
 }
@@ -567,12 +561,10 @@ input TensionPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  nth: Int
   title: String
   type_: TensionType
   emitter: NodeRef
   receivers: [NodeRef!]
-  isAnonymous: Boolean
   comments: [CommentRef!]
   labels: [LabelRef!]
   n_comments: Int
@@ -583,12 +575,10 @@ input TensionRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  nth: Int
   title: String
   type_: TensionType
   emitter: NodeRef
   receivers: [NodeRef!]
-  isAnonymous: Boolean
   comments: [CommentRef!]
   labels: [LabelRef!]
   n_comments: Int
