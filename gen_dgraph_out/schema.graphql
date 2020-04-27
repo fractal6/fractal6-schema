@@ -1,12 +1,12 @@
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @id on FIELD_DEFINITION
-
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @id on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -77,7 +77,7 @@ input AddTensionInput {
   title: String!
   type_: TensionType!
   emitter: NodeRef!
-  receivers: [NodeRef!]
+  receiver: NodeRef!
   comments: [CommentRef!]
   labels: [LabelRef!]
   n_comments: Int
@@ -527,7 +527,7 @@ type Tension implements Post {
   title: String!
   type_: TensionType!
   emitter(filter: NodeFilter): Node!
-  receivers(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  receiver(filter: NodeFilter): Node!
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   n_comments: Int
@@ -564,7 +564,7 @@ input TensionPatch {
   title: String
   type_: TensionType
   emitter: NodeRef
-  receivers: [NodeRef!]
+  receiver: NodeRef
   comments: [CommentRef!]
   labels: [LabelRef!]
   n_comments: Int
@@ -578,7 +578,7 @@ input TensionRef {
   title: String
   type_: TensionType
   emitter: NodeRef
-  receivers: [NodeRef!]
+  receiver: NodeRef
   comments: [CommentRef!]
   labels: [LabelRef!]
   n_comments: Int

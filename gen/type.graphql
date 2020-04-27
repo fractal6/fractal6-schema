@@ -13,7 +13,7 @@ type Node {
   rootnameid: String! @search(by: [hash])
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!] @hasInverse(field: receivers)
+  tensions_in: [Tension!] @hasInverse(field: receiver)
   n_tensions_out: Int @count(f: tensions_out)
   n_tensions_in: Int @count(f: tensions_in)
   n_children: Int @count(f: children)
@@ -34,7 +34,7 @@ type Tension {
   title: String! @search(by: [term])
   type_: TensionType! @search
   emitter: Node!
-  receivers: [Node!]
+  receiver: Node!
   comments: [Comment!]
   labels: [Label!]
   n_comments: Int @count(f: comments)
