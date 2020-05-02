@@ -28,9 +28,11 @@ interface Post {
   createdAt: DateTime! @search
   createdBy: User!
   message: String @search(by: [fulltext])
+  items: [String!] @search(by: [fulltext])
 }
 
 type Tension implements Post {
+  nth: String @search
   title: String! @search(by: [term])
   type_: TensionType! @search
   emitter: Node!
@@ -46,8 +48,8 @@ _VOID: String
 
 type Mandate implements Post {
   purpose: String! @search(by: [fulltext])
-  responsabilities: String
-  domains: [String!]
+  responsabilities: Post
+  domains: Post
 }
 
 type User {
@@ -59,6 +61,7 @@ type User {
   roles: [Node!] @hasInverse(field: first_link)
   backed_roles: [Node!] @hasInverse(field: second_link)
   bio: String
+  utc: String
 }
 
 type Label {
@@ -77,6 +80,6 @@ enum TensionType {
   Operational
   Personal
   Help
-  Alert
+
 
 }

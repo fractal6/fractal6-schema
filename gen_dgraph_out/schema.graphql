@@ -1,5 +1,3 @@
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
-
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
@@ -8,10 +6,13 @@ directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFI
 
 directive @id on FIELD_DEFINITION
 
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
 input AddCommentInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
+  items: [String!]
   _VOID: String
 }
 
@@ -34,9 +35,10 @@ input AddMandateInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
+  items: [String!]
   purpose: String!
-  responsabilities: String
-  domains: [String!]
+  responsabilities: PostRef
+  domains: PostRef
 }
 
 type AddMandatePayload {
@@ -74,6 +76,8 @@ input AddTensionInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
+  items: [String!]
+  nth: String
   title: String!
   type_: TensionType!
   emitter: NodeRef!
@@ -96,6 +100,7 @@ input AddUserInput {
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   bio: String
+  utc: String
 }
 
 type AddUserPayload {
@@ -108,6 +113,7 @@ type Comment implements Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
+  items: [String!]
   _VOID: String
 }
 
@@ -115,6 +121,7 @@ input CommentFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
+  items: StringFullTextFilter
   and: CommentFilter
   or: CommentFilter
   not: CommentFilter
@@ -129,6 +136,7 @@ input CommentOrder {
 enum CommentOrderable {
   createdAt
   message
+  items
   _VOID
 }
 
@@ -136,6 +144,7 @@ input CommentPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
+  items: [String!]
   _VOID: String
 }
 
@@ -144,6 +153,7 @@ input CommentRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
+  items: [String!]
   _VOID: String
 }
 
@@ -264,15 +274,17 @@ type Mandate implements Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
+  items: [String!]
   purpose: String!
-  responsabilities: String
-  domains: [String!]
+  responsabilities(filter: PostFilter): Post
+  domains(filter: PostFilter): Post
 }
 
 input MandateFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
+  items: StringFullTextFilter
   purpose: StringFullTextFilter
   and: MandateFilter
   or: MandateFilter
@@ -288,18 +300,18 @@ input MandateOrder {
 enum MandateOrderable {
   createdAt
   message
+  items
   purpose
-  responsabilities
-  domains
 }
 
 input MandatePatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
+  items: [String!]
   purpose: String
-  responsabilities: String
-  domains: [String!]
+  responsabilities: PostRef
+  domains: PostRef
 }
 
 input MandateRef {
@@ -307,9 +319,10 @@ input MandateRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
+  items: [String!]
   purpose: String
-  responsabilities: String
-  domains: [String!]
+  responsabilities: PostRef
+  domains: PostRef
 }
 
 type Mutation {
@@ -444,12 +457,14 @@ interface Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
+  items: [String!]
 }
 
 input PostFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
+  items: StringFullTextFilter
   and: PostFilter
   or: PostFilter
   not: PostFilter
@@ -464,12 +479,14 @@ input PostOrder {
 enum PostOrderable {
   createdAt
   message
+  items
 }
 
 input PostPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
+  items: [String!]
 }
 
 input PostRef {
@@ -524,6 +541,8 @@ type Tension implements Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
+  items: [String!]
+  nth: String
   title: String!
   type_: TensionType!
   emitter(filter: NodeFilter): Node!
@@ -537,6 +556,8 @@ input TensionFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
+  items: StringFullTextFilter
+  nth: StringTermFilter
   title: StringTermFilter
   type_: TensionType_hash
   and: TensionFilter
@@ -553,6 +574,8 @@ input TensionOrder {
 enum TensionOrderable {
   createdAt
   message
+  items
+  nth
   title
   n_comments
 }
@@ -561,6 +584,8 @@ input TensionPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
+  items: [String!]
+  nth: String
   title: String
   type_: TensionType
   emitter: NodeRef
@@ -575,6 +600,8 @@ input TensionRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
+  items: [String!]
+  nth: String
   title: String
   type_: TensionType
   emitter: NodeRef
@@ -589,7 +616,6 @@ enum TensionType {
   Operational
   Personal
   Help
-  Alert
 }
 
 input TensionType_hash {
@@ -682,6 +708,7 @@ type User {
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   bio: String
+  utc: String
 }
 
 input UserFilter {
@@ -705,6 +732,7 @@ enum UserOrderable {
   fullname
   password
   bio
+  utc
 }
 
 input UserPatch {
@@ -714,6 +742,7 @@ input UserPatch {
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   bio: String
+  utc: String
 }
 
 input UserRef {
@@ -725,5 +754,6 @@ input UserRef {
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   bio: String
+  utc: String
 }
 

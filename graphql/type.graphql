@@ -61,12 +61,13 @@ interface Post {
   createdAt: DateTime! @search
   createdBy: User!
   message: String @search(by: [fulltext])
+  items: [String!] @search(by: [fulltext])# Bullet points
 }
 
 
 type Tension implements Post {
   #isAnonymous: Boolean!
-  #nth: Int! @search # @id... Used for URI
+  nth: String @search # @id...Upsert in BLL / Used for URI
   title: String! @search(by: [term])
   type_: TensionType! @search
   emitter: Node! # union @debug (circle can emit tensoin (botAlert))
@@ -85,8 +86,8 @@ type Comment implements Post {
 
 type Mandate implements Post {
   purpose: String! @search(by: [fulltext])
-  responsabilities: String
-  domains: [String!] # new type v2?
+  responsabilities: Post
+  domains: Post
   # Interface:
   #    period:
   #    canValidateNode
@@ -107,6 +108,7 @@ type User {
   roles: [Node!] @hasInverse(field: first_link) @input_ensureType(f: "roles", t: Role)
   backed_roles: [Node!] @hasInverse(field: second_link) @input_ensureType(f: "backed_roles", t: Role)
   bio: String
+  utc: String
   #skills
 }
 
@@ -118,6 +120,7 @@ type Label {
   id: ID!
   name: String! @id @search(by: [hash])
   color: String
+  #project: Project...
 }
 
 
@@ -136,5 +139,6 @@ enum TensionType {
   Operational
   Personal
   Help
-  Alert # BotAlert
+  # Alert # BotAlert 
+  # Poll ?
 }

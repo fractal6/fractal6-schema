@@ -28,9 +28,11 @@ type Post {
   createdAt: DateTime! @search
   createdBy: User!
   message: String @search(by: [fulltext])
+  items: [String!] @search(by: [fulltext])
 }
 
 type Tension {
+  nth: String @search
   title: String! @search(by: [term])
   type_: TensionType! @search
   emitter: Node!
@@ -42,6 +44,7 @@ type Tension {
   createdAt: DateTime! @search
   createdBy: User!
   message: String @search(by: [fulltext])
+  items: [String!] @search(by: [fulltext])
 }
 
 type Comment {
@@ -49,16 +52,18 @@ type Comment {
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
+  items: [String!] @search(by: [fulltext])
 }
 
 type Mandate {
   purpose: String! @search(by: [fulltext])
-  responsabilities: String
-  domains: [String!]
+  responsabilities: Post
+  domains: Post
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
   message: String @search(by: [fulltext])
+  items: [String!] @search(by: [fulltext])
 }
 
 type User {
@@ -70,6 +75,7 @@ type User {
   roles: [Node!] @hasInverse(field: first_link)
   backed_roles: [Node!] @hasInverse(field: second_link)
   bio: String
+  utc: String
 }
 
 type Label {
@@ -88,6 +94,6 @@ enum TensionType {
   Operational
   Personal
   Help
-  Alert
+
 
 }
