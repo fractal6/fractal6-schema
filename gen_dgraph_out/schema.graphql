@@ -65,10 +65,26 @@ input AddNodeInput {
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
+  role_type: RoleType
 }
 
 type AddNodePayload {
   node(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  numUids: Int
+}
+
+input AddRightsInput {
+  open_tension: Boolean
+  close_tension: Boolean
+  create_circle: Boolean
+  remove_circle: Boolean
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
+}
+
+type AddRightsPayload {
+  rights(first: Int, offset: Int): [Rights]
   numUids: Int
 }
 
@@ -95,7 +111,10 @@ type AddTensionPayload {
 input AddUserInput {
   createdAt: DateTime!
   username: String!
-  fullname: String
+  email: String!
+  emailHash: String
+  emailValidated: Boolean!
+  name: String
   password: String!
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
@@ -329,6 +348,7 @@ type Mutation {
   addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
+  addRights(input: [AddRightsInput!]!): AddRightsPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -368,6 +388,7 @@ type Node {
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
   skills: [String!]
+  role_type: RoleType
 }
 
 input NodeFilter {
@@ -419,6 +440,7 @@ input NodePatch {
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
+  role_type: RoleType
 }
 
 input NodeRef {
@@ -441,6 +463,7 @@ input NodeRef {
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
+  role_type: RoleType
 }
 
 enum NodeType {
@@ -496,6 +519,7 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  queryRights(first: Int, offset: Int): [Rights]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
@@ -508,6 +532,32 @@ type Query {
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   getLabel(id: ID, name: String): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
+}
+
+type Rights {
+  open_tension: Boolean
+  close_tension: Boolean
+  create_circle: Boolean
+  remove_circle: Boolean
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
+}
+
+input RightsRef {
+  open_tension: Boolean
+  close_tension: Boolean
+  create_circle: Boolean
+  remove_circle: Boolean
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
+}
+
+enum RoleType {
+  Coordinator
+  Member
+  Guest
 }
 
 input StringExactFilter {
@@ -703,7 +753,10 @@ type User {
   id: ID!
   createdAt: DateTime!
   username: String!
-  fullname: String
+  email: String!
+  emailHash: String
+  emailValidated: Boolean!
+  name: String
   password: String!
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
@@ -715,6 +768,7 @@ input UserFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   username: StringHashFilter
+  email: StringHashFilter
   and: UserFilter
   or: UserFilter
   not: UserFilter
@@ -729,7 +783,9 @@ input UserOrder {
 enum UserOrderable {
   createdAt
   username
-  fullname
+  email
+  emailHash
+  name
   password
   bio
   utc
@@ -737,7 +793,10 @@ enum UserOrderable {
 
 input UserPatch {
   createdAt: DateTime
-  fullname: String
+  email: String
+  emailHash: String
+  emailValidated: Boolean
+  name: String
   password: String
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
@@ -749,7 +808,10 @@ input UserRef {
   id: ID
   createdAt: DateTime
   username: String
-  fullname: String
+  email: String
+  emailHash: String
+  emailValidated: Boolean
+  name: String
   password: String
   roles: [NodeRef!]
   backed_roles: [NodeRef!]

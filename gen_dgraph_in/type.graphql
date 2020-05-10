@@ -21,6 +21,17 @@ type Node {
   first_link: User
   second_link: User
   skills: [String!] @search(by: [term])
+  role_type: RoleType
+}
+
+type Rights {
+  open_tension: Boolean
+  close_tension: Boolean
+  create_circle: Boolean
+  remove_circle: Boolean
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
 }
 
 interface Post {
@@ -56,7 +67,10 @@ type User {
   id: ID!
   createdAt: DateTime! @search
   username: String! @id
-  fullname: String
+  email: String! @search(by: [hash]) 
+  emailHash: String
+  emailValidated: Boolean!
+  name: String
   password: String! 
   roles: [Node!] @hasInverse(field: first_link)
   backed_roles: [Node!] @hasInverse(field: second_link)
@@ -66,13 +80,20 @@ type User {
 
 type Label {
   id: ID!
-  name: String! @id @search(by: [hash])
+  name: String! @id
   color: String
 }
 
 enum NodeType {
   Circle
   Role
+}
+
+enum RoleType {
+  Coordinator
+  Member
+  Guest
+
 }
 
 enum TensionType {

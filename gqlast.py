@@ -336,8 +336,10 @@ class GqlgenSemantics(GraphqlSemantics):
 
         type_name = None
         if name.endswith('Patch'):
+            # This match the input field for the "Updates" and "Remove" mutations
             type_name = re.match(r"(\w*)Patch", name).groups()[0]
         elif name.startswith('Add') and name.endswith('Input'):
+            # This match the input field for the "Adds" mutations
             type_name = re.match(r"Add(\w*)Input", name).groups()[0]
 
         if type_name:

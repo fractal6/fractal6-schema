@@ -12,8 +12,19 @@ directive @input_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 # Ensure the `type_` of a the given (list) Node/Object .See @Debug(#3a99e49)
 directive @input_ensureType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
 
-# Ensure that the user making the request has the given role.
-#directive @hasRole(role: Role!) on FIELD_DEFINITION
+#
+# Auth (UserCtx)
+# Directive code:
+# input_* => apply on all mutation input 
+# inputA_* => apply on on Add mutation (new object)
+# inputP_* => apply on on Patch mutation (update object)
+#
+
+# Authorise action acording to user role.
+directive @input_auth(f: String!, role: RoleType!) on OBJECTI | FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+
+# Authorise update only if the field value match the user credential (userCtx)
+#directive @inputP_self on INPUT_FIELD_DEFINITION # for user update
 
 # Ensure that the user making the request is authenticated.
-#directive @isAuthenticated on FIELD_DEFINITION
+#directive @isAuthenticated on FIELD_DEFINITION # for all mutation

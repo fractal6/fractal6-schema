@@ -1,13 +1,19 @@
+# <!> Code depencies:
+# * fractal6.go/web/auth/model: reference to typeName
+# * fractal6.go/web/auth/dgraph: when typeName is invoked
+# * fractal6-ui.elm: case on enumeration object (NodeType, TensionType ,etc)
+
 #
 # Node Interface
 #
 type Node {
   id: ID!
   createdAt: DateTime! @search
-  createdBy: User!
+  createdBy: User! @input_auth(f: "parent", role: Coordinator)
 
   # DEBUG union for multi edge.
-  parent: Node # If parent is null, Node is a root node !
+  # If parent is null, Node is a root node !
+  parent: Node
   children: [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
 
@@ -30,10 +36,13 @@ type Node {
   # see @Debug(#3a99e49)
   # Circle...
   isRoot: Boolean! @search
+
   # Role...
   first_link: User
   second_link: User
   skills: [String!] @search(by: [term])
+  role_type: RoleType # <- default to guest when union supported
+  #rights: Rights # @future
 }
 
 # @Debug(#3a99e49): when **union** will be available in Draph
@@ -51,6 +60,18 @@ type Node {
 #  skills: [String!] @search(by: [term])
 #  #authority: Authority
 #}
+
+type Rights {
+  open_tension: Boolean
+  close_tension: Boolean
+
+  create_circle: Boolean
+  remove_circle: Boolean
+
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
+}
 
 
 #
@@ -103,8 +124,14 @@ type User {
   id: ID!
   createdAt: DateTime! @search
   username: String! @id      @input_maxLength(f: "username", n: 42)
-  fullname: String           @input_maxLength(f: "fullname", n: 100)
-  password: String! @hidden  @input_maxLength(f: "password", n: 42)
+  # @DEBUG: several @id currentlynot allowed !
+  # Q: how to enfore uniqueness ?
+  email: String! @hidden @search(by: [hash]) @input_maxLength(f: "email", n: 100)
+  emailHash: String @hidden
+  emailValidated: Boolean! @hidden
+  #email: String! @id @hidden @input_maxLength(f: "email", n: 100)
+  name: String               @input_maxLength(f: "name", n: 100)
+  password: String! @hidden  @input_maxLength(f: "password", n: 100)
   roles: [Node!] @hasInverse(field: first_link) @input_ensureType(f: "roles", t: Role)
   backed_roles: [Node!] @hasInverse(field: second_link) @input_ensureType(f: "backed_roles", t: Role)
   bio: String
@@ -118,7 +145,7 @@ type User {
 
 type Label {
   id: ID!
-  name: String! @id @search(by: [hash])
+  name: String! @id 
   color: String
   #project: Project...
 }
@@ -142,3 +169,11 @@ enum TensionType {
   # Alert # BotAlert 
   # Poll ?
 }
+
+enum RoleType {
+  Coordinator
+  Member
+  Guest # where invited and member with no roles goes
+  #Retired
+}
+

@@ -3,6 +3,7 @@
 
 directive @hidden on FIELD_DEFINITION
 
+directive @auth(f: String!, role: RoleType!) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 directive @count(f: String!) on FIELD_DEFINITION
 
 directive @input_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
@@ -29,6 +30,17 @@ type Node {
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
   skills: [String!] @search(by: [term])
+  role_type: RoleType
+}
+
+type Rights {
+  open_tension: Boolean
+  close_tension: Boolean
+  create_circle: Boolean
+  remove_circle: Boolean
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
 }
 
 type Post {
@@ -78,7 +90,10 @@ type User {
   id: ID!
   createdAt: DateTime! @search
   username: String! @id
-  fullname: String
+  email: String! @search(by: [hash]) @hidden
+  emailHash: String
+  emailValidated: Boolean!
+  name: String
   password: String! @hidden
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: first_link)
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: second_link)
@@ -88,13 +103,20 @@ type User {
 
 type Label {
   id: ID!
-  name: String! @id @search(by: [hash])
+  name: String! @id
   color: String
 }
 
 enum NodeType {
   Circle
   Role
+}
+
+enum RoleType {
+  Coordinator
+  Member
+  Guest
+
 }
 
 enum TensionType {
@@ -157,7 +179,7 @@ type AddMandatePayload {
 input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef!
-  parent: NodeRef
+  parent: NodeRef  @auth(f: "parent", role: Coordinator)
   children: [NodeRef!]
   type_: NodeType!
   name: String!
@@ -173,10 +195,26 @@ input AddNodeInput {
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
+  role_type: RoleType
 }
 
 type AddNodePayload {
   node(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  numUids: Int
+}
+
+input AddRightsInput {
+  open_tension: Boolean
+  close_tension: Boolean
+  create_circle: Boolean
+  remove_circle: Boolean
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
+}
+
+type AddRightsPayload {
+  rights(first: Int, offset: Int): [Rights]
   numUids: Int
 }
 
@@ -200,11 +238,14 @@ type AddTensionPayload {
   numUids: Int
 }
 
-input AddUserInput {
+input AddUserInput  {
   createdAt: DateTime!
   username: String! @input_maxLength(f:"username", n:42)
-  fullname: String @input_maxLength(f:"fullname", n:100)
-  password: String! @input_maxLength(f:"password", n:42)
+  email: String! @input_maxLength(f:"email", n:100)
+  emailHash: String
+  emailValidated: Boolean!
+  name: String @input_maxLength(f:"name", n:100)
+  password: String! @input_maxLength(f:"password", n:100)
   roles: [NodeRef!] @input_ensureType(f:"roles", t: Role)
   backed_roles: [NodeRef!] @input_ensureType(f:"backed_roles", t: Role)
   bio: String
@@ -408,9 +449,10 @@ input MandateRef {
 }
 
 type Mutation {
-  addNode(input: [AddNodeInput!]!): AddNodePayload
+  addNode(input: [AddNodeInput!]!): AddNodePayload  
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
+  addRights(input: [AddRightsInput!]!): AddRightsPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -479,6 +521,7 @@ input NodePatch {
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
+  role_type: RoleType
 }
 
 input NodeRef {
@@ -501,6 +544,7 @@ input NodeRef {
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
+  role_type: RoleType
 }
 
 input NodeType_hash {
@@ -543,6 +587,7 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  queryRights(first: Int, offset: Int): [Rights]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
@@ -555,6 +600,16 @@ type Query {
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   getLabel(id: ID, name: String): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
+}
+
+input RightsRef {
+  open_tension: Boolean
+  close_tension: Boolean
+  create_circle: Boolean
+  remove_circle: Boolean
+  create_role: Boolean
+  detach_role: Boolean
+  remove_role: Boolean
 }
 
 input StringExactFilter {
@@ -727,6 +782,7 @@ input UserFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   username: StringHashFilter
+  email: StringHashFilter
   and: UserFilter
   or: UserFilter
   not: UserFilter
@@ -741,7 +797,9 @@ input UserOrder {
 enum UserOrderable {
   createdAt
   username
-  fullname
+  email
+  emailHash
+  name
   password
   bio
   utc
@@ -749,8 +807,11 @@ enum UserOrderable {
 
 input UserPatch {
   createdAt: DateTime
-  fullname: String @input_maxLength(f:"fullname", n:100)
-  password: String @input_maxLength(f:"password", n:42)
+  email: String @input_maxLength(f:"email", n:100)
+  emailHash: String
+  emailValidated: Boolean
+  name: String @input_maxLength(f:"name", n:100)
+  password: String @input_maxLength(f:"password", n:100)
   roles: [NodeRef!] @input_ensureType(f:"roles", t: Role)
   backed_roles: [NodeRef!] @input_ensureType(f:"backed_roles", t: Role)
   bio: String
@@ -761,7 +822,10 @@ input UserRef {
   id: ID
   createdAt: DateTime
   username: String
-  fullname: String
+  email: String
+  emailHash: String
+  emailValidated: Boolean
+  name: String
   password: String
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
