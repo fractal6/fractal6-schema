@@ -3,12 +3,21 @@
 
 directive @hidden on FIELD_DEFINITION
 
-directive @auth(f: String!, role: RoleType!) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 directive @count(f: String!) on FIELD_DEFINITION
 
 directive @input_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
 directive @input_ensureType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
+
+directive @isAuth on OBJECT|FIELD_DEFINITION
+
+directive @input_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
+
+directive @input_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
+
+directive @inputP_isOwner(u: String) on INPUT_FIELD_DEFINITION
+
+directive @inputP_RO on INPUT_FIELD_DEFINITION
 
 type Node {
   id: ID!
@@ -33,22 +42,11 @@ type Node {
   role_type: RoleType
 }
 
-type Rights {
-  open_tension: Boolean
-  close_tension: Boolean
-  create_circle: Boolean
-  remove_circle: Boolean
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
-}
-
 type Post {
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
   message: String @search(by: [fulltext])
-  items: [String!] @search(by: [fulltext])
 }
 
 type Tension {
@@ -64,7 +62,6 @@ type Tension {
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
   message: String @search(by: [fulltext])
-  items: [String!] @search(by: [fulltext])
 }
 
 type Comment {
@@ -72,7 +69,6 @@ type Comment {
   id: ID!
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
-  items: [String!] @search(by: [fulltext])
 }
 
 type Mandate {
@@ -83,16 +79,15 @@ type Mandate {
   createdAt: DateTime! @search
   createdBy(filter: UserFilter): User!
   message: String @search(by: [fulltext])
-  items: [String!] @search(by: [fulltext])
 }
 
 type User {
   id: ID!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   username: String! @id
-  email: String! @search(by: [hash]) @hidden
-  emailHash: String
-  emailValidated: Boolean!
+  email: String! @hidden @search(by: [hash])
+  emailHash: String @hidden
+  emailValidated: Boolean! @hidden
   name: String
   password: String! @hidden
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: first_link)
@@ -112,18 +107,19 @@ enum NodeType {
   Role
 }
 
-enum RoleType {
-  Coordinator
-  Member
-  Guest
-
-}
-
 enum TensionType {
   Governance
   Operational
   Personal
   Help
+
+
+}
+
+enum RoleType {
+  Coordinator
+  Member
+  Guest
 
 
 }
@@ -142,7 +138,6 @@ input AddCommentInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
-  items: [String!]
   _VOID: String
 }
 
@@ -165,7 +160,6 @@ input AddMandateInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
-  items: [String!]
   purpose: String!
   responsabilities: PostRef
   domains: PostRef
@@ -179,23 +173,23 @@ type AddMandatePayload {
 input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef!
-  parent: NodeRef  @auth(f: "parent", role: Coordinator)
-  children: [NodeRef!]
-  type_: NodeType!
-  name: String!
+  parent: NodeRef @input_hasRole(n:["parent"], r: Coordinator)
+  children: [NodeRef!] @input_hasRole(n:["parent"], r: Coordinator)
+  type_: NodeType! @input_hasRole(n:["parent"], r: Coordinator)
+  name: String! @input_hasRole(n:["parent"], r: Coordinator)
   nameid: String!
   rootnameid: String!
-  mandate: MandateRef
+  mandate: MandateRef @input_hasRole(n:["parent"], r: Coordinator)
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
   isRoot: Boolean!
-  first_link: UserRef
-  second_link: UserRef
-  skills: [String!]
-  role_type: RoleType
+  first_link: UserRef @input_hasRole(n:["parent"], r: Coordinator)
+  second_link: UserRef @input_hasRole(n:["parent"], r: Coordinator)
+  skills: [String!] @input_hasRole(n:["parent"], r: Coordinator)
+  role_type: RoleType @input_hasRole(n:["parent"], r: Coordinator)
 }
 
 type AddNodePayload {
@@ -203,33 +197,17 @@ type AddNodePayload {
   numUids: Int
 }
 
-input AddRightsInput {
-  open_tension: Boolean
-  close_tension: Boolean
-  create_circle: Boolean
-  remove_circle: Boolean
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
-}
-
-type AddRightsPayload {
-  rights(first: Int, offset: Int): [Rights]
-  numUids: Int
-}
-
 input AddTensionInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
-  items: [String!]
   nth: String
-  title: String!
-  type_: TensionType!
-  emitter: NodeRef!
-  receiver: NodeRef!
-  comments: [CommentRef!]
-  labels: [LabelRef!]
+  title: String! @input_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  type_: TensionType! @input_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  emitter: NodeRef! @input_hasRoot(n:["emitter"])
+  receiver: NodeRef! @input_hasRoot(n:["receiver"]) @input_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
+  comments: [CommentRef!] @input_hasRoot(n:["emitter","receiver"])
+  labels: [LabelRef!] @input_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   n_comments: Int
 }
 
@@ -238,7 +216,7 @@ type AddTensionPayload {
   numUids: Int
 }
 
-input AddUserInput  {
+input AddUserInput {
   createdAt: DateTime!
   username: String! @input_maxLength(f:"username", n:42)
   email: String! @input_maxLength(f:"email", n:100)
@@ -261,7 +239,6 @@ input CommentFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   and: CommentFilter
   or: CommentFilter
   not: CommentFilter
@@ -276,15 +253,13 @@ input CommentOrder {
 enum CommentOrderable {
   createdAt
   message
-  items
   _VOID
 }
 
 input CommentPatch {
   createdAt: DateTime
   createdBy: UserRef
-  message: String
-  items: [String!]
+  message: String @inputP_isOwner(u:"createdBy")
   _VOID: String
 }
 
@@ -293,7 +268,6 @@ input CommentRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   _VOID: String
 }
 
@@ -407,7 +381,6 @@ input MandateFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   purpose: StringFullTextFilter
   and: MandateFilter
   or: MandateFilter
@@ -423,7 +396,6 @@ input MandateOrder {
 enum MandateOrderable {
   createdAt
   message
-  items
   purpose
 }
 
@@ -431,10 +403,9 @@ input MandatePatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
-  purpose: String
-  responsabilities: PostRef
-  domains: PostRef
+  purpose: String @inputP_RO
+  responsabilities: PostRef @inputP_RO
+  domains: PostRef @inputP_RO
 }
 
 input MandateRef {
@@ -442,17 +413,15 @@ input MandateRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   purpose: String
   responsabilities: PostRef
   domains: PostRef
 }
 
 type Mutation {
-  addNode(input: [AddNodeInput!]!): AddNodePayload  
+  addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
-  addRights(input: [AddRightsInput!]!): AddRightsPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -504,24 +473,24 @@ enum NodeOrderable {
 }
 
 input NodePatch {
-  createdAt: DateTime
-  createdBy: UserRef
-  parent: NodeRef
-  children: [NodeRef!]
-  type_: NodeType
-  name: String
-  rootnameid: String
-  mandate: MandateRef
-  tensions_out: [TensionRef!]
-  tensions_in: [TensionRef!]
+  createdAt: DateTime @inputP_RO
+  createdBy: UserRef @inputP_RO
+  parent: NodeRef @input_hasRole(n:["parent"], r: Coordinator)
+  children: [NodeRef!] @input_hasRole(n:["parent"], r: Coordinator)
+  type_: NodeType @input_hasRole(n:["parent"], r: Coordinator)
+  name: String @input_hasRole(n:["parent"], r: Coordinator)
+  rootnameid: String @inputP_RO
+  mandate: MandateRef @input_hasRole(n:["parent"], r: Coordinator)
+  tensions_out: [TensionRef!] @inputP_RO
+  tensions_in: [TensionRef!] @inputP_RO
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
-  isRoot: Boolean
-  first_link: UserRef
-  second_link: UserRef
-  skills: [String!]
-  role_type: RoleType
+  isRoot: Boolean @inputP_RO
+  first_link: UserRef @input_hasRole(n:["parent"], r: Coordinator)
+  second_link: UserRef @input_hasRole(n:["parent"], r: Coordinator)
+  skills: [String!] @input_hasRole(n:["parent"], r: Coordinator)
+  role_type: RoleType @input_hasRole(n:["parent"], r: Coordinator)
 }
 
 input NodeRef {
@@ -555,7 +524,6 @@ input PostFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   and: PostFilter
   or: PostFilter
   not: PostFilter
@@ -570,14 +538,12 @@ input PostOrder {
 enum PostOrderable {
   createdAt
   message
-  items
 }
 
 input PostPatch {
-  createdAt: DateTime
-  createdBy: UserRef
-  message: String
-  items: [String!]
+  createdAt: DateTime @inputP_RO
+  createdBy: UserRef @inputP_RO
+  message: String @inputP_isOwner(u:"createdBy")
 }
 
 input PostRef {
@@ -587,7 +553,6 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
-  queryRights(first: Int, offset: Int): [Rights]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
@@ -600,16 +565,6 @@ type Query {
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   getLabel(id: ID, name: String): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
-}
-
-input RightsRef {
-  open_tension: Boolean
-  close_tension: Boolean
-  create_circle: Boolean
-  remove_circle: Boolean
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
 }
 
 input StringExactFilter {
@@ -642,7 +597,6 @@ input TensionFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   nth: StringTermFilter
   title: StringTermFilter
   type_: TensionType_hash
@@ -660,7 +614,6 @@ input TensionOrder {
 enum TensionOrderable {
   createdAt
   message
-  items
   nth
   title
   n_comments
@@ -670,14 +623,13 @@ input TensionPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   nth: String
-  title: String
-  type_: TensionType
-  emitter: NodeRef
-  receiver: NodeRef
-  comments: [CommentRef!]
-  labels: [LabelRef!]
+  title: String @input_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  type_: TensionType @input_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  emitter: NodeRef @inputP_RO @input_hasRoot(n:["emitter"])
+  receiver: NodeRef @input_hasRoot(n:["receiver"]) @input_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
+  comments: [CommentRef!] @input_hasRoot(n:["emitter","receiver"])
+  labels: [LabelRef!] @input_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   n_comments: Int
 }
 
@@ -686,7 +638,6 @@ input TensionRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   nth: String
   title: String
   type_: TensionType
@@ -780,7 +731,6 @@ type UpdateUserPayload {
 
 input UserFilter {
   id: [ID!]
-  createdAt: DateTimeFilter
   username: StringHashFilter
   email: StringHashFilter
   and: UserFilter
@@ -806,16 +756,16 @@ enum UserOrderable {
 }
 
 input UserPatch {
-  createdAt: DateTime
-  email: String @input_maxLength(f:"email", n:100)
-  emailHash: String
-  emailValidated: Boolean
-  name: String @input_maxLength(f:"name", n:100)
-  password: String @input_maxLength(f:"password", n:100)
-  roles: [NodeRef!] @input_ensureType(f:"roles", t: Role)
-  backed_roles: [NodeRef!] @input_ensureType(f:"backed_roles", t: Role)
-  bio: String
-  utc: String
+  createdAt: DateTime @inputP_RO
+  email: String @inputP_isOwner @input_maxLength(f:"email", n:100)
+  emailHash: String @inputP_RO
+  emailValidated: Boolean @inputP_RO
+  name: String @inputP_isOwner @input_maxLength(f:"name", n:100)
+  password: String @inputP_isOwner @input_maxLength(f:"password", n:100)
+  roles: [NodeRef!] @inputP_RO @input_ensureType(f:"roles", t: Role)
+  backed_roles: [NodeRef!] @inputP_RO @input_ensureType(f:"backed_roles", t: Role)
+  bio: String @inputP_isOwner
+  utc: String @inputP_isOwner
 }
 
 input UserRef {

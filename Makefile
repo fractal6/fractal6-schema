@@ -4,7 +4,7 @@ dgraphDirectives := $(shell echo "id search hasInverse" | tr " " "|")
 
 .PHONY: gen_dgraph_in/type.graphql
 default: schema
-schema: gqlgen gqlgen2 gen_dgraph_in/type.graphql
+schema: gqlgen2 gen_dgraph_in/type.graphql
 all: dgraph schema # Contains gen_dgraph_in/type.graphql
 
 #
@@ -12,6 +12,7 @@ all: dgraph schema # Contains gen_dgraph_in/type.graphql
 #
 
 gqlgen:
+	# THIS IS FOR TESTING
 	# Generate Gqlgen compatible GraphQL files with custom Query and Mutation.
 	cp -v graphql/dgraph.graphql gen/
 	cp -v graphql/directives.graphql gen/
@@ -22,11 +23,6 @@ gqlgen2:
 	# Generate Gqlgen compatible GraphQL files with dgraph generated Query and Mutation.
 	./gqlast.py <(cat graphql/directives.graphql graphql/type.graphql gen_dgraph_out/schema.graphql) > gen2/schema.graphql
 
-gen_dgraph_in/type.graphql:
-	# Generate Dgraph input GraphQL.
-	./gqlast.py --dgraph graphql/type.graphql > $@
-	@sed -Ei "s/#.*$$//g; s/^directive .*$$//g; s/@($(dgraphDirectives))/§\1/Ig; s/@[[:alnum:]_]+\([^\)]+\)//g; s/@[[:alnum:]_]+//g; s/§(id|search|hasinverse)/@\1/Ig;" $@
-
 dgraph: gen_dgraph_in/type.graphql
 	# Populate dgraph
 	cd ../database
@@ -34,6 +30,11 @@ dgraph: gen_dgraph_in/type.graphql
 	make fetch_schema 
 	cd -
 	cp ../database/schema.graphql gen_dgraph_out/schema.graphql
+
+gen_dgraph_in/type.graphql:
+	# Generate Dgraph input GraphQL.
+	./gqlast.py --dgraph graphql/type.graphql > $@
+	@sed -Ei "s/#.*$$//g; s/^directive .*$$//g; s/@($(dgraphDirectives))/§\1/Ig; s/@[[:alnum:]_]+\([^\)]+\)//g; s/@[[:alnum:]_]+//g; s/§(id|search|hasinverse)/@\1/Ig;" $@
 
 
 #

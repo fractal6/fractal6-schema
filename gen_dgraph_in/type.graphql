@@ -24,22 +24,11 @@ type Node {
   role_type: RoleType
 }
 
-type Rights {
-  open_tension: Boolean
-  close_tension: Boolean
-  create_circle: Boolean
-  remove_circle: Boolean
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
-}
-
 interface Post {
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
   message: String @search(by: [fulltext])
-  items: [String!] @search(by: [fulltext])
 }
 
 type Tension implements Post {
@@ -65,11 +54,11 @@ type Mandate implements Post {
 
 type User {
   id: ID!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   username: String! @id
-  email: String! @search(by: [hash]) 
-  emailHash: String
-  emailValidated: Boolean!
+  email: String!  @search(by: [hash])
+  emailHash: String 
+  emailValidated: Boolean! 
   name: String
   password: String! 
   roles: [Node!] @hasInverse(field: first_link)
@@ -89,18 +78,19 @@ enum NodeType {
   Role
 }
 
-enum RoleType {
-  Coordinator
-  Member
-  Guest
-
-}
-
 enum TensionType {
   Governance
   Operational
   Personal
   Help
+
+
+}
+
+enum RoleType {
+  Coordinator
+  Member
+  Guest
 
 
 }

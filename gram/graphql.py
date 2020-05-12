@@ -188,6 +188,11 @@ class GRAPHQLParser(Parser):
                 with self._option():
                     self._token('[')
                     self._value_()
+
+                    def block0():
+                        self._token(',')
+                        self._value_()
+                    self._closure(block0)
                     self._token(']')
                 self._error('no available options')
 

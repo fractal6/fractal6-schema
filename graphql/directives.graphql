@@ -6,25 +6,50 @@ directive @hidden on FIELD_DEFINITION
 # the current field definition.
 directive @count(f: String!) on FIELD_DEFINITION
 
+# Track this to remove the need of the field string value on input
+# https://github.com/99designs/gqlgen/issues/1084
+
 # Limit the max size of the string given in input
 directive @input_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
 # Ensure the `type_` of a the given (list) Node/Object .See @Debug(#3a99e49)
 directive @input_ensureType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
 
-#
+###########################################################
 # Auth (UserCtx)
 # Directive code:
 # input_* => apply on all mutation input 
 # inputA_* => apply on on Add mutation (new object)
 # inputP_* => apply on on Patch mutation (update object)
+###########################################################
+
+#
+# Add and update/patch mutation
 #
 
-# Authorise action acording to user role.
-directive @input_auth(f: String!, role: RoleType!) on OBJECTI | FIELD_DEFINITION | INPUT_FIELD_DEFINITION
-
-# Authorise update only if the field value match the user credential (userCtx)
-#directive @inputP_self on INPUT_FIELD_DEFINITION # for user update
-
 # Ensure that the user making the request is authenticated.
-#directive @isAuthenticated on FIELD_DEFINITION # for all mutation
+directive @isAuth on OBJECT | FIELD_DEFINITION 
+
+# Authorize mutations if the user has at least:
+# * the given role(r) with the given node(n)
+# * the owner/ship against user(u) (if given)
+directive @input_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
+ 
+# Authorize mutation if user has the same root node than at least 
+# one of the given node(n) (i.e. is in the same organisation)
+directive @input_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
+
+# @TODO/@DEBUG: if node or user fieldid is not given by the selection set
+# do a grpc request to get it !
+
+#
+# Auth for update/patch mutation
+#
+
+# Authorize update only if the field's value match the user(u) credential.
+# If user(u) field is empty, assume a user object.
+directive @inputP_isOwner(u: String) on INPUT_FIELD_DEFINITION # for user update
+
+# Read Only field (Non Patchable)
+directive @inputP_RO on INPUT_FIELD_DEFINITION # for field defined at creation
+

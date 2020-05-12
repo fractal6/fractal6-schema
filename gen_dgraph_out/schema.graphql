@@ -12,7 +12,6 @@ input AddCommentInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
-  items: [String!]
   _VOID: String
 }
 
@@ -35,7 +34,6 @@ input AddMandateInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
-  items: [String!]
   purpose: String!
   responsabilities: PostRef
   domains: PostRef
@@ -73,26 +71,10 @@ type AddNodePayload {
   numUids: Int
 }
 
-input AddRightsInput {
-  open_tension: Boolean
-  close_tension: Boolean
-  create_circle: Boolean
-  remove_circle: Boolean
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
-}
-
-type AddRightsPayload {
-  rights(first: Int, offset: Int): [Rights]
-  numUids: Int
-}
-
 input AddTensionInput {
   createdAt: DateTime!
   createdBy: UserRef!
   message: String
-  items: [String!]
   nth: String
   title: String!
   type_: TensionType!
@@ -132,7 +114,6 @@ type Comment implements Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
-  items: [String!]
   _VOID: String
 }
 
@@ -140,7 +121,6 @@ input CommentFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   and: CommentFilter
   or: CommentFilter
   not: CommentFilter
@@ -155,7 +135,6 @@ input CommentOrder {
 enum CommentOrderable {
   createdAt
   message
-  items
   _VOID
 }
 
@@ -163,7 +142,6 @@ input CommentPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   _VOID: String
 }
 
@@ -172,7 +150,6 @@ input CommentRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   _VOID: String
 }
 
@@ -293,7 +270,6 @@ type Mandate implements Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
-  items: [String!]
   purpose: String!
   responsabilities(filter: PostFilter): Post
   domains(filter: PostFilter): Post
@@ -303,7 +279,6 @@ input MandateFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   purpose: StringFullTextFilter
   and: MandateFilter
   or: MandateFilter
@@ -319,7 +294,6 @@ input MandateOrder {
 enum MandateOrderable {
   createdAt
   message
-  items
   purpose
 }
 
@@ -327,7 +301,6 @@ input MandatePatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   purpose: String
   responsabilities: PostRef
   domains: PostRef
@@ -338,7 +311,6 @@ input MandateRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   purpose: String
   responsabilities: PostRef
   domains: PostRef
@@ -348,7 +320,6 @@ type Mutation {
   addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
-  addRights(input: [AddRightsInput!]!): AddRightsPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -480,14 +451,12 @@ interface Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
-  items: [String!]
 }
 
 input PostFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   and: PostFilter
   or: PostFilter
   not: PostFilter
@@ -502,14 +471,12 @@ input PostOrder {
 enum PostOrderable {
   createdAt
   message
-  items
 }
 
 input PostPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
 }
 
 input PostRef {
@@ -519,7 +486,6 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
-  queryRights(first: Int, offset: Int): [Rights]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
@@ -532,26 +498,6 @@ type Query {
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   getLabel(id: ID, name: String): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
-}
-
-type Rights {
-  open_tension: Boolean
-  close_tension: Boolean
-  create_circle: Boolean
-  remove_circle: Boolean
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
-}
-
-input RightsRef {
-  open_tension: Boolean
-  close_tension: Boolean
-  create_circle: Boolean
-  remove_circle: Boolean
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
 }
 
 enum RoleType {
@@ -591,7 +537,6 @@ type Tension implements Post {
   createdAt: DateTime!
   createdBy(filter: UserFilter): User!
   message: String
-  items: [String!]
   nth: String
   title: String!
   type_: TensionType!
@@ -606,7 +551,6 @@ input TensionFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
-  items: StringFullTextFilter
   nth: StringTermFilter
   title: StringTermFilter
   type_: TensionType_hash
@@ -624,7 +568,6 @@ input TensionOrder {
 enum TensionOrderable {
   createdAt
   message
-  items
   nth
   title
   n_comments
@@ -634,7 +577,6 @@ input TensionPatch {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   nth: String
   title: String
   type_: TensionType
@@ -650,7 +592,6 @@ input TensionRef {
   createdAt: DateTime
   createdBy: UserRef
   message: String
-  items: [String!]
   nth: String
   title: String
   type_: TensionType
@@ -766,7 +707,6 @@ type User {
 
 input UserFilter {
   id: [ID!]
-  createdAt: DateTimeFilter
   username: StringHashFilter
   email: StringHashFilter
   and: UserFilter

@@ -138,7 +138,9 @@ class SemanticFilter:
                         'ast': d,
                         'ast_cpy': d.copy(),
                     })
-                    if dn.startswith('input_'):
+                    if (dn.startswith('input_')
+                        or dn.startswith('inputA_')
+                            or dn.startswith('inputP_')):
                         to_remove.append(i)
 
                 # filter directives
@@ -200,7 +202,7 @@ class SemanticFilter:
 
         return
 
-    def move_directives(self, name_in, data_types_in,
+    def copy_directives(self, name_in, data_types_in,
                         name_out, data_type_out,
                         directive_name):
         _fields = None
@@ -338,12 +340,21 @@ class GqlgenSemantics(GraphqlSemantics):
         if name.endswith('Patch'):
             # This match the input field for the "Updates" and "Remove" mutations
             type_name = re.match(r"(\w*)Patch", name).groups()[0]
+            if type_name:
+                self.sf.copy_directives(type_name, ['types', 'interfaces'],
+                                        name, 'inputs',
+                                        r'^inputP_')
         elif name.startswith('Add') and name.endswith('Input'):
             # This match the input field for the "Adds" mutations
             type_name = re.match(r"Add(\w*)Input", name).groups()[0]
+            if type_name:
+                self.sf.copy_directives(type_name, ['types', 'interfaces'],
+                                        name, 'inputs',
+                                        r'^inputA_')
 
+        # Move all global directive (input_*)
         if type_name:
-            self.sf.move_directives(type_name, ['types', 'interfaces'],
+            self.sf.copy_directives(type_name, ['types', 'interfaces'],
                                     name, 'inputs',
                                     r'^input_')
         return ast

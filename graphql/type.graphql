@@ -8,41 +8,47 @@
 #
 type Node {
   id: ID!
-  createdAt: DateTime! @search
-  createdBy: User! @input_auth(f: "parent", role: Coordinator)
+  createdAt: DateTime! @search @inputP_RO
+  createdBy: User! @inputP_RO
 
-  # DEBUG union for multi edge.
+
+  # Node linking
+  
+  root: Node!
   # If parent is null, Node is a root node !
-  parent: Node
-  children: [Node!] @hasInverse(field: parent)
-  type_: NodeType! @search
+  parent: Node @input_hasRole(n:["parent"], r:Coordinator)
+  # @DEBUG union for multi edge graph
+  children: [Node!] @hasInverse(field: parent) @input_hasRole(n:["parent"], r:Coordinator)
+  type_: NodeType! @search @input_hasRole(n:["parent"], r: Coordinator)
 
-  name: String! @search(by: [term])
-  nameid: String! @id # Used for URI
-  # Index organisation nodes. We use it since it an open issue to get 
-  # recursive object from root node.
-  rootnameid: String! @search(by: [hash]) 
+  # Node naming/ID
+ 
+  # Index nodes nameid since its an open issue 
+  # to recursively get children object in GraphQL.
+  nameid: String! @id  @inputP_RO # Used for URI
+  name: String! @search(by: [term]) @input_hasRole(n:["parent"], r:Coordinator)
+  rootnameid: String! @search(by: [hash]) @inputP_RO
 
-  mandate: Mandate
+  ### Node Data/attributes
+ 
+  mandate: Mandate @input_hasRole(n:["parent"], r:Coordinator)
   # validatedBy  # @DEBUG: Birth logics?
-
-  tensions_out: [Tension!] @hasInverse(field: emitter)
-  tensions_in: [Tension!] @hasInverse(field: receiver)
+  
+  tensions_out: [Tension!] @hasInverse(field: emitter) @inputP_RO
+  tensions_in: [Tension!] @hasInverse(field: receiver) @inputP_RO
 
   n_tensions_out: Int @count(f: tensions_out)
   n_tensions_in: Int @count(f: tensions_in)
   n_children: Int @count(f: children)
 
-  # see @Debug(#3a99e49)
   # Circle...
-  isRoot: Boolean! @search
+  isRoot: Boolean! @search @inputP_RO
 
   # Role...
-  first_link: User
-  second_link: User
-  skills: [String!] @search(by: [term])
-  role_type: RoleType # <- default to guest when union supported
-  #rights: Rights # @future
+  first_link: User @input_hasRole(n:["parent"], r:Coordinator)
+  second_link: User @input_hasRole(n:["parent"], r:Coordinator)
+  skills: [String!] @search(by: [term]) @input_hasRole(n:["parent"], r:Coordinator)
+  role_type: RoleType @input_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
 }
 
 # @Debug(#3a99e49): when **union** will be available in Draph
@@ -61,40 +67,26 @@ type Node {
 #  #authority: Authority
 #}
 
-type Rights {
-  open_tension: Boolean
-  close_tension: Boolean
-
-  create_circle: Boolean
-  remove_circle: Boolean
-
-  create_role: Boolean
-  detach_role: Boolean
-  remove_role: Boolean
-}
-
-
 #
 # Post Interface
 #
 interface Post {
   id: ID!
-  createdAt: DateTime! @search
-  createdBy: User!
-  message: String @search(by: [fulltext])
-  items: [String!] @search(by: [fulltext])# Bullet points
+  createdAt: DateTime! @search @inputP_RO
+  createdBy: User!             @inputP_RO
+  message: String @search(by: [fulltext]) @inputP_isOwner(u:"createdBy")
 }
 
 
 type Tension implements Post {
   #isAnonymous: Boolean!
-  nth: String @search # @id...Upsert in BLL / Used for URI
-  title: String! @search(by: [term])
-  type_: TensionType! @search
-  emitter: Node! # union @debug (circle can emit tensoin (botAlert))
-  receiver: Node! # union @debug (circle or role can receive tension)
-  comments: [Comment!]
-  labels: [Label!]
+  nth: String     @search # @id...Upsert in BLL / Used for URI
+  title: String!  @search(by: [term])  @input_hasRole(n:["emitter"], r:Coordinator, u:"createdBy")
+  type_: TensionType!  @search  @input_hasRole(n:["emitter"], r:Coordinator, u:"createdBy")
+  emitter: Node!   @input_hasRoot(n:["emitter"])  @inputP_RO
+  receiver: Node!  @input_hasRoot(n:["receiver"])  @input_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
+  comments: [Comment!]  @input_hasRoot(n:["emitter", "receiver"])
+  labels: [Label!]  @input_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
 
   # Automatic field
   n_comments: Int  @count(f: comments)
@@ -102,13 +94,13 @@ type Tension implements Post {
 
 
 type Comment implements Post {
-  message: String! @search(by: [fulltext])
+  message: String! @search(by: [fulltext]) @inputP_isOwner(u:"createdBy")
 }
 
 type Mandate implements Post {
-  purpose: String! @search(by: [fulltext])
-  responsabilities: Post
-  domains: Post
+  purpose: String! @search(by: [fulltext]) @inputP_RO
+  responsabilities: Post @inputP_RO
+  domains: Post @inputP_RO
   # Interface:
   #    period:
   #    canValidateNode
@@ -122,20 +114,20 @@ type Mandate implements Post {
 
 type User {
   id: ID!
-  createdAt: DateTime! @search
-  username: String! @id      @input_maxLength(f: "username", n: 42)
+  createdAt: DateTime!  @inputP_RO
+  username: String! @id @inputP_RO @input_maxLength(f:"username", n:42)
   # @DEBUG: several @id currentlynot allowed !
   # Q: how to enfore uniqueness ?
-  email: String! @hidden @search(by: [hash]) @input_maxLength(f: "email", n: 100)
-  emailHash: String @hidden
-  emailValidated: Boolean! @hidden
+  email: String! @hidden @inputP_isOwner @search(by: [hash]) @input_maxLength(f:"email", n:100)
+  emailHash: String @hidden @inputP_RO
+  emailValidated: Boolean! @hidden @inputP_RO
   #email: String! @id @hidden @input_maxLength(f: "email", n: 100)
-  name: String               @input_maxLength(f: "name", n: 100)
-  password: String! @hidden  @input_maxLength(f: "password", n: 100)
-  roles: [Node!] @hasInverse(field: first_link) @input_ensureType(f: "roles", t: Role)
-  backed_roles: [Node!] @hasInverse(field: second_link) @input_ensureType(f: "backed_roles", t: Role)
-  bio: String
-  utc: String
+  name: String              @inputP_isOwner @input_maxLength(f:"name", n:100)
+  password: String! @hidden @inputP_isOwner @input_maxLength(f:"password", n:100)
+  roles: [Node!] @hasInverse(field: first_link)         @inputP_RO @input_ensureType(f:"roles", t:Role)
+  backed_roles: [Node!] @hasInverse(field: second_link) @inputP_RO @input_ensureType(f:"backed_roles", t:Role)
+  bio: String @inputP_isOwner
+  utc: String @inputP_isOwner
   #skills
 }
 
@@ -166,7 +158,7 @@ enum TensionType {
   Operational
   Personal
   Help
-  # Alert # BotAlert 
+  # Alert # BotAlert. Circle can emit tension ?
   # Poll ?
 }
 

@@ -64,7 +64,7 @@ arguments
 
 argument
     =
-    name ':' (value | '[' value ']' )
+    name ':' (value | '[' value {',' value} ']' )
     ;
 
 
