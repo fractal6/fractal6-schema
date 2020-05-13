@@ -1,5 +1,3 @@
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
@@ -7,6 +5,8 @@ directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFI
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -50,8 +50,8 @@ input AddNodeInput {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType!
-  name: String!
   nameid: String!
+  name: String!
   rootnameid: String!
   mandate: MandateRef
   tensions_out: [TensionRef!]
@@ -98,6 +98,7 @@ input AddUserInput {
   emailValidated: Boolean!
   name: String
   password: String!
+  rights: UserRightsRef!
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   bio: String
@@ -106,6 +107,16 @@ input AddUserInput {
 
 type AddUserPayload {
   user(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
+  numUids: Int
+}
+
+input AddUserRightsInput {
+  canLogin: Boolean!
+  canCreateRoot: Boolean!
+}
+
+type AddUserRightsPayload {
+  userrights(first: Int, offset: Int): [UserRights]
   numUids: Int
 }
 
@@ -334,6 +345,7 @@ type Mutation {
   addUser(input: [AddUserInput!]!): AddUserPayload
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
+  addUserRights(input: [AddUserRightsInput!]!): AddUserRightsPayload
   addLabel(input: [AddLabelInput!]!): AddLabelPayload
   updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
@@ -346,8 +358,8 @@ type Node {
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   type_: NodeType!
-  name: String!
   nameid: String!
+  name: String!
   rootnameid: String!
   mandate(filter: MandateFilter): Mandate
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
@@ -366,8 +378,8 @@ input NodeFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   type_: NodeType_hash
-  name: StringTermFilter
   nameid: StringHashFilter
+  name: StringTermFilter
   rootnameid: StringHashFilter
   isRoot: Boolean
   skills: StringTermFilter
@@ -384,8 +396,8 @@ input NodeOrder {
 
 enum NodeOrderable {
   createdAt
-  name
   nameid
+  name
   rootnameid
   n_tensions_out
   n_tensions_in
@@ -421,8 +433,8 @@ input NodeRef {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
-  name: String
   nameid: String
+  name: String
   rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
@@ -496,6 +508,7 @@ type Query {
   queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
+  queryUserRights(first: Int, offset: Int): [UserRights]
   getLabel(id: ID, name: String): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
 }
@@ -699,6 +712,7 @@ type User {
   emailValidated: Boolean!
   name: String
   password: String!
+  rights: UserRights!
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   bio: String
@@ -738,6 +752,7 @@ input UserPatch {
   emailValidated: Boolean
   name: String
   password: String
+  rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   bio: String
@@ -753,9 +768,20 @@ input UserRef {
   emailValidated: Boolean
   name: String
   password: String
+  rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   bio: String
   utc: String
+}
+
+type UserRights {
+  canLogin: Boolean!
+  canCreateRoot: Boolean!
+}
+
+input UserRightsRef {
+  canLogin: Boolean
+  canCreateRoot: Boolean
 }
 

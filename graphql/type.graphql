@@ -11,21 +11,19 @@ type Node {
   createdAt: DateTime! @search @inputP_RO
   createdBy: User! @inputP_RO
 
-
   # Node linking
   
-  root: Node!
   # If parent is null, Node is a root node !
   parent: Node @input_hasRole(n:["parent"], r:Coordinator)
   # @DEBUG union for multi edge graph
   children: [Node!] @hasInverse(field: parent) @input_hasRole(n:["parent"], r:Coordinator)
-  type_: NodeType! @search @input_hasRole(n:["parent"], r: Coordinator)
+  type_: NodeType! @search @input_hasRole(n:["parent"], r:Coordinator)
 
   # Node naming/ID
  
   # Index nodes nameid since its an open issue 
   # to recursively get children object in GraphQL.
-  nameid: String! @id  @inputP_RO # Used for URI
+  nameid: String! @id @inputP_RO # Used for URI
   name: String! @search(by: [term]) @input_hasRole(n:["parent"], r:Coordinator)
   rootnameid: String! @search(by: [hash]) @inputP_RO
 
@@ -41,31 +39,18 @@ type Node {
   n_tensions_in: Int @count(f: tensions_in)
   n_children: Int @count(f: children)
 
-  # Circle...
+  # @Debug(#3a99e49): when **union** will be available in Draph,
+  # Consider using a union `union Node = Role | Circle` with a common SuperNode interface.
+
+  # Circle... is a Supernode/HyperEdge
   isRoot: Boolean! @search @inputP_RO
 
-  # Role...
+  # Role... is a Leaf
   first_link: User @input_hasRole(n:["parent"], r:Coordinator)
   second_link: User @input_hasRole(n:["parent"], r:Coordinator)
   skills: [String!] @search(by: [term]) @input_hasRole(n:["parent"], r:Coordinator)
   role_type: RoleType @input_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
 }
-
-# @Debug(#3a99e49): when **union** will be available in Draph
-# Considered using a union for Role = Circle | Role and _Role interface for both.
-# ...
-## Supernode/Hyperedge
-#type Circle implements Node {
-#  isRoot: Boolean! @search
-#}
-#
-## Leaf
-#type Role implements Node {
-#  first_link: User
-#  second_link: User
-#  skills: [String!] @search(by: [term])
-#  #authority: Authority
-#}
 
 #
 # Post Interface
@@ -79,7 +64,6 @@ interface Post {
 
 
 type Tension implements Post {
-  #isAnonymous: Boolean!
   nth: String     @search # @id...Upsert in BLL / Used for URI
   title: String!  @search(by: [term])  @input_hasRole(n:["emitter"], r:Coordinator, u:"createdBy")
   type_: TensionType!  @search  @input_hasRole(n:["emitter"], r:Coordinator, u:"createdBy")
@@ -124,11 +108,22 @@ type User {
   #email: String! @id @hidden @input_maxLength(f: "email", n: 100)
   name: String              @inputP_isOwner @input_maxLength(f:"name", n:100)
   password: String! @hidden @inputP_isOwner @input_maxLength(f:"password", n:100)
+  #
+  rights: UserRights! @inputP_RO
+  #
   roles: [Node!] @hasInverse(field: first_link)         @inputP_RO @input_ensureType(f:"roles", t:Role)
   backed_roles: [Node!] @hasInverse(field: second_link) @inputP_RO @input_ensureType(f:"backed_roles", t:Role)
   bio: String @inputP_isOwner
   utc: String @inputP_isOwner
   #skills
+}
+
+# Special rights
+type UserRights {
+  # Managed in auth handler functions
+  canLogin: Boolean!
+  # Managed by directives
+  canCreateRoot: Boolean!
 }
 
 #
@@ -168,4 +163,5 @@ enum RoleType {
   Guest # where invited and member with no roles goes
   #Retired
 }
+
 

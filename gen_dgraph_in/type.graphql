@@ -8,8 +8,8 @@ type Node {
   parent: Node
   children: [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
-  name: String! @search(by: [term])
   nameid: String! @id
+  name: String! @search(by: [term])
   rootnameid: String! @search(by: [hash])
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
@@ -61,10 +61,16 @@ type User {
   emailValidated: Boolean! 
   name: String
   password: String! 
+  rights: UserRights!
   roles: [Node!] @hasInverse(field: first_link)
   backed_roles: [Node!] @hasInverse(field: second_link)
   bio: String
   utc: String
+}
+
+type UserRights {
+  canLogin: Boolean!
+  canCreateRoot: Boolean!
 }
 
 type Label {
