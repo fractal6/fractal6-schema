@@ -8,9 +8,9 @@ type Node {
   parent: Node
   children: [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
-  rootnameid: String! @search(by: [hash])
-  nameid: String! @id
   name: String! @search(by: [term])
+  nameid: String! @id
+  rootnameid: String! @search(by: [hash])
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!] @hasInverse(field: receiver)
@@ -26,7 +26,8 @@ type Node {
 }
 
 type NodeCharach {
-  userCanJoin: Boolean
+  userCanJoin: Boolean!
+  mode: NodeMode!
 }
 
 interface Post {
@@ -44,6 +45,7 @@ type Tension implements Post {
   receiver: Node!
   comments: [Comment!]
   labels: [Label!]
+  action: TensionAction
   n_comments: Int 
 }
 
@@ -61,9 +63,9 @@ type User {
   id: ID!
   createdAt: DateTime!
   username: String! @id
-  email: String!  @search(by: [hash])
-  emailHash: String 
   emailValidated: Boolean! 
+  emailHash: String 
+  email: String!  @search(by: [hash])
   name: String
   password: String! 
   rights: UserRights!
@@ -102,6 +104,21 @@ enum RoleType {
   Coordinator
   Member
   Guest
+
+
+}
+
+enum NodeMode {
+  Chaos
+  Coordinated
+}
+
+enum TensionAction {
+
+  NewRole
+  NewCircle
+
+
 
 
 }

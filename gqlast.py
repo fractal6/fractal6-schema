@@ -138,9 +138,9 @@ class SemanticFilter:
                         'ast': d,
                         'ast_cpy': d.copy(),
                     })
-                    if (dn.startswith('input_')
-                        or dn.startswith('inputA_')
-                            or dn.startswith('inputP_')):
+                    if (dn.startswith('alter_')
+                        or dn.startswith('add_')
+                            or dn.startswith('patch_')):
                         to_remove.append(i)
 
                 # filter directives
@@ -343,20 +343,20 @@ class GqlgenSemantics(GraphqlSemantics):
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'],
                                         name, 'inputs',
-                                        r'^inputP_')
+                                        r'^patch_')
         elif name.startswith('Add') and name.endswith('Input'):
             # This match the input field for the "Adds" mutations
             type_name = re.match(r"Add(\w*)Input", name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'],
                                         name, 'inputs',
-                                        r'^inputA_')
+                                        r'^add_')
 
-        # Move all global directive (input_*)
+        # Move all global directive (alter_*)
         if type_name:
             self.sf.copy_directives(type_name, ['types', 'interfaces'],
                                     name, 'inputs',
-                                    r'^input_')
+                                    r'^alter_')
         return ast
 
     def enum_type_definition(self, ast):

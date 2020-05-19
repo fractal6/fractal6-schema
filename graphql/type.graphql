@@ -8,30 +8,30 @@
 #
 type Node {
   id: ID!
-  createdAt: DateTime!  @inputP_RO @search 
-  createdBy: User!      @inputP_RO
+  createdAt: DateTime!          @patch_RO @search 
+  createdBy: User!  @add_isOwner(u:"createdBy") @patch_RO
 
   # Node linking
   
   # If parent is null, Node is a root node !
-  parent: Node       @input_hasRole(n:["parent"], r:Coordinator)
+  parent: Node       @alter_hasRole(n:["parent"], r:Coordinator)
   # @DEBUG union for multi edge graph
-  children: [Node!]  @input_hasRole(n:["parent"], r:Coordinator) @hasInverse(field: parent)
-  type_: NodeType!   @input_hasRole(n:["parent"], r:Coordinator) @search 
+  children: [Node!]  @alter_hasRole(n:["parent"], r:Coordinator) @hasInverse(field: parent)
+  type_: NodeType!   @alter_hasRole(n:["parent"], r:Coordinator) @search 
 
   # Node naming/ID
  
-  name: String!        @input_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
-  nameid: String!      @inputP_RO @id # Used for URI
-  rootnameid: String!  @inputP_RO @search(by: [hash]) # to recursively get children object in GraphQL.
+  name: String!        @alter_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
+  nameid: String!      @patch_RO @id # Used for URI
+  rootnameid: String!  @patch_RO @search(by: [hash]) # to recursively get children object in GraphQL.
 
   ### Node Data/attributes
   
-  mandate: Mandate @input_hasRole(n:["parent"], r:Coordinator)
+  mandate: Mandate @alter_hasRole(n:["parent"], r:Coordinator)
   # validatedBy  # @DEBUG: Birth logics?
   
-  tensions_out: [Tension!]  @hasInverse(field: emitter)  @inputP_RO
-  tensions_in: [Tension!]   @hasInverse(field: receiver) @inputP_RO
+  tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO
+  tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_RO
 
   n_tensions_out: Int  @count(f: tensions_out)
   n_tensions_in: Int   @count(f: tensions_in)
@@ -41,16 +41,16 @@ type Node {
   # Consider using a union `union Node = Role | Circle` with a common SuperNode interface.
 
   # Circle... is a Supernode/HyperEdge
-  isRoot: Boolean!  @inputP_RO @search 
+  isRoot: Boolean!  @patch_RO @search 
 
   # Role... is a Leaf
-  first_link: User     @input_hasRole(n:["parent"], r:Coordinator)
-  second_link: User    @input_hasRole(n:["parent"], r:Coordinator)
-  skills: [String!]    @input_hasRole(n:["parent"], r:Coordinator) @search(by: [term]) 
-  role_type: RoleType  @input_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
+  first_link: User     @alter_hasRole(n:["parent"], r:Coordinator)
+  second_link: User    @alter_hasRole(n:["parent"], r:Coordinator)
+  skills: [String!]    @alter_hasRole(n:["parent"], r:Coordinator) @search(by: [term]) 
+  role_type: RoleType  @alter_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
 
   # Root... inherite dattributes
-  charach: NodeCharach @input_hasRole(n:["parent"], r:Coordinator)
+  charach: NodeCharach @alter_hasRole(n:["parent"], r:Coordinator)
 }
 
 type NodeCharach {
@@ -63,21 +63,21 @@ type NodeCharach {
 #
 interface Post {
   id: ID!
-  createdAt: DateTime! @inputP_RO @search 
-  createdBy: User!     @inputP_RO
-  message: String  @inputP_isOwner(u:"createdBy") @search(by: [fulltext])
+  createdAt: DateTime!  @patch_RO @search 
+  createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
+  message: String  @patch_isOwner(u:"createdBy") @search(by: [fulltext])
 }
 
 
 type Tension implements Post {
   nth: String  @search # @id...Upsert in BLL / Used for URI
-  title: String!        @input_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [term])
-  type_: TensionType!   @input_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
-  emitter: Node!        @input_hasRoot(n:["emitter"])  @inputP_RO
-  receiver: Node!       @input_hasRoot(n:["receiver"])  @input_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
-  comments: [Comment!]  @input_hasRoot(n:["emitter", "receiver"])
-  labels: [Label!]      @input_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
-  action: TensionAction @input_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  title: String!        @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [term])
+  type_: TensionType!   @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
+  emitter: Node!        @alter_hasRoot(n:["emitter"])  @patch_RO
+  receiver: Node!       @alter_hasRoot(n:["receiver"])  @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
+  comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
+  labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  action: TensionAction @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
 
   # Automatic field
   n_comments: Int  @count(f: comments)
@@ -85,13 +85,13 @@ type Tension implements Post {
 
 
 type Comment implements Post {
-  message: String!  @inputP_isOwner(u:"createdBy") @search(by: [fulltext]) 
+  message: String!  @patch_isOwner(u:"createdBy") @search(by: [fulltext]) 
 }
 
 type Mandate implements Post {
-  purpose: String!        @inputP_RO @search(by: [fulltext])
-  responsabilities: Post  @inputP_RO
-  domains: Post           @inputP_RO
+  purpose: String!        @patch_RO @search(by: [fulltext])
+  responsabilities: Post  @patch_RO
+  domains: Post           @patch_RO
   # Interface:
   #    period:
   #    canValidateNode
@@ -105,23 +105,23 @@ type Mandate implements Post {
 
 type User {
   id: ID!
-  createdAt: DateTime!  @inputP_RO
-  username: String!     @inputP_RO @input_maxLength(f:"username", n:42) @id 
+  createdAt: DateTime!  @patch_RO
+  username: String!     @patch_RO @alter_maxLength(f:"username", n:42) @id 
   # @DEBUG: several @id currentlynot allowed !
   # Q: how to enfore uniqueness ?
-  emailValidated: Boolean! @inputP_RO @hidden 
-  emailHash: String        @inputP_RO @hidden 
-  email: String!     @inputP_isOwner @input_maxLength(f:"email", n:100) @hidden @search(by: [hash]) 
-  #email: String!    @input_maxLength(f: "email", n: 100) @hidden  @id # Only one @id allowing in dgraph.
-  name: String       @inputP_isOwner @input_maxLength(f:"name", n:100)
-  password: String!  @inputP_isOwner @input_maxLength(f:"password", n:100) @hidden 
+  emailValidated: Boolean! @patch_RO @hidden 
+  emailHash: String        @patch_RO @hidden 
+  email: String!     @patch_isOwner @alter_maxLength(f:"email", n:100) @hidden @search(by: [hash]) 
+  #email: String!    @alter_maxLength(f: "email", n: 100) @hidden  @id # Only one @id allowing in dgraph.
+  name: String       @patch_isOwner @alter_maxLength(f:"name", n:100)
+  password: String!  @patch_isOwner @alter_maxLength(f:"password", n:100) @hidden 
   #
-  rights: UserRights! @inputP_RO
+  rights: UserRights! @patch_RO
   #
-  roles: [Node!] @hasInverse(field: first_link)         @inputP_RO @input_assertType(f:"roles", t:Role)
-  backed_roles: [Node!] @hasInverse(field: second_link) @inputP_RO @input_assertType(f:"backed_roles", t:Role)
-  bio: String @inputP_isOwner
-  utc: String @inputP_isOwner
+  roles: [Node!] @hasInverse(field: first_link)         @patch_RO @alter_assertType(f:"roles", t:Role)
+  backed_roles: [Node!] @hasInverse(field: second_link) @patch_RO @alter_assertType(f:"backed_roles", t:Role)
+  bio: String @patch_isOwner
+  utc: String @patch_isOwner
   #skills
 }
 

@@ -1,12 +1,12 @@
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -45,7 +45,8 @@ type AddMandatePayload {
 }
 
 input AddNodeCharachInput {
-  userCanJoin: Boolean
+  userCanJoin: Boolean!
+  mode: NodeMode!
 }
 
 type AddNodeCharachPayload {
@@ -59,9 +60,9 @@ input AddNodeInput {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType!
-  rootnameid: String!
-  nameid: String!
   name: String!
+  nameid: String!
+  rootnameid: String!
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -92,6 +93,7 @@ input AddTensionInput {
   receiver: NodeRef!
   comments: [CommentRef!]
   labels: [LabelRef!]
+  action: TensionAction
   n_comments: Int
 }
 
@@ -103,9 +105,9 @@ type AddTensionPayload {
 input AddUserInput {
   createdAt: DateTime!
   username: String!
-  email: String!
-  emailHash: String
   emailValidated: Boolean!
+  emailHash: String
+  email: String!
   name: String
   password: String!
   rights: UserRightsRef!
@@ -369,9 +371,9 @@ type Node {
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   type_: NodeType!
-  rootnameid: String!
-  nameid: String!
   name: String!
+  nameid: String!
+  rootnameid: String!
   mandate(filter: MandateFilter): Mandate
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
@@ -387,25 +389,32 @@ type Node {
 }
 
 type NodeCharach {
-  userCanJoin: Boolean
+  userCanJoin: Boolean!
+  mode: NodeMode!
 }
 
 input NodeCharachRef {
   userCanJoin: Boolean
+  mode: NodeMode
 }
 
 input NodeFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   type_: NodeType_hash
-  rootnameid: StringHashFilter
-  nameid: StringHashFilter
   name: StringTermFilter
+  nameid: StringHashFilter
+  rootnameid: StringHashFilter
   isRoot: Boolean
   skills: StringTermFilter
   and: NodeFilter
   or: NodeFilter
   not: NodeFilter
+}
+
+enum NodeMode {
+  Chaos
+  Coordinated
 }
 
 input NodeOrder {
@@ -416,9 +425,9 @@ input NodeOrder {
 
 enum NodeOrderable {
   createdAt
-  rootnameid
-  nameid
   name
+  nameid
+  rootnameid
   n_tensions_out
   n_tensions_in
   n_children
@@ -431,8 +440,8 @@ input NodePatch {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
-  rootnameid: String
   name: String
+  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -454,9 +463,9 @@ input NodeRef {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
-  rootnameid: String
-  nameid: String
   name: String
+  nameid: String
+  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -580,7 +589,13 @@ type Tension implements Post {
   receiver(filter: NodeFilter): Node!
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
+  action: TensionAction
   n_comments: Int
+}
+
+enum TensionAction {
+  NewRole
+  NewCircle
 }
 
 input TensionFilter {
@@ -620,6 +635,7 @@ input TensionPatch {
   receiver: NodeRef
   comments: [CommentRef!]
   labels: [LabelRef!]
+  action: TensionAction
   n_comments: Int
 }
 
@@ -635,6 +651,7 @@ input TensionRef {
   receiver: NodeRef
   comments: [CommentRef!]
   labels: [LabelRef!]
+  action: TensionAction
   n_comments: Int
 }
 
@@ -730,9 +747,9 @@ type User {
   id: ID!
   createdAt: DateTime!
   username: String!
-  email: String!
-  emailHash: String
   emailValidated: Boolean!
+  emailHash: String
+  email: String!
   name: String
   password: String!
   rights: UserRights!
@@ -760,8 +777,8 @@ input UserOrder {
 enum UserOrderable {
   createdAt
   username
-  email
   emailHash
+  email
   name
   password
   bio
@@ -770,9 +787,9 @@ enum UserOrderable {
 
 input UserPatch {
   createdAt: DateTime
-  email: String
-  emailHash: String
   emailValidated: Boolean
+  emailHash: String
+  email: String
   name: String
   password: String
   rights: UserRightsRef
@@ -786,9 +803,9 @@ input UserRef {
   id: ID
   createdAt: DateTime
   username: String
-  email: String
-  emailHash: String
   emailValidated: Boolean
+  emailHash: String
+  email: String
   name: String
   password: String
   rights: UserRightsRef
