@@ -1,3 +1,5 @@
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
@@ -5,8 +7,6 @@ directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFI
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -44,15 +44,24 @@ type AddMandatePayload {
   numUids: Int
 }
 
+input AddNodeCharachInput {
+  userCanJoin: Boolean
+}
+
+type AddNodeCharachPayload {
+  nodecharach(first: Int, offset: Int): [NodeCharach]
+  numUids: Int
+}
+
 input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef!
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType!
+  rootnameid: String!
   nameid: String!
   name: String!
-  rootnameid: String!
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -64,6 +73,7 @@ input AddNodeInput {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  charach: NodeCharachRef
 }
 
 type AddNodePayload {
@@ -331,6 +341,7 @@ type Mutation {
   addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
+  addNodeCharach(input: [AddNodeCharachInput!]!): AddNodeCharachPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -358,9 +369,9 @@ type Node {
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   type_: NodeType!
+  rootnameid: String!
   nameid: String!
   name: String!
-  rootnameid: String!
   mandate(filter: MandateFilter): Mandate
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
@@ -372,15 +383,24 @@ type Node {
   second_link(filter: UserFilter): User
   skills: [String!]
   role_type: RoleType
+  charach: NodeCharach
+}
+
+type NodeCharach {
+  userCanJoin: Boolean
+}
+
+input NodeCharachRef {
+  userCanJoin: Boolean
 }
 
 input NodeFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   type_: NodeType_hash
+  rootnameid: StringHashFilter
   nameid: StringHashFilter
   name: StringTermFilter
-  rootnameid: StringHashFilter
   isRoot: Boolean
   skills: StringTermFilter
   and: NodeFilter
@@ -396,9 +416,9 @@ input NodeOrder {
 
 enum NodeOrderable {
   createdAt
+  rootnameid
   nameid
   name
-  rootnameid
   n_tensions_out
   n_tensions_in
   n_children
@@ -411,8 +431,8 @@ input NodePatch {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
-  name: String
   rootnameid: String
+  name: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -424,6 +444,7 @@ input NodePatch {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  charach: NodeCharachRef
 }
 
 input NodeRef {
@@ -433,9 +454,9 @@ input NodeRef {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
+  rootnameid: String
   nameid: String
   name: String
-  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -447,6 +468,7 @@ input NodeRef {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  charach: NodeCharachRef
 }
 
 enum NodeType {
@@ -498,6 +520,7 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  queryNodeCharach(first: Int, offset: Int): [NodeCharach]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension

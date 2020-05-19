@@ -7,7 +7,7 @@ directive @count(f: String!) on FIELD_DEFINITION
 
 directive @input_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
-directive @input_ensureType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
+directive @input_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
 
 directive @isAuth on OBJECT|FIELD_DEFINITION
 
@@ -26,9 +26,9 @@ type Node {
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
+  rootnameid: String! @search(by: [hash])
   nameid: String! @id
   name: String! @search(by: [term])
-  rootnameid: String! @search(by: [hash])
   mandate(filter: MandateFilter): Mandate
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: receiver)
@@ -40,6 +40,11 @@ type Node {
   second_link(filter: UserFilter): User
   skills: [String!] @search(by: [term])
   role_type: RoleType
+  charach: NodeCharach
+}
+
+type NodeCharach {
+  userCanJoin: Boolean
 }
 
 type Post {
@@ -130,6 +135,8 @@ enum RoleType {
 
 }
 
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
@@ -137,8 +144,6 @@ directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITI
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -176,15 +181,24 @@ type AddMandatePayload {
   numUids: Int
 }
 
+input AddNodeCharachInput {
+  userCanJoin: Boolean
+}
+
+type AddNodeCharachPayload {
+  nodecharach(first: Int, offset: Int): [NodeCharach]
+  numUids: Int
+}
+
 input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef!
   parent: NodeRef @input_hasRole(n:["parent"], r: Coordinator)
   children: [NodeRef!] @input_hasRole(n:["parent"], r: Coordinator)
   type_: NodeType! @input_hasRole(n:["parent"], r: Coordinator)
+  rootnameid: String!
   nameid: String!
   name: String! @input_hasRole(n:["parent"], r: Coordinator)
-  rootnameid: String!
   mandate: MandateRef @input_hasRole(n:["parent"], r: Coordinator)
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -196,6 +210,7 @@ input AddNodeInput {
   second_link: UserRef @input_hasRole(n:["parent"], r: Coordinator)
   skills: [String!] @input_hasRole(n:["parent"], r: Coordinator)
   role_type: RoleType @input_hasRole(n:["parent"], r: Coordinator)
+  charach: NodeCharachRef @input_hasRole(n:["parent"], r: Coordinator)
 }
 
 type AddNodePayload {
@@ -231,8 +246,8 @@ input AddUserInput {
   name: String @input_maxLength(f:"name", n:100)
   password: String! @input_maxLength(f:"password", n:100)
   rights: UserRightsRef!
-  roles: [NodeRef!] @input_ensureType(f:"roles", t: Role)
-  backed_roles: [NodeRef!] @input_ensureType(f:"backed_roles", t: Role)
+  roles: [NodeRef!] @input_assertType(f:"roles", t: Role)
+  backed_roles: [NodeRef!] @input_assertType(f:"backed_roles", t: Role)
   bio: String
   utc: String
 }
@@ -439,6 +454,7 @@ type Mutation {
   addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
+  addNodeCharach(input: [AddNodeCharachInput!]!): AddNodeCharachPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -459,13 +475,17 @@ type Mutation {
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
 }
 
+input NodeCharachRef {
+  userCanJoin: Boolean
+}
+
 input NodeFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   type_: NodeType_hash
+  rootnameid: StringHashFilter
   nameid: StringHashFilter
   name: StringTermFilter
-  rootnameid: StringHashFilter
   isRoot: Boolean
   skills: StringTermFilter
   and: NodeFilter
@@ -481,9 +501,9 @@ input NodeOrder {
 
 enum NodeOrderable {
   createdAt
+  rootnameid
   nameid
   name
-  rootnameid
   n_tensions_out
   n_tensions_in
   n_children
@@ -496,8 +516,8 @@ input NodePatch {
   parent: NodeRef @input_hasRole(n:["parent"], r: Coordinator)
   children: [NodeRef!] @input_hasRole(n:["parent"], r: Coordinator)
   type_: NodeType @input_hasRole(n:["parent"], r: Coordinator)
-  name: String @input_hasRole(n:["parent"], r: Coordinator)
   rootnameid: String @inputP_RO
+  name: String @input_hasRole(n:["parent"], r: Coordinator)
   mandate: MandateRef @input_hasRole(n:["parent"], r: Coordinator)
   tensions_out: [TensionRef!] @inputP_RO
   tensions_in: [TensionRef!] @inputP_RO
@@ -509,6 +529,7 @@ input NodePatch {
   second_link: UserRef @input_hasRole(n:["parent"], r: Coordinator)
   skills: [String!] @input_hasRole(n:["parent"], r: Coordinator)
   role_type: RoleType @input_hasRole(n:["parent"], r: Coordinator)
+  charach: NodeCharachRef @input_hasRole(n:["parent"], r: Coordinator)
 }
 
 input NodeRef {
@@ -518,9 +539,9 @@ input NodeRef {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType
+  rootnameid: String
   nameid: String
   name: String
-  rootnameid: String
   mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
@@ -532,6 +553,7 @@ input NodeRef {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  charach: NodeCharachRef
 }
 
 input NodeType_hash {
@@ -571,6 +593,7 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  queryNodeCharach(first: Int, offset: Int): [NodeCharach]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
@@ -782,8 +805,8 @@ input UserPatch {
   name: String @inputP_isOwner @input_maxLength(f:"name", n:100)
   password: String @inputP_isOwner @input_maxLength(f:"password", n:100)
   rights: UserRightsRef @inputP_RO
-  roles: [NodeRef!] @inputP_RO @input_ensureType(f:"roles", t: Role)
-  backed_roles: [NodeRef!] @inputP_RO @input_ensureType(f:"backed_roles", t: Role)
+  roles: [NodeRef!] @inputP_RO @input_assertType(f:"roles", t: Role)
+  backed_roles: [NodeRef!] @inputP_RO @input_assertType(f:"backed_roles", t: Role)
   bio: String @inputP_isOwner
   utc: String @inputP_isOwner
 }

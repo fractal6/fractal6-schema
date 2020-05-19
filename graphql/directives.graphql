@@ -13,7 +13,7 @@ directive @count(f: String!) on FIELD_DEFINITION
 directive @input_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
 # Ensure the `type_` of a the given (list) Node/Object .See @Debug(#3a99e49)
-directive @input_ensureType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
+directive @input_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
 
 ###########################################################
 # Auth (UserCtx)
