@@ -8,16 +8,15 @@
 #
 type Node {
   id: ID!
-  createdAt: DateTime!          @patch_RO @search 
-  createdBy: User!  @add_isOwner(u:"createdBy") @patch_RO
+  createdAt: DateTime!  @patch_RO @search 
+  createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
 
   # Node linking
   
   # If parent is null, Node is a root node !
-  parent: Node       @alter_hasRole(n:["parent"], r:Coordinator)
-  # @DEBUG union for multi edge graph
-  children: [Node!]  @alter_hasRole(n:["parent"], r:Coordinator) @hasInverse(field: parent)
-  type_: NodeType!   @alter_hasRole(n:["parent"], r:Coordinator) @search 
+  parent: Node       @patch_RO
+  children: [Node!]  @patch_RO @hasInverse(field: parent) # @DEBUG union for multi edge graph
+  type_: NodeType!   @patch_RO @search 
 
   # Node naming/ID
  
@@ -39,18 +38,19 @@ type Node {
 
   # @Debug(#3a99e49): when **union** will be available in Dgraph,
   # Consider using a union `union Node = Role | Circle` with a common SuperNode interface.
+  # Furthermore, required field (role_type, charac, can have no semantics depending if tis on Role or Circle
 
   # Circle... is a Supernode/HyperEdge
   isRoot: Boolean!  @patch_RO @search 
 
   # Role... is a Leaf
-  first_link: User     @alter_hasRole(n:["parent"], r:Coordinator)
-  second_link: User    @alter_hasRole(n:["parent"], r:Coordinator)
-  skills: [String!]    @alter_hasRole(n:["parent"], r:Coordinator) @search(by: [term]) 
-  role_type: RoleType  @alter_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
+  first_link: User      @alter_hasRole(n:["parent"], r:Coordinator)
+  second_link: User     @alter_hasRole(n:["parent"], r:Coordinator)
+  skills: [String!]     @alter_hasRole(n:["parent"], r:Coordinator) @search(by: [term]) 
+  role_type: RoleType   @alter_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
 
-  # Root... inherite dattributes
-  charach: NodeCharach @alter_hasRole(n:["parent"], r:Coordinator)
+  # Root... inherits attributes
+  charach: NodeCharach!  @alter_hasRole(n:["parent"], r:Coordinator)
 }
 
 type NodeCharach {

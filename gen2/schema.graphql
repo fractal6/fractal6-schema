@@ -213,9 +213,9 @@ type AddNodeCharachPayload {
 input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef! @add_isOwner(u:"createdBy")
-  parent: NodeRef @alter_hasRole(n:["parent"], r: Coordinator)
-  children: [NodeRef!] @alter_hasRole(n:["parent"], r: Coordinator)
-  type_: NodeType! @alter_hasRole(n:["parent"], r: Coordinator)
+  parent: NodeRef
+  children: [NodeRef!]
+  type_: NodeType!
   name: String! @alter_hasRole(n:["parent"], r: Coordinator)
   nameid: String!
   rootnameid: String!
@@ -535,9 +535,9 @@ enum NodeOrderable {
 input NodePatch {
   createdAt: DateTime @patch_RO
   createdBy: UserRef @patch_RO
-  parent: NodeRef @alter_hasRole(n:["parent"], r: Coordinator)
-  children: [NodeRef!] @alter_hasRole(n:["parent"], r: Coordinator)
-  type_: NodeType @alter_hasRole(n:["parent"], r: Coordinator)
+  parent: NodeRef @patch_RO
+  children: [NodeRef!] @patch_RO
+  type_: NodeType @patch_RO
   name: String @alter_hasRole(n:["parent"], r: Coordinator)
   rootnameid: String @patch_RO
   mandate: MandateRef @alter_hasRole(n:["parent"], r: Coordinator)
