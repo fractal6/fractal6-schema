@@ -180,8 +180,8 @@ enum TensionAction {
   # Creating
   NewRole
   NewCircle
-  # Updating
-  # move node
-  # delete node
-  # update mandate
+  # Updating:
+  # * move node parent
+  # * delete node
+  # * update mandate
 }
