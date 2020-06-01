@@ -23,7 +23,7 @@ The `graphql/` directory contains the schema source of the all other schema and 
     * manage duplicated type.
 
 
-### Output directories
+### Output directories
 The generator output files in the following directories:
 
 * `gen/`: Schema used by fractal6.go (glqgen) with custom queries and mutations.
