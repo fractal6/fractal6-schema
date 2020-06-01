@@ -1,6 +1,7 @@
 
-This repos contains the core schema of the project and the binary `gqlast.py` that parses and generates graphql files.
-The graphql/ directory contains the shema source of the all other schemas and are used to generated valid graphql scheme for:
+This repos contains the core schema of the project and the binary `gqlast.py` that parses and generates graphql files from reference schema to libraries in use such as `gqlgen`, `dgraph` and `elm-graphql`.
+
+The `graphql/` directory contains the shema source of the all other schemas and are used to generated valid graphql scheme for:
 
 * dgraph (almost native graphql format): 
     * remove custom directives and comments (see issue #?).
