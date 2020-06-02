@@ -445,7 +445,7 @@ class SDL:
         self.s = settings
 
         if not self.s['FILE']:
-            infile = "type.graphql"
+            raise ValueError("You must provide a GraphQL FILE argument.")
         else:
             infile = self.s['FILE'][0]
 

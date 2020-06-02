@@ -22,7 +22,7 @@ type Node {
   second_link: User
   skills: [String!] @search(by: [term])
   role_type: RoleType
-  charach: NodeCharach
+  charach: NodeCharach!
 }
 
 type NodeCharach {

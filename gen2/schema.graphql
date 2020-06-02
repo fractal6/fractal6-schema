@@ -42,7 +42,7 @@ type Node {
   second_link(filter: UserFilter): User
   skills: [String!] @search(by: [term])
   role_type: RoleType
-  charach: NodeCharach
+  charach: NodeCharach!
 }
 
 type NodeCharach {
@@ -154,15 +154,15 @@ enum TensionAction {
 
 }
 
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -230,7 +230,7 @@ input AddNodeInput {
   second_link: UserRef @alter_hasRole(n:["parent"], r: Coordinator)
   skills: [String!] @alter_hasRole(n:["parent"], r: Coordinator)
   role_type: RoleType @alter_hasRole(n:["parent"], r: Coordinator)
-  charach: NodeCharachRef @alter_hasRole(n:["parent"], r: Coordinator)
+  charach: NodeCharachRef! @alter_hasRole(n:["parent"], r: Coordinator)
 }
 
 type AddNodePayload {
