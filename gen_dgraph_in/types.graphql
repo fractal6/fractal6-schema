@@ -22,10 +22,10 @@ type Node {
   second_link: User
   skills: [String!] @search(by: [term])
   role_type: RoleType
-  charach: NodeCharach!
+  charac: NodeCharac!
 }
 
-type NodeCharach {
+type NodeCharac {
   userCanJoin: Boolean!
   mode: NodeMode!
 }
@@ -55,8 +55,8 @@ _VOID: String
 
 type Mandate implements Post {
   purpose: String! @search(by: [fulltext])
-  responsabilities: Post
-  domains: Post
+  responsabilities: String
+  domains: String
 }
 
 type User {

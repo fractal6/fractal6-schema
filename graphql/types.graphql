@@ -50,10 +50,10 @@ type Node {
   role_type: RoleType   @alter_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
 
   # Root... inherits attributes
-  charach: NodeCharach!  @alter_hasRole(n:["parent"], r:Coordinator)
+  charac: NodeCharac!  @alter_hasRole(n:["parent"], r:Coordinator)
 }
 
-type NodeCharach {
+type NodeCharac {
   userCanJoin: Boolean!
   mode: NodeMode!
 }
@@ -90,8 +90,8 @@ type Comment implements Post {
 
 type Mandate implements Post {
   purpose: String!        @patch_RO @search(by: [fulltext])
-  responsabilities: Post  @patch_RO
-  domains: Post           @patch_RO
+  responsabilities: String  @patch_RO
+  domains: String           @patch_RO
   # Interface:
   #    period:
   #    canValidateNode

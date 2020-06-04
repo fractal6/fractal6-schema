@@ -1,12 +1,12 @@
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -35,8 +35,8 @@ input AddMandateInput {
   createdBy: UserRef!
   message: String
   purpose: String!
-  responsabilities: PostRef
-  domains: PostRef
+  responsabilities: String
+  domains: String
 }
 
 type AddMandatePayload {
@@ -44,13 +44,13 @@ type AddMandatePayload {
   numUids: Int
 }
 
-input AddNodeCharachInput {
+input AddNodeCharacInput {
   userCanJoin: Boolean!
   mode: NodeMode!
 }
 
-type AddNodeCharachPayload {
-  nodecharach(first: Int, offset: Int): [NodeCharach]
+type AddNodeCharacPayload {
+  nodecharac(first: Int, offset: Int): [NodeCharac]
   numUids: Int
 }
 
@@ -74,7 +74,7 @@ input AddNodeInput {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
-  charach: NodeCharachRef!
+  charac: NodeCharacRef!
 }
 
 type AddNodePayload {
@@ -294,8 +294,8 @@ type Mandate implements Post {
   createdBy(filter: UserFilter): User!
   message: String
   purpose: String!
-  responsabilities(filter: PostFilter): Post
-  domains(filter: PostFilter): Post
+  responsabilities: String
+  domains: String
 }
 
 input MandateFilter {
@@ -318,6 +318,8 @@ enum MandateOrderable {
   createdAt
   message
   purpose
+  responsabilities
+  domains
 }
 
 input MandatePatch {
@@ -325,8 +327,8 @@ input MandatePatch {
   createdBy: UserRef
   message: String
   purpose: String
-  responsabilities: PostRef
-  domains: PostRef
+  responsabilities: String
+  domains: String
 }
 
 input MandateRef {
@@ -335,15 +337,15 @@ input MandateRef {
   createdBy: UserRef
   message: String
   purpose: String
-  responsabilities: PostRef
-  domains: PostRef
+  responsabilities: String
+  domains: String
 }
 
 type Mutation {
   addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
-  addNodeCharach(input: [AddNodeCharachInput!]!): AddNodeCharachPayload
+  addNodeCharac(input: [AddNodeCharacInput!]!): AddNodeCharacPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -385,15 +387,15 @@ type Node {
   second_link(filter: UserFilter): User
   skills: [String!]
   role_type: RoleType
-  charach: NodeCharach!
+  charac: NodeCharac!
 }
 
-type NodeCharach {
+type NodeCharac {
   userCanJoin: Boolean!
   mode: NodeMode!
 }
 
-input NodeCharachRef {
+input NodeCharacRef {
   userCanJoin: Boolean
   mode: NodeMode
 }
@@ -453,7 +455,7 @@ input NodePatch {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
-  charach: NodeCharachRef
+  charac: NodeCharacRef
 }
 
 input NodeRef {
@@ -477,7 +479,7 @@ input NodeRef {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
-  charach: NodeCharachRef
+  charac: NodeCharacRef
 }
 
 enum NodeType {
@@ -529,7 +531,7 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
-  queryNodeCharach(first: Int, offset: Int): [NodeCharach]
+  queryNodeCharac(first: Int, offset: Int): [NodeCharac]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
