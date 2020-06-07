@@ -5,6 +5,8 @@ directive @hidden on FIELD_DEFINITION
 
 directive @count(f: String!) on FIELD_DEFINITION
 
+directive @add_addNodeHook on INPUT_FIELD_DEFINITION
+
 directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
 directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
@@ -65,7 +67,9 @@ type Tension {
   receiver(filter: NodeFilter): Node!
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
+  status: TensionStatus! @search
   action: TensionAction
+  mandate(filter: MandateFilter): Mandate
   n_comments: Int @count(f: comments)
   id: ID!
   createdAt: DateTime! @search
@@ -81,13 +85,11 @@ type Comment {
 }
 
 type Mandate {
-  purpose: String! @search(by: [fulltext])
-  responsabilities: String
-  domains: String
   id: ID!
-  createdAt: DateTime! @search
-  createdBy(filter: UserFilter): User!
-  message: String @search(by: [fulltext])
+  tensions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]! @hasInverse(field: mandate)
+  purpose: String! @search(by: [fulltext])
+  responsabilities: String!
+  domains: String!
 }
 
 type User {
@@ -144,6 +146,11 @@ enum NodeMode {
   Coordinated
 }
 
+enum TensionStatus {
+  Open
+  Closed
+}
+
 enum TensionAction {
 
   NewRole
@@ -154,8 +161,6 @@ enum TensionAction {
 
 }
 
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
-
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
@@ -163,6 +168,8 @@ directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -187,12 +194,10 @@ type AddLabelPayload {
 }
 
 input AddMandateInput {
-  createdAt: DateTime!
-  createdBy: UserRef!
-  message: String
+  tensions: [TensionRef!]!
   purpose: String!
-  responsabilities: String
-  domains: String
+  responsabilities: String!
+  domains: String!
 }
 
 type AddMandatePayload {
@@ -249,7 +254,9 @@ input AddTensionInput {
   receiver: NodeRef! @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
   comments: [CommentRef!] @alter_hasRoot(n:["emitter","receiver"])
   labels: [LabelRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   action: TensionAction @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  mandate: MandateRef @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   n_comments: Int
 }
 
@@ -432,8 +439,6 @@ input LabelRef {
 
 input MandateFilter {
   id: [ID!]
-  createdAt: DateTimeFilter
-  message: StringFullTextFilter
   purpose: StringFullTextFilter
   and: MandateFilter
   or: MandateFilter
@@ -447,17 +452,13 @@ input MandateOrder {
 }
 
 enum MandateOrderable {
-  createdAt
-  message
   purpose
   responsabilities
   domains
 }
 
 input MandatePatch {
-  createdAt: DateTime
-  createdBy: UserRef
-  message: String
+  tensions: [TensionRef!]
   purpose: String @patch_RO
   responsabilities: String @patch_RO
   domains: String @patch_RO
@@ -465,9 +466,7 @@ input MandatePatch {
 
 input MandateRef {
   id: ID
-  createdAt: DateTime
-  createdBy: UserRef
-  message: String
+  tensions: [TensionRef!]
   purpose: String
   responsabilities: String
   domains: String
@@ -666,6 +665,7 @@ input TensionFilter {
   nth: StringTermFilter
   title: StringTermFilter
   type_: TensionType_hash
+  status: TensionStatus_hash
   and: TensionFilter
   or: TensionFilter
   not: TensionFilter
@@ -696,7 +696,9 @@ input TensionPatch {
   receiver: NodeRef @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
   comments: [CommentRef!] @alter_hasRoot(n:["emitter","receiver"])
   labels: [LabelRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  status: TensionStatus @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   action: TensionAction @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  mandate: MandateRef @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   n_comments: Int
 }
 
@@ -712,8 +714,14 @@ input TensionRef {
   receiver: NodeRef
   comments: [CommentRef!]
   labels: [LabelRef!]
+  status: TensionStatus
   action: TensionAction
+  mandate: MandateRef
   n_comments: Int
+}
+
+input TensionStatus_hash {
+  eq: TensionStatus!
 }
 
 input TensionType_hash {

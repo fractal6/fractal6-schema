@@ -21,13 +21,12 @@ type Node {
   # Node naming/ID
  
   name: String!        @alter_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
-  nameid: String!      @patch_RO @id # Used for URI
+  nameid: String!      @patch_RO @id
   rootnameid: String!  @patch_RO @search(by: [hash]) # to recursively get children object in GraphQL.
 
   ### Node Data/attributes
   
   mandate: Mandate @alter_hasRole(n:["parent"], r:Coordinator)
-  # validatedBy  # @DEBUG: Birth logics?
   
   tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO
   tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_RO
@@ -70,14 +69,16 @@ interface Post {
 
 
 type Tension implements Post {
-  nth: String  @search # @id...Upsert in BLL / Used for URI
+  nth: String  @search # @id...Upsert in BLL
   title: String!        @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [term])
   type_: TensionType!   @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
-  emitter: Node!        @alter_hasRoot(n:["emitter"])  @patch_RO
-  receiver: Node!       @alter_hasRoot(n:["receiver"])  @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
+  emitter: Node!        @alter_hasRoot(n:["emitter"]) @patch_RO
+  receiver: Node!       @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
   comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
   labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  status: TensionStatus! @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy") @search
   action: TensionAction @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  mandate: Mandate      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
 
   # Automatic field
   n_comments: Int  @count(f: comments)
@@ -88,15 +89,14 @@ type Comment implements Post {
   message: String!  @patch_isOwner(u:"createdBy") @search(by: [fulltext]) 
 }
 
-type Mandate implements Post {
-  purpose: String!        @patch_RO @search(by: [fulltext])
-  responsabilities: String  @patch_RO
-  domains: String           @patch_RO
-  # Interface:
-  #    period:
-  #    canValidateNode
-  #    number of validation to be modified ? ....
-  #    election ???
+type Mandate {
+  id: ID!
+  tensions: [Tension!]! @hasInverse(field: mandate)
+  purpose: String!           @patch_RO @search(by: [fulltext])
+  responsabilities: String!  @patch_RO
+  domains: String!           @patch_RO
+  # period of validity ? @future
+  # validatedBy  ? @future (vote process...)
 }
 
 #
@@ -174,6 +174,11 @@ enum RoleType {
 enum NodeMode {
   Chaos
   Coordinated
+}
+
+enum TensionStatus {
+  Open
+  Closed
 }
 
 enum TensionAction {

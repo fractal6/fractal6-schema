@@ -45,7 +45,9 @@ type Tension implements Post {
   receiver: Node!
   comments: [Comment!]
   labels: [Label!]
+  status: TensionStatus! @search
   action: TensionAction
+  mandate: Mandate
   n_comments: Int 
 }
 
@@ -53,10 +55,12 @@ type Comment implements Post{
 _VOID: String
 }
 
-type Mandate implements Post {
+type Mandate {
+  id: ID!
+  tensions: [Tension!]! @hasInverse(field: mandate)
   purpose: String! @search(by: [fulltext])
-  responsabilities: String
-  domains: String
+  responsabilities: String!
+  domains: String!
 }
 
 type User {
@@ -111,6 +115,11 @@ enum RoleType {
 enum NodeMode {
   Chaos
   Coordinated
+}
+
+enum TensionStatus {
+  Open
+  Closed
 }
 
 enum TensionAction {
