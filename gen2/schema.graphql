@@ -5,7 +5,7 @@ directive @hidden on FIELD_DEFINITION
 
 directive @count(f: String!) on FIELD_DEFINITION
 
-directive @add_addNodeHook on INPUT_FIELD_DEFINITION
+directive @hook_addNode on ARGUMENT_DEFINITION
 
 directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
@@ -14,6 +14,8 @@ directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
 directive @isAuth on OBJECT|FIELD_DEFINITION
 
 directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
+
+directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
 
 directive @alter_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
 
@@ -43,7 +45,7 @@ type Node {
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
   skills: [String!] @search(by: [term])
-  role_type: RoleType
+  role_type: RoleType @search
   charac: NodeCharac!
 }
 
@@ -88,8 +90,9 @@ type Mandate {
   id: ID!
   tensions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]! @hasInverse(field: mandate)
   purpose: String! @search(by: [fulltext])
-  responsabilities: String!
-  domains: String!
+  responsabilities: String
+  domains: String
+  policies: String
 }
 
 type User {
@@ -161,15 +164,15 @@ enum TensionAction {
 
 }
 
-directive @id on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+
+directive @id on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -196,8 +199,9 @@ type AddLabelPayload {
 input AddMandateInput {
   tensions: [TensionRef!]!
   purpose: String!
-  responsabilities: String!
-  domains: String!
+  responsabilities: String
+  domains: String
+  policies: String
 }
 
 type AddMandatePayload {
@@ -221,21 +225,21 @@ input AddNodeInput {
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType!
-  name: String! @alter_hasRole(n:["parent"], r: Coordinator)
+  name: String!
   nameid: String!
   rootnameid: String!
-  mandate: MandateRef @alter_hasRole(n:["parent"], r: Coordinator)
+  mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
   isRoot: Boolean!
-  first_link: UserRef @alter_hasRole(n:["parent"], r: Coordinator)
-  second_link: UserRef @alter_hasRole(n:["parent"], r: Coordinator)
-  skills: [String!] @alter_hasRole(n:["parent"], r: Coordinator)
-  role_type: RoleType @alter_hasRole(n:["parent"], r: Coordinator)
-  charac: NodeCharacRef! @alter_hasRole(n:["parent"], r: Coordinator)
+  first_link: UserRef
+  second_link: UserRef
+  skills: [String!]
+  role_type: RoleType
+  charac: NodeCharacRef!
 }
 
 type AddNodePayload {
@@ -455,6 +459,7 @@ enum MandateOrderable {
   purpose
   responsabilities
   domains
+  policies
 }
 
 input MandatePatch {
@@ -462,6 +467,7 @@ input MandatePatch {
   purpose: String @patch_RO
   responsabilities: String @patch_RO
   domains: String @patch_RO
+  policies: String @patch_RO
 }
 
 input MandateRef {
@@ -470,10 +476,11 @@ input MandateRef {
   purpose: String
   responsabilities: String
   domains: String
+  policies: String
 }
 
 type Mutation {
-  addNode(input: [AddNodeInput!]!): AddNodePayload
+  addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
   addNodeCharac(input: [AddNodeCharacInput!]!): AddNodeCharacPayload
@@ -539,20 +546,20 @@ input NodePatch {
   parent: NodeRef @patch_RO
   children: [NodeRef!] @patch_RO
   type_: NodeType @patch_RO
-  name: String @alter_hasRole(n:["parent"], r: Coordinator)
+  name: String @patch_hasRole(n:["parent"], r: Coordinator)
   rootnameid: String @patch_RO
-  mandate: MandateRef @alter_hasRole(n:["parent"], r: Coordinator)
+  mandate: MandateRef @patch_hasRole(n:["parent"], r: Coordinator)
   tensions_out: [TensionRef!] @patch_RO
   tensions_in: [TensionRef!] @patch_RO
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
   isRoot: Boolean @patch_RO
-  first_link: UserRef @alter_hasRole(n:["parent"], r: Coordinator)
-  second_link: UserRef @alter_hasRole(n:["parent"], r: Coordinator)
-  skills: [String!] @alter_hasRole(n:["parent"], r: Coordinator)
-  role_type: RoleType @alter_hasRole(n:["parent"], r: Coordinator)
-  charac: NodeCharacRef @alter_hasRole(n:["parent"], r: Coordinator)
+  first_link: UserRef @patch_hasRole(n:["parent"], r: Coordinator)
+  second_link: UserRef @patch_hasRole(n:["parent"], r: Coordinator)
+  skills: [String!] @patch_hasRole(n:["parent"], r: Coordinator)
+  role_type: RoleType @patch_hasRole(n:["parent"], r: Coordinator)
+  charac: NodeCharacRef @patch_hasRole(n:["parent"], r: Coordinator)
 }
 
 input NodeRef {

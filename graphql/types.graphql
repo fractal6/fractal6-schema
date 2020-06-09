@@ -20,13 +20,13 @@ type Node {
 
   # Node naming/ID
  
-  name: String!        @alter_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
+  name: String!        @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
   nameid: String!      @patch_RO @id
   rootnameid: String!  @patch_RO @search(by: [hash]) # to recursively get children object in GraphQL.
 
   ### Node Data/attributes
   
-  mandate: Mandate @alter_hasRole(n:["parent"], r:Coordinator)
+  mandate: Mandate @patch_hasRole(n:["parent"], r:Coordinator)
   
   tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO
   tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_RO
@@ -43,13 +43,13 @@ type Node {
   isRoot: Boolean!  @patch_RO @search 
 
   # Role... is a Leaf
-  first_link: User      @alter_hasRole(n:["parent"], r:Coordinator)
-  second_link: User     @alter_hasRole(n:["parent"], r:Coordinator)
-  skills: [String!]     @alter_hasRole(n:["parent"], r:Coordinator) @search(by: [term]) 
-  role_type: RoleType   @alter_hasRole(n:["parent"], r:Coordinator) # <- default to guest when union supported
+  first_link: User      @patch_hasRole(n:["parent"], r:Coordinator)
+  second_link: User     @patch_hasRole(n:["parent"], r:Coordinator)
+  skills: [String!]     @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term]) 
+  role_type: RoleType   @patch_hasRole(n:["parent"], r:Coordinator) @search
 
   # Root... inherits attributes
-  charac: NodeCharac!  @alter_hasRole(n:["parent"], r:Coordinator)
+  charac: NodeCharac!  @patch_hasRole(n:["parent"], r:Coordinator)
 }
 
 type NodeCharac {
@@ -93,8 +93,9 @@ type Mandate {
   id: ID!
   tensions: [Tension!]! @hasInverse(field: mandate)
   purpose: String!           @patch_RO @search(by: [fulltext])
-  responsabilities: String!  @patch_RO
-  domains: String!           @patch_RO
+  responsabilities: String  @patch_RO
+  domains: String           @patch_RO
+  policies: String           @patch_RO
   # period of validity ? @future
   # validatedBy  ? @future (vote process...)
 }
@@ -166,8 +167,8 @@ enum TensionType {
 
 enum RoleType {
   Coordinator
-  Member
-  Guest # member with no roles /Peer
+  Member # memner with roles
+  Guest # member with no roles
   #Retired
 }
 

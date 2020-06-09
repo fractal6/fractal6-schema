@@ -21,7 +21,7 @@ type Node {
   first_link: User
   second_link: User
   skills: [String!] @search(by: [term])
-  role_type: RoleType
+  role_type: RoleType @search
   charac: NodeCharac!
 }
 
@@ -59,8 +59,9 @@ type Mandate {
   id: ID!
   tensions: [Tension!]! @hasInverse(field: mandate)
   purpose: String! @search(by: [fulltext])
-  responsabilities: String!
-  domains: String!
+  responsabilities: String
+  domains: String
+  policies: String
 }
 
 type User {

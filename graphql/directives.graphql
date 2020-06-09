@@ -6,7 +6,7 @@ directive @hidden on FIELD_DEFINITION
 # the current field definition.
 directive @count(f: String!) on FIELD_DEFINITION
 
-directive @add_addNodeHook on INPUT_FIELD_DEFINITION
+directive @hook_addNode on ARGUMENT_DEFINITION
 
 # Track this to remove the need of the field string value on input
 # https://github.com/99designs/gqlgen/issues/1084
@@ -36,6 +36,7 @@ directive @isAuth on OBJECT | FIELD_DEFINITION
 # * the given role(r) with the given node(n)
 # * the owner/ship against user(u) (if given)
 directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
+directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
  
 # Authorize mutation if user has the same root node than at least 
 # one of the given node(n) (i.e. is in the same organisation)
