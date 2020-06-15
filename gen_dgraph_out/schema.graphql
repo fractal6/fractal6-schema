@@ -96,6 +96,8 @@ input AddTensionInput {
   action: TensionAction
   mandate: MandateRef
   n_comments: Int
+  emitterid: String!
+  receiverid: String!
 }
 
 type AddTensionPayload {
@@ -404,6 +406,7 @@ input NodeFilter {
   rootnameid: StringHashFilter
   isRoot: Boolean
   skills: StringTermFilter
+  role_type: RoleType_hash
   and: NodeFilter
   or: NodeFilter
   not: NodeFilter
@@ -544,8 +547,13 @@ type Query {
 
 enum RoleType {
   Coordinator
+  Peer
   Member
   Guest
+}
+
+input RoleType_hash {
+  eq: RoleType
 }
 
 input StringExactFilter {
@@ -563,6 +571,11 @@ input StringFullTextFilter {
 
 input StringHashFilter {
   eq: String
+}
+
+input StringHashFilter_StringRegExpFilter {
+  eq: String
+  regexp: String
 }
 
 input StringRegExpFilter {
@@ -590,6 +603,8 @@ type Tension implements Post {
   action: TensionAction
   mandate(filter: MandateFilter): Mandate
   n_comments: Int
+  emitterid: String!
+  receiverid: String!
 }
 
 enum TensionAction {
@@ -605,6 +620,8 @@ input TensionFilter {
   title: StringTermFilter
   type_: TensionType_hash
   status: TensionStatus_hash
+  emitterid: StringHashFilter_StringRegExpFilter
+  receiverid: StringHashFilter_StringRegExpFilter
   and: TensionFilter
   or: TensionFilter
   not: TensionFilter
@@ -622,6 +639,8 @@ enum TensionOrderable {
   nth
   title
   n_comments
+  emitterid
+  receiverid
 }
 
 input TensionPatch {
@@ -639,6 +658,8 @@ input TensionPatch {
   action: TensionAction
   mandate: MandateRef
   n_comments: Int
+  emitterid: String
+  receiverid: String
 }
 
 input TensionRef {
@@ -657,6 +678,8 @@ input TensionRef {
   action: TensionAction
   mandate: MandateRef
   n_comments: Int
+  emitterid: String
+  receiverid: String
 }
 
 enum TensionStatus {

@@ -72,7 +72,7 @@ type Tension implements Post {
   nth: String  @search # @id...Upsert in BLL
   title: String!        @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [term])
   type_: TensionType!   @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
-  emitter: Node!        @alter_hasRoot(n:["emitter"]) @patch_RO
+  emitter: Node!        @alter_hasRoot(n:["emitter"]) @patch_RO @hasInverse(field: tensions_out)
   receiver: Node!       @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
   comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
   labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
@@ -80,8 +80,13 @@ type Tension implements Post {
   action: TensionAction @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
   mandate: Mandate      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
 
+  # Helper/@debug Fields
+  # ---
   # Automatic field
   n_comments: Int  @count(f: comments)
+
+  emitterid: String! @search(by: [hash, regexp])
+  receiverid: String! @search(by: [hash, regexp])
 }
 
 
@@ -165,9 +170,10 @@ enum TensionType {
   # Poll ?
 }
 
-enum RoleType {
+enum RoleType { # LeafType
   Coordinator
-  Member # memner with roles
+  Peer # Regular Role
+  Member # member with roles
   Guest # member with no roles
   #Retired
 }

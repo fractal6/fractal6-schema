@@ -7,6 +7,8 @@ directive @hidden on FIELD_DEFINITION
 directive @count(f: String!) on FIELD_DEFINITION
 
 directive @hook_addNode on ARGUMENT_DEFINITION
+# @DEBUG: replace the following query in gen2.
+# addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
 
 # Track this to remove the need of the field string value on input
 # https://github.com/99designs/gqlgen/issues/1084

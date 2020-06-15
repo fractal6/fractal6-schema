@@ -9,7 +9,7 @@ type Node {
   children: [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
   name: String! @search(by: [term])
-  nameid: String! @id
+  nameid: String! @id @search(by: [hash])
   rootnameid: String! @search(by: [hash])
   mandate: Mandate
   tensions_out: [Tension!] @hasInverse(field: emitter)
@@ -49,6 +49,8 @@ type Tension implements Post {
   action: TensionAction
   mandate: Mandate
   n_comments: Int 
+  emitterid: String! @search(by: [hash, regexp])
+  receiverid: String! @search(by: [hash, regexp])
 }
 
 type Comment implements Post{
@@ -106,8 +108,12 @@ enum TensionType {
 }
 
 enum RoleType {
+
   Coordinator
+  Peer
+
   Member
+
   Guest
 
 
