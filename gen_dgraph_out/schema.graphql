@@ -617,7 +617,7 @@ input TensionFilter {
   createdAt: DateTimeFilter
   message: StringFullTextFilter
   nth: StringTermFilter
-  title: StringTermFilter
+  title: StringFullTextFilter
   type_: TensionType_hash
   status: TensionStatus_hash
   emitterid: StringHashFilter_StringRegExpFilter

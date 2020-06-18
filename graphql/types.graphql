@@ -70,9 +70,9 @@ interface Post {
 
 type Tension implements Post {
   nth: String  @search # @id...Upsert in BLL
-  title: String!        @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [term])
+  title: String!        @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
   type_: TensionType!   @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
-  emitter: Node!        @alter_hasRoot(n:["emitter"]) @patch_RO @hasInverse(field: tensions_out)
+  emitter: Node!        @alter_hasRoot(n:["emitter"]) @patch_RO
   receiver: Node!       @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
   comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
   labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
