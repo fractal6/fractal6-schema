@@ -1,12 +1,20 @@
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
+directive @remote on OBJECT | INTERFACE
+
+directive @cascade on FIELD
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
+
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -49,7 +57,7 @@ input AddNodeCharacInput {
 }
 
 type AddNodeCharacPayload {
-  nodecharac(first: Int, offset: Int): [NodeCharac]
+  nodeCharac(filter: NodeCharacFilter, first: Int, offset: Int): [NodeCharac]
   numUids: Int
 }
 
@@ -62,13 +70,15 @@ input AddNodeInput {
   name: String!
   nameid: String!
   rootnameid: String!
-  mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
+  stats: NodeStatsRef
   isRoot: Boolean!
+  isPrivate: Boolean!
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
@@ -81,6 +91,18 @@ type AddNodePayload {
   numUids: Int
 }
 
+input AddNodeStatsInput {
+  n_member: Int
+  n_guest: Int
+  n_circle: Int
+  n_role: Int
+}
+
+type AddNodeStatsPayload {
+  nodeStats(order: NodeStatsOrder, first: Int, offset: Int): [NodeStats]
+  numUids: Int
+}
+
 input AddTensionInput {
   createdAt: DateTime!
   createdBy: UserRef!
@@ -89,15 +111,15 @@ input AddTensionInput {
   title: String!
   type_: TensionType!
   emitter: NodeRef!
+  emitterid: String!
   receiver: NodeRef!
+  receiverid: String!
   comments: [CommentRef!]
   labels: [LabelRef!]
   status: TensionStatus!
   action: TensionAction
   mandate: MandateRef
   n_comments: Int
-  emitterid: String!
-  receiverid: String!
 }
 
 type AddTensionPayload {
@@ -108,11 +130,11 @@ type AddTensionPayload {
 input AddUserInput {
   createdAt: DateTime!
   username: String!
-  emailValidated: Boolean!
-  emailHash: String
-  email: String!
   name: String
   password: String!
+  email: String!
+  emailHash: String
+  emailValidated: Boolean!
   rights: UserRightsRef!
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
@@ -131,8 +153,15 @@ input AddUserRightsInput {
 }
 
 type AddUserRightsPayload {
-  userrights(first: Int, offset: Int): [UserRights]
+  userRights(first: Int, offset: Int): [UserRights]
   numUids: Int
+}
+
+input AuthRule {
+  and: [AuthRule]
+  or: [AuthRule]
+  not: AuthRule
+  rule: String
 }
 
 type Comment implements Post {
@@ -179,6 +208,17 @@ input CommentRef {
   _VOID: String
 }
 
+input CustomHTTP {
+  url: String!
+  method: HTTPMethod!
+  body: String
+  graphql: String
+  mode: Mode
+  forwardHeaders: [String!]
+  secretHeaders: [String!]
+  skipIntrospection: Boolean
+}
+
 scalar DateTime
 
 input DateTimeFilter {
@@ -200,6 +240,11 @@ type DeleteLabelPayload {
 }
 
 type DeleteMandatePayload {
+  msg: String
+  numUids: Int
+}
+
+type DeleteNodeCharacPayload {
   msg: String
   numUids: Int
 }
@@ -246,6 +291,14 @@ input FloatFilter {
   lt: Float
   ge: Float
   gt: Float
+}
+
+enum HTTPMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
 }
 
 input IntFilter {
@@ -338,11 +391,19 @@ input MandateRef {
   policies: String
 }
 
+enum Mode {
+  BATCH
+  SINGLE
+}
+
 type Mutation {
   addNode(input: [AddNodeInput!]!): AddNodePayload
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
   addNodeCharac(input: [AddNodeCharacInput!]!): AddNodeCharacPayload
+  updateNodeCharac(input: UpdateNodeCharacInput!): UpdateNodeCharacPayload
+  deleteNodeCharac(filter: NodeCharacFilter!): DeleteNodeCharacPayload
+  addNodeStats(input: [AddNodeStatsInput!]!): AddNodeStatsPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
@@ -373,26 +434,44 @@ type Node {
   name: String!
   nameid: String!
   rootnameid: String!
-  mandate(filter: MandateFilter): Mandate
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  mandate(filter: MandateFilter): Mandate
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
+  stats: NodeStats
   isRoot: Boolean!
+  isPrivate: Boolean!
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
   skills: [String!]
   role_type: RoleType
-  charac: NodeCharac!
+  charac(filter: NodeCharacFilter): NodeCharac!
 }
 
 type NodeCharac {
+  id: ID!
   userCanJoin: Boolean!
   mode: NodeMode!
 }
 
+input NodeCharacFilter {
+  id: [ID!]
+  userCanJoin: Boolean
+  mode: NodeMode_hash
+  and: NodeCharacFilter
+  or: NodeCharacFilter
+  not: NodeCharacFilter
+}
+
+input NodeCharacPatch {
+  userCanJoin: Boolean
+  mode: NodeMode
+}
+
 input NodeCharacRef {
+  id: ID
   userCanJoin: Boolean
   mode: NodeMode
 }
@@ -405,6 +484,7 @@ input NodeFilter {
   nameid: StringHashFilter
   rootnameid: StringHashFilter
   isRoot: Boolean
+  isPrivate: Boolean
   skills: StringTermFilter
   role_type: RoleType_hash
   and: NodeFilter
@@ -415,6 +495,10 @@ input NodeFilter {
 enum NodeMode {
   Chaos
   Coordinated
+}
+
+input NodeMode_hash {
+  eq: NodeMode!
 }
 
 input NodeOrder {
@@ -442,13 +526,15 @@ input NodePatch {
   type_: NodeType
   name: String
   rootnameid: String
-  mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
+  stats: NodeStatsRef
   isRoot: Boolean
+  isPrivate: Boolean
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
@@ -466,18 +552,47 @@ input NodeRef {
   name: String
   nameid: String
   rootnameid: String
-  mandate: MandateRef
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
+  stats: NodeStatsRef
   isRoot: Boolean
+  isPrivate: Boolean
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
   charac: NodeCharacRef
+}
+
+type NodeStats {
+  n_member: Int
+  n_guest: Int
+  n_circle: Int
+  n_role: Int
+}
+
+input NodeStatsOrder {
+  asc: NodeStatsOrderable
+  desc: NodeStatsOrderable
+  then: NodeStatsOrder
+}
+
+enum NodeStatsOrderable {
+  n_member
+  n_guest
+  n_circle
+  n_role
+}
+
+input NodeStatsRef {
+  n_member: Int
+  n_guest: Int
+  n_circle: Int
+  n_role: Int
 }
 
 enum NodeType {
@@ -529,7 +644,9 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
-  queryNodeCharac(first: Int, offset: Int): [NodeCharac]
+  getNodeCharac(id: ID!): NodeCharac
+  queryNodeCharac(filter: NodeCharacFilter, first: Int, offset: Int): [NodeCharac]
+  queryNodeStats(order: NodeStatsOrder, first: Int, offset: Int): [NodeStats]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
@@ -596,15 +713,15 @@ type Tension implements Post {
   title: String!
   type_: TensionType!
   emitter(filter: NodeFilter): Node!
+  emitterid: String!
   receiver(filter: NodeFilter): Node!
+  receiverid: String!
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   status: TensionStatus!
   action: TensionAction
   mandate(filter: MandateFilter): Mandate
   n_comments: Int
-  emitterid: String!
-  receiverid: String!
 }
 
 enum TensionAction {
@@ -619,9 +736,9 @@ input TensionFilter {
   nth: StringTermFilter
   title: StringFullTextFilter
   type_: TensionType_hash
-  status: TensionStatus_hash
   emitterid: StringHashFilter_StringRegExpFilter
   receiverid: StringHashFilter_StringRegExpFilter
+  status: TensionStatus_hash
   and: TensionFilter
   or: TensionFilter
   not: TensionFilter
@@ -638,9 +755,9 @@ enum TensionOrderable {
   message
   nth
   title
-  n_comments
   emitterid
   receiverid
+  n_comments
 }
 
 input TensionPatch {
@@ -651,15 +768,15 @@ input TensionPatch {
   title: String
   type_: TensionType
   emitter: NodeRef
+  emitterid: String
   receiver: NodeRef
+  receiverid: String
   comments: [CommentRef!]
   labels: [LabelRef!]
   status: TensionStatus
   action: TensionAction
   mandate: MandateRef
   n_comments: Int
-  emitterid: String
-  receiverid: String
 }
 
 input TensionRef {
@@ -671,15 +788,15 @@ input TensionRef {
   title: String
   type_: TensionType
   emitter: NodeRef
+  emitterid: String
   receiver: NodeRef
+  receiverid: String
   comments: [CommentRef!]
   labels: [LabelRef!]
   status: TensionStatus
   action: TensionAction
   mandate: MandateRef
   n_comments: Int
-  emitterid: String
-  receiverid: String
 }
 
 enum TensionStatus {
@@ -735,6 +852,17 @@ type UpdateMandatePayload {
   numUids: Int
 }
 
+input UpdateNodeCharacInput {
+  filter: NodeCharacFilter!
+  set: NodeCharacPatch
+  remove: NodeCharacPatch
+}
+
+type UpdateNodeCharacPayload {
+  nodeCharac(filter: NodeCharacFilter, first: Int, offset: Int): [NodeCharac]
+  numUids: Int
+}
+
 input UpdateNodeInput {
   filter: NodeFilter!
   set: NodePatch
@@ -783,11 +911,11 @@ type User {
   id: ID!
   createdAt: DateTime!
   username: String!
-  emailValidated: Boolean!
-  emailHash: String
-  email: String!
   name: String
   password: String!
+  email: String!
+  emailHash: String
+  emailValidated: Boolean!
   rights: UserRights!
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
@@ -813,21 +941,21 @@ input UserOrder {
 enum UserOrderable {
   createdAt
   username
-  emailHash
-  email
   name
   password
+  email
+  emailHash
   bio
   utc
 }
 
 input UserPatch {
   createdAt: DateTime
-  emailValidated: Boolean
-  emailHash: String
-  email: String
   name: String
   password: String
+  email: String
+  emailHash: String
+  emailValidated: Boolean
   rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
@@ -839,11 +967,11 @@ input UserRef {
   id: ID
   createdAt: DateTime
   username: String
-  emailValidated: Boolean
-  emailHash: String
-  email: String
   name: String
   password: String
+  email: String
+  emailHash: String
+  emailValidated: Boolean
   rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]

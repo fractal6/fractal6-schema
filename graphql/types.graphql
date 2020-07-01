@@ -4,36 +4,44 @@
 # * fractal6-ui.elm: case on enumeration object (NodeType, TensionType ,etc)
 
 #
+# Universe (graph of graph)
+#
+# @DEBUG: wityh Union and circle/leaf
+#type Universe {
+#  nodes: [Node] @hasInverse(field: universe)
+#  category: String! 
+#}
+
+#
 # Node Interface
 #
-type Node {
+type Node @hidePrivate {
   id: ID!
   createdAt: DateTime!  @patch_RO @search 
   createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
 
   # Node linking
-  
-  # If parent is null, Node is a root node !
-  parent: Node       @patch_RO
+  parent: Node       @patch_RO # If parent is null, Node is a root node
   children: [Node!]  @patch_RO @hasInverse(field: parent) # @DEBUG union for multi edge graph
   type_: NodeType!   @patch_RO @search 
 
   # Node naming/ID
- 
   name: String!        @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
   nameid: String!      @patch_RO @id
   rootnameid: String!  @patch_RO @search(by: [hash]) # to recursively get children object in GraphQL.
 
-  ### Node Data/attributes
-  
-  mandate: Mandate @patch_hasRole(n:["parent"], r:Coordinator)
-  
+  # Edges
   tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO
   tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_RO
 
+  # Documents, data...
+  mandate: Mandate @patch_hasRole(n:["parent"], r:Coordinator)
+
+  # --method--
   n_tensions_out: Int  @count(f: tensions_out)
   n_tensions_in: Int   @count(f: tensions_in)
   n_children: Int      @count(f: children)
+  stats: NodeStats  @meta_getNodeStats
 
   # @Debug(#3a99e49): when **union** will be available in Dgraph,
   # Consider using a union `union Node = Role | Circle` with a common SuperNode interface.
@@ -41,6 +49,8 @@ type Node {
 
   # Circle... is a Supernode/HyperEdge
   isRoot: Boolean!  @patch_RO @search 
+  isPrivate: Boolean! @patch_RO @search # Invitation required for an R/W access
+  # universe: Universe
 
   # Role... is a Leaf
   first_link: User      @patch_hasRole(n:["parent"], r:Coordinator)
@@ -53,8 +63,17 @@ type Node {
 }
 
 type NodeCharac {
-  userCanJoin: Boolean!
-  mode: NodeMode!
+  id: ID!
+  userCanJoin: Boolean! @search
+  # define the governance process
+  mode: NodeMode! @search
+}
+
+type NodeStats {
+  n_member: Int   # count Guest role (root)
+  n_guest: Int    # count member role (root)
+  n_circle: Int  # recursively count sub circle
+  n_role: Int    # recursively count Peer role
 }
 
 #
@@ -73,20 +92,17 @@ type Tension implements Post {
   title: String!        @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
   type_: TensionType!   @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
   emitter: Node!        @alter_hasRoot(n:["emitter"]) @patch_RO
+  emitterid: String!    @alter_hasRoot(n:["emitter"]) @patch_RO @search(by: [hash, regexp]) 
   receiver: Node!       @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
+  receiverid: String!   @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
   comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
   labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
   status: TensionStatus! @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy") @search
-  action: TensionAction @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
-  mandate: Mandate      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  action: TensionAction  @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  mandate: Mandate       @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
 
-  # Helper/@debug Fields
-  # ---
-  # Automatic field
   n_comments: Int  @count(f: comments)
 
-  emitterid: String! @search(by: [hash, regexp])
-  receiverid: String! @search(by: [hash, regexp])
 }
 
 
@@ -97,10 +113,10 @@ type Comment implements Post {
 type Mandate {
   id: ID!
   tensions: [Tension!]! @hasInverse(field: mandate)
-  purpose: String!           @patch_RO @search(by: [fulltext])
+  purpose: String!          @patch_RO @search(by: [fulltext])
   responsabilities: String  @patch_RO
   domains: String           @patch_RO
-  policies: String           @patch_RO
+  policies: String          @patch_RO
   # period of validity ? @future
   # validatedBy  ? @future (vote process...)
 }
@@ -113,14 +129,14 @@ type User {
   id: ID!
   createdAt: DateTime!  @patch_RO
   username: String!     @patch_RO @alter_maxLength(f:"username", n:42) @id 
-  # @DEBUG: several @id currentlynot allowed !
-  # Q: how to enfore uniqueness ?
-  emailValidated: Boolean! @patch_RO @hidden 
-  emailHash: String        @patch_RO @hidden 
-  email: String!     @patch_isOwner @alter_maxLength(f:"email", n:100) @hidden @search(by: [hash]) 
-  #email: String!    @alter_maxLength(f: "email", n: 100) @hidden  @id # Only one @id allowing in dgraph.
   name: String       @patch_isOwner @alter_maxLength(f:"name", n:100)
   password: String!  @patch_isOwner @alter_maxLength(f:"password", n:100) @hidden 
+  # @DEBUG: several @id currentlynot allowed !
+  # Q: how to enfore uniqueness ?
+  email: String!     @patch_isOwner @alter_maxLength(f:"email", n:100) @hidden @search(by: [hash]) 
+  #email: String!    @alter_maxLength(f: "email", n: 100) @hidden  @id # Only one @id allowing in dgraph.
+  emailHash: String        @patch_RO @hidden 
+  emailValidated: Boolean! @patch_RO @hidden 
   #
   rights: UserRights! @patch_RO
   #
@@ -192,8 +208,16 @@ enum TensionAction {
   # Creating
   NewRole
   NewCircle
+  #NewLabel
   # Updating:
-  # * move node parent
-  # * delete node
-  # * update mandate
+  #  * UpdateParent
+  #  * UpdateEmitter
+  #  * UpdateReceiver
+  #  * UpdataMandate
+  #  * UpdateTitle
+  #  * UpdateStatus
+  # Deleting:
+  #  * DeleteRole
+  #  * DeleteCircle
+  #  * DeleteLabel
 }

@@ -6,9 +6,13 @@ directive @hidden on FIELD_DEFINITION
 # the current field definition.
 directive @count(f: String!) on FIELD_DEFINITION
 
+# special methogds
+directive @meta_getNodeStats on FIELD_DEFINITION
+
+# Hook directive for mutation
 directive @hook_addNode on ARGUMENT_DEFINITION
-# @DEBUG: replace the following query in gen2.
-# addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
+directive @hook_updateTension on ARGUMENT_DEFINITION
+# @DEBUG: [gqlast] automatically @hook directive in mutation, ie: addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
 
 # Track this to remove the need of the field string value on input
 # https://github.com/99designs/gqlgen/issues/1084
@@ -18,6 +22,11 @@ directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
 # Ensure the `type_` of a the given (list) Node/Object .See @Debug(#3a99e49)
 directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
+
+#
+# Global object query directive
+#
+directive @hidePrivate on OBJECT | FIELD_DEFINITION
 
 ###########################################################
 # Auth (UserCtx)
