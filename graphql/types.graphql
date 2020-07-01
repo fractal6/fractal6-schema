@@ -27,8 +27,8 @@ type Node @hidePrivate {
 
   # Node naming/ID
   name: String!        @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
-  nameid: String!      @patch_RO @id
-  rootnameid: String!  @patch_RO @search(by: [hash]) # to recursively get children object in GraphQL.
+  nameid: String!      @patch_RO @id @search(by: [hash, regexp])
+  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) # to recursively get children object in GraphQL.
 
   # Edges
   tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO

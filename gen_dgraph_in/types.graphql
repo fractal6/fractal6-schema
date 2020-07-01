@@ -9,8 +9,8 @@ type Node  {
   children: [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
   name: String! @search(by: [term])
-  nameid: String! @id
-  rootnameid: String! @search(by: [hash])
+  nameid: String! @id @search(by: [hash, regexp])
+  rootnameid: String! @search(by: [hash, regexp])
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!] @hasInverse(field: receiver)
   mandate: Mandate
