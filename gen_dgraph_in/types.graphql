@@ -5,12 +5,12 @@ type Node  {
   id: ID!
   createdAt: DateTime! @search
   createdBy: User!
-  parent: Node
-  children: [Node!] @hasInverse(field: parent)
-  type_: NodeType! @search
   name: String! @search(by: [term])
   nameid: String! @id @search(by: [hash, regexp])
   rootnameid: String! @search(by: [hash, regexp])
+  parent: Node
+  children: [Node!] @hasInverse(field: parent)
+  type_: NodeType! @search
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!] @hasInverse(field: receiver)
   mandate: Mandate
@@ -20,11 +20,25 @@ type Node  {
   stats: NodeStats 
   isRoot: Boolean! @search
   isPrivate: Boolean! @search
+  charac: NodeCharac!
   first_link: User
   second_link: User
   skills: [String!] @search(by: [term])
   role_type: RoleType @search
-  charac: NodeCharac!
+}
+
+type NodeFragment {
+  name: String
+  nameid: String
+  children: [NodeFragment]
+  type_: NodeType
+  mandate: Mandate
+  isPrivate: Boolean
+  charac: NodeCharac
+  first_link: String
+  second_link: String
+  skills: [String!]
+  role_type: RoleType
 }
 
 type NodeCharac {
@@ -59,7 +73,7 @@ type Tension implements Post {
   labels: [Label!]
   status: TensionStatus! @search
   action: TensionAction
-  mandate: Mandate
+  data: NodeFragment
   n_comments: Int 
 }
 
@@ -69,7 +83,7 @@ _VOID: String
 
 type Mandate {
   id: ID!
-  tensions: [Tension!]! @hasInverse(field: mandate)
+  about: String @search(by: [fulltext])
   purpose: String! @search(by: [fulltext])
   responsabilities: String
   domains: String

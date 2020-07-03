@@ -2,13 +2,15 @@
 
 '''Graphql format manipulation
 
-Remove comments.
-Add interface attributes on implemented types.
-
 Usage:
     gqlast.py [--debug] [--dgraph] [--nv] [FILE ...]
 
-Parse the FILE input and apply transformations.
+Parse the FILE input and apply transformations:
+* Add interface attributes on implemented types.
+* remove duplicate type and inherits input arguments.
+* move/copy directives based on their name (see graphql/directives.graphql).
+* Remove comments.
+
 
 Options:
     -d --debug      Show debug informations.
