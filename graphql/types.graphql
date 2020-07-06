@@ -35,6 +35,7 @@ type Node @hidePrivate {
   tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_RO
 
   # Documents, data...
+  about: String @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [fulltext]) @alter_maxLength(f:"about", n:280)
   mandate: Mandate @patch_hasRole(n:["parent"], r:Coordinator)
 
   # --method--
@@ -67,6 +68,7 @@ type NodeFragment  {
 
   children: [NodeFragment]
   type_: NodeType
+  about: String
   mandate: Mandate
 
   isPrivate: Boolean
@@ -130,7 +132,6 @@ type Comment implements Post {
 
 type Mandate {
   id: ID!
-  about: String  @search(by: [fulltext]) @alter_maxLength(f:"about", n:280)
   purpose: String!  @search(by: [fulltext]) @patch_RO 
   responsabilities: String  @patch_RO
   domains: String           @patch_RO
@@ -227,14 +228,16 @@ enum TensionAction {
   NewRole
   NewCircle
   #NewLabel
-  # Updating:
+  # Updating
   #  * UpdateParent
   #  * UpdateEmitter
   #  * UpdateReceiver
-  #  * UpdateMandate
-  #  * UpdateTitle
+  UpdateRoleAbout
+  UpdateCircleAbout
+  UpdateRoleMandate
+  UpdateCircleMandate
   #  * UpdateStatus
-  # Deleting:
+  # Deleting
   #  * DeleteRole
   #  * DeleteCircle
   #  * DeleteLabel

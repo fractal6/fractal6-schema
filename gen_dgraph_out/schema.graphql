@@ -1,20 +1,20 @@
-directive @remote on OBJECT | INTERFACE
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
-directive @cascade on FIELD
-
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+directive @cascade on FIELD
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -39,7 +39,6 @@ type AddLabelPayload {
 }
 
 input AddMandateInput {
-  about: String
   purpose: String!
   responsabilities: String
   domains: String
@@ -66,6 +65,7 @@ input AddNodeFragmentInput {
   nameid: String
   children: [NodeFragmentRef]
   type_: NodeType
+  about: String
   mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
@@ -91,6 +91,7 @@ input AddNodeInput {
   type_: NodeType!
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  about: String
   mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int
@@ -365,7 +366,6 @@ input LabelRef {
 
 type Mandate {
   id: ID!
-  about: String
   purpose: String!
   responsabilities: String
   domains: String
@@ -374,7 +374,6 @@ type Mandate {
 
 input MandateFilter {
   id: [ID!]
-  about: StringFullTextFilter
   purpose: StringFullTextFilter
   and: MandateFilter
   or: MandateFilter
@@ -388,7 +387,6 @@ input MandateOrder {
 }
 
 enum MandateOrderable {
-  about
   purpose
   responsabilities
   domains
@@ -396,7 +394,6 @@ enum MandateOrderable {
 }
 
 input MandatePatch {
-  about: String
   purpose: String
   responsabilities: String
   domains: String
@@ -405,7 +402,6 @@ input MandatePatch {
 
 input MandateRef {
   id: ID
-  about: String
   purpose: String
   responsabilities: String
   domains: String
@@ -458,6 +454,7 @@ type Node {
   type_: NodeType!
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  about: String
   mandate(filter: MandateFilter): Mandate
   n_tensions_out: Int
   n_tensions_in: Int
@@ -505,6 +502,7 @@ input NodeFilter {
   nameid: StringHashFilter_StringRegExpFilter
   rootnameid: StringHashFilter_StringRegExpFilter
   type_: NodeType_hash
+  about: StringFullTextFilter
   isRoot: Boolean
   isPrivate: Boolean
   skills: StringTermFilter
@@ -519,6 +517,7 @@ type NodeFragment {
   nameid: String
   children(order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
   type_: NodeType
+  about: String
   mandate(filter: MandateFilter): Mandate
   isPrivate: Boolean
   charac(filter: NodeCharacFilter): NodeCharac
@@ -537,6 +536,7 @@ input NodeFragmentOrder {
 enum NodeFragmentOrderable {
   name
   nameid
+  about
   first_link
   second_link
   skills
@@ -547,6 +547,7 @@ input NodeFragmentRef {
   nameid: String
   children: [NodeFragmentRef]
   type_: NodeType
+  about: String
   mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
@@ -576,6 +577,7 @@ enum NodeOrderable {
   name
   nameid
   rootnameid
+  about
   n_tensions_out
   n_tensions_in
   n_children
@@ -592,6 +594,7 @@ input NodePatch {
   type_: NodeType
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  about: String
   mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int
@@ -618,6 +621,7 @@ input NodeRef {
   type_: NodeType
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  about: String
   mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int
@@ -792,6 +796,10 @@ type Tension implements Post {
 enum TensionAction {
   NewRole
   NewCircle
+  UpdateRoleAbout
+  UpdateCircleAbout
+  UpdateRoleMandate
+  UpdateCircleMandate
 }
 
 input TensionFilter {

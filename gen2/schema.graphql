@@ -9,6 +9,7 @@ directive @meta_getNodeStats on FIELD_DEFINITION
 
 directive @hook_addNode on ARGUMENT_DEFINITION
 
+directive @hook_updateNode on ARGUMENT_DEFINITION
 directive @hook_updateTension on ARGUMENT_DEFINITION
 
 directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
@@ -43,6 +44,7 @@ type Node @hidePrivate {
   type_: NodeType! @search
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: receiver)
+  about: String @search(by: [fulltext])
   mandate(filter: MandateFilter): Mandate
   n_tensions_out: Int @count(f: tensions_out)
   n_tensions_in: Int @count(f: tensions_in)
@@ -62,6 +64,7 @@ type NodeFragment {
   nameid: String
   children(order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
   type_: NodeType
+  about: String
   mandate(filter: MandateFilter): Mandate
   isPrivate: Boolean
   charac(filter: NodeCharacFilter): NodeCharac
@@ -120,7 +123,6 @@ type Comment {
 
 type Mandate {
   id: ID!
-  about: String @search(by: [fulltext])
   purpose: String! @search(by: [fulltext])
   responsabilities: String
   domains: String
@@ -199,8 +201,10 @@ enum TensionAction {
 
 
 
-
-
+  UpdateRoleAbout
+  UpdateCircleAbout
+  UpdateRoleMandate
+  UpdateCircleMandate
 
 
 
@@ -208,23 +212,23 @@ enum TensionAction {
 
 }
 
-directive @remote on OBJECT|INTERFACE
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
-directive @cascade on FIELD
-
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+directive @cascade on FIELD
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
+
+directive @remote on OBJECT|INTERFACE
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -249,7 +253,6 @@ type AddLabelPayload {
 }
 
 input AddMandateInput {
-  about: String @alter_maxLength(f:"about", n:280)
   purpose: String!
   responsabilities: String
   domains: String
@@ -276,6 +279,7 @@ input AddNodeFragmentInput {
   nameid: String
   children: [NodeFragmentRef]
   type_: NodeType
+  about: String
   mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
@@ -301,6 +305,7 @@ input AddNodeInput {
   type_: NodeType!
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  about: String @alter_maxLength(f:"about", n:280)
   mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int
@@ -561,7 +566,6 @@ input LabelRef {
 
 input MandateFilter {
   id: [ID!]
-  about: StringFullTextFilter
   purpose: StringFullTextFilter
   and: MandateFilter
   or: MandateFilter
@@ -575,7 +579,6 @@ input MandateOrder {
 }
 
 enum MandateOrderable {
-  about
   purpose
   responsabilities
   domains
@@ -583,7 +586,6 @@ enum MandateOrderable {
 }
 
 input MandatePatch {
-  about: String @alter_maxLength(f:"about", n:280)
   purpose: String @patch_RO
   responsabilities: String @patch_RO
   domains: String @patch_RO
@@ -592,7 +594,6 @@ input MandatePatch {
 
 input MandateRef {
   id: ID
-  about: String
   purpose: String
   responsabilities: String
   domains: String
@@ -606,7 +607,7 @@ enum Mode {
 
 type Mutation {
   addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
-  updateNode(input: UpdateNodeInput!): UpdateNodePayload
+  updateNode(input: UpdateNodeInput! @hook_updateNode): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
   addNodeFragment(input: [AddNodeFragmentInput!]!): AddNodeFragmentPayload
   addNodeCharac(input: [AddNodeCharacInput!]!): AddNodeCharacPayload
@@ -660,6 +661,7 @@ input NodeFilter {
   nameid: StringHashFilter_StringRegExpFilter
   rootnameid: StringHashFilter_StringRegExpFilter
   type_: NodeType_hash
+  about: StringFullTextFilter
   isRoot: Boolean
   isPrivate: Boolean
   skills: StringTermFilter
@@ -678,6 +680,7 @@ input NodeFragmentOrder {
 enum NodeFragmentOrderable {
   name
   nameid
+  about
   first_link
   second_link
   skills
@@ -688,6 +691,7 @@ input NodeFragmentRef {
   nameid: String
   children: [NodeFragmentRef]
   type_: NodeType
+  about: String
   mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
@@ -712,6 +716,7 @@ enum NodeOrderable {
   name
   nameid
   rootnameid
+  about
   n_tensions_out
   n_tensions_in
   n_children
@@ -728,6 +733,7 @@ input NodePatch {
   type_: NodeType @patch_RO
   tensions_out: [TensionRef!] @patch_RO
   tensions_in: [TensionRef!] @patch_RO
+  about: String @patch_hasRole(n:["parent"], r: Coordinator) @alter_maxLength(f:"about", n:280)
   mandate: MandateRef @patch_hasRole(n:["parent"], r: Coordinator)
   n_tensions_out: Int
   n_tensions_in: Int
@@ -754,6 +760,7 @@ input NodeRef {
   type_: NodeType
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
+  about: String
   mandate: MandateRef
   n_tensions_out: Int
   n_tensions_in: Int

@@ -11,6 +11,7 @@ directive @meta_getNodeStats on FIELD_DEFINITION
 
 # Hook directive for mutation
 directive @hook_addNode on ARGUMENT_DEFINITION
+directive @hook_updateNode on ARGUMENT_DEFINITION
 directive @hook_updateTension on ARGUMENT_DEFINITION
 # @DEBUG: [gqlast] automatically @hook directive in mutation, ie: addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
 
