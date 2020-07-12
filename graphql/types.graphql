@@ -101,6 +101,7 @@ type NodeStats {
 interface Post {
   id: ID!
   createdAt: DateTime!  @patch_RO @search 
+  updatedAt: DateTime   @patch_isOwner(u:"createdBy")
   createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
   message: String  @patch_isOwner(u:"createdBy") @search(by: [fulltext])
 }

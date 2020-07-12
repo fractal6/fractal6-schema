@@ -59,6 +59,7 @@ type NodeStats {
 interface Post {
   id: ID!
   createdAt: DateTime! @search
+  updatedAt: DateTime
   createdBy: User!
   message: String @search(by: [fulltext])
 }

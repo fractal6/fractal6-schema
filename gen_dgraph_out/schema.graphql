@@ -1,6 +1,14 @@
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @id on FIELD_DEFINITION
+
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE
+
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
@@ -8,16 +16,9 @@ directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRu
 
 directive @cascade on FIELD
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @id on FIELD_DEFINITION
-
-directive @remote on OBJECT | INTERFACE
-
 input AddCommentInput {
   createdAt: DateTime!
+  updatedAt: DateTime
   createdBy: UserRef!
   message: String
   _VOID: String
@@ -125,6 +126,7 @@ type AddNodeStatsPayload {
 
 input AddTensionInput {
   createdAt: DateTime!
+  updatedAt: DateTime
   createdBy: UserRef!
   message: String
   nth: String
@@ -187,6 +189,7 @@ input AuthRule {
 type Comment implements Post {
   id: ID!
   createdAt: DateTime!
+  updatedAt: DateTime
   createdBy(filter: UserFilter): User!
   message: String
   _VOID: String
@@ -209,12 +212,14 @@ input CommentOrder {
 
 enum CommentOrderable {
   createdAt
+  updatedAt
   message
   _VOID
 }
 
 input CommentPatch {
   createdAt: DateTime
+  updatedAt: DateTime
   createdBy: UserRef
   message: String
   _VOID: String
@@ -223,6 +228,7 @@ input CommentPatch {
 input CommentRef {
   id: ID
   createdAt: DateTime
+  updatedAt: DateTime
   createdBy: UserRef
   message: String
   _VOID: String
@@ -675,6 +681,7 @@ input NodeType_hash {
 interface Post {
   id: ID!
   createdAt: DateTime!
+  updatedAt: DateTime
   createdBy(filter: UserFilter): User!
   message: String
 }
@@ -696,11 +703,13 @@ input PostOrder {
 
 enum PostOrderable {
   createdAt
+  updatedAt
   message
 }
 
 input PostPatch {
   createdAt: DateTime
+  updatedAt: DateTime
   createdBy: UserRef
   message: String
 }
@@ -776,6 +785,7 @@ input StringTermFilter {
 type Tension implements Post {
   id: ID!
   createdAt: DateTime!
+  updatedAt: DateTime
   createdBy(filter: UserFilter): User!
   message: String
   nth: String
@@ -825,6 +835,7 @@ input TensionOrder {
 
 enum TensionOrderable {
   createdAt
+  updatedAt
   message
   nth
   title
@@ -835,6 +846,7 @@ enum TensionOrderable {
 
 input TensionPatch {
   createdAt: DateTime
+  updatedAt: DateTime
   createdBy: UserRef
   message: String
   nth: String
@@ -855,6 +867,7 @@ input TensionPatch {
 input TensionRef {
   id: ID
   createdAt: DateTime
+  updatedAt: DateTime
   createdBy: UserRef
   message: String
   nth: String
