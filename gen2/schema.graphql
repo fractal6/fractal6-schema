@@ -13,6 +13,8 @@ directive @hook_updateNode on ARGUMENT_DEFINITION
 
 directive @hook_updateTension on ARGUMENT_DEFINITION
 
+directive @hook_updateComment on ARGUMENT_DEFINITION
+
 directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
 directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
@@ -104,10 +106,10 @@ type Tension {
   emitterid: String! @search(by: [hash, regexp])
   receiver(filter: NodeFilter): Node!
   receiverid: String! @search(by: [hash, regexp])
-  comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   status: TensionStatus! @search
   action: TensionAction
+  comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   data: NodeFragment
   n_comments: Int @count(f: comments)
   id: ID!
@@ -615,8 +617,8 @@ enum Mode {
 }
 
 type Mutation {
-  addNode(input: [AddNodeInput!]!): AddNodePayload
-  updateNode(input: UpdateNodeInput!): UpdateNodePayload
+  addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
+  updateNode(input: UpdateNodeInput! @hook_updateNode): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
   addNodeFragment(input: [AddNodeFragmentInput!]!): AddNodeFragmentPayload
   addNodeCharac(input: [AddNodeCharacInput!]!): AddNodeCharacPayload
@@ -626,10 +628,10 @@ type Mutation {
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
-  updateTension(input: UpdateTensionInput!): UpdateTensionPayload
+  updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload
   deleteTension(filter: TensionFilter!): DeleteTensionPayload
   addComment(input: [AddCommentInput!]!): AddCommentPayload
-  updateComment(input: UpdateCommentInput!): UpdateCommentPayload
+  updateComment(input: UpdateCommentInput! @hook_updateComment): UpdateCommentPayload
   deleteComment(filter: CommentFilter!): DeleteCommentPayload
   addMandate(input: [AddMandateInput!]!): AddMandatePayload
   updateMandate(input: UpdateMandateInput!): UpdateMandatePayload
@@ -741,7 +743,7 @@ input NodePatch {
   children: [NodeRef!] @patch_RO
   type_: NodeType @patch_RO
   tensions_out: [TensionRef!] @patch_RO
-  tensions_in: [TensionRef!] @patch_RO
+  tensions_in: [TensionRef!] @patch_hasRole(n:["parent"], r: Coordinator)
   about: String @patch_hasRole(n:["parent"], r: Coordinator) @alter_maxLength(f:"about", n:280)
   mandate: MandateRef @patch_hasRole(n:["parent"], r: Coordinator)
   n_tensions_out: Int

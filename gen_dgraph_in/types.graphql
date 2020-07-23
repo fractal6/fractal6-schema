@@ -72,10 +72,10 @@ type Tension implements Post {
   emitterid: String! @search(by: [hash, regexp])
   receiver: Node!
   receiverid: String! @search(by: [hash, regexp])
-  comments: [Comment!]
   labels: [Label!]
   status: TensionStatus! @search
   action: TensionAction
+  comments: [Comment!]
   data: NodeFragment
   n_comments: Int 
 }

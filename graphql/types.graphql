@@ -6,7 +6,7 @@
 #
 # Universe (graph of graph)
 #
-# @DEBUG: wityh Union and circle/leaf
+# @DEBUG: with Union and circle/leaf
 #type Universe {
 #  nodes: [Node] @hasInverse(field: universe)
 #  category: String! 
@@ -32,7 +32,7 @@ type Node @hidePrivate {
 
   # Edges
   tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO
-  tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_RO
+  tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_hasRole(n:["parent"], r:Coordinator)
 
   # Documents, data...
   about: String @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [fulltext]) @alter_maxLength(f:"about", n:280)
@@ -115,15 +115,13 @@ type Tension implements Post {
   emitterid: String!    @alter_hasRoot(n:["emitter"]) @patch_RO @search(by: [hash, regexp]) 
   receiver: Node!       @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
   receiverid: String!   @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
-  comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
   labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
   status: TensionStatus! @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy") @search
   action: TensionAction  @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
-  #mandate: Mandate       @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
-  data: NodeFragment       @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
+  data: NodeFragment     @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
 
   n_comments: Int  @count(f: comments)
-
 }
 
 
