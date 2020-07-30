@@ -16,8 +16,10 @@ directive @hook_updateTension on ARGUMENT_DEFINITION
 directive @hook_updateComment on ARGUMENT_DEFINITION
 # @DEBUG: [gqlast] automatically @hook directive in mutation, ie: addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
 
-# Track this to remove the need of the field string value on input
+# @DEBUG: Track this to remove the need of the field string value on input
 # https://github.com/99designs/gqlgen/issues/1084
+
+directive @alter_toLower(f: String!) on INPUT_FIELD_DEFINITION
 
 # Limit the max size of the string given in input
 directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
@@ -33,9 +35,9 @@ directive @hidePrivate on OBJECT | FIELD_DEFINITION
 ###########################################################
 # Auth (UserCtx)
 # Directive code:
-# alter_* => apply on all mutation input 
-# add_* => apply on Add mutation (new object)
-# patch_* => apply on Patch mutation (update object)
+# add_* => apply on Add mutation
+# patch_* => apply on Update mutation
+# alter_* => apply on all mutation input (add and update)
 ###########################################################
 
 #

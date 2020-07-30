@@ -22,8 +22,8 @@ type Node @hidePrivate {
 
   # Node naming/ID
   name: String!        @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
-  nameid: String!      @patch_RO @id @search(by: [hash, regexp])
-  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) # to recursively get children object in GraphQL.
+  nameid: String!  @id @patch_RO @search(by: [hash, regexp]) @alter_toLower(f:"nameid")
+  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) @alter_toLower(f:"rootnameid")  # to recursively get children object in GraphQL.
 
   # Node linking
   parent: Node       @patch_RO # If parent is null, Node is a root node
@@ -115,10 +115,10 @@ type Tension implements Post {
   emitterid: String!    @alter_hasRoot(n:["emitter"]) @patch_RO @search(by: [hash, regexp]) 
   receiver: Node!       @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
   receiverid: String!   @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
-  labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
   status: TensionStatus! @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy") @search
+  labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  comments: [Comment!]   @alter_hasRoot(n:["emitter", "receiver"])
   action: TensionAction  @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
-  comments: [Comment!]  @alter_hasRoot(n:["emitter", "receiver"])
   data: NodeFragment     @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
 
   n_comments: Int  @count(f: comments)
@@ -145,14 +145,13 @@ type Mandate {
 
 type User {
   id: ID!
-  createdAt: DateTime!  @patch_RO
-  username: String!     @patch_RO @alter_maxLength(f:"username", n:42) @id 
-  name: String       @patch_isOwner @alter_maxLength(f:"name", n:100)
+  createdAt: DateTime!   @patch_RO
+  username: String!  @id @patch_RO  @alter_maxLength(f:"username", n:42) @alter_toLower(f:"username")
+  name: String       @patch_isOwner @alter_maxLength(f:"name", n:100)    @alter_toLower(f:"name")
   password: String!  @patch_isOwner @alter_maxLength(f:"password", n:100) @hidden 
   # @DEBUG: several @id currentlynot allowed !
   # Q: how to enfore uniqueness ?
-  email: String!     @patch_isOwner @alter_maxLength(f:"email", n:100) @hidden @search(by: [hash]) 
-  #email: String!    @alter_maxLength(f: "email", n: 100) @hidden  @id # Only one @id allowing in dgraph.
+  email: String!     @patch_isOwner @alter_maxLength(f:"email", n:100) @search(by: [hash]) @hidden # Only one @id allowing in dgraph.
   emailHash: String        @patch_RO @hidden 
   emailValidated: Boolean! @patch_RO @hidden 
   #
