@@ -1,20 +1,36 @@
+directive @remote on OBJECT | INTERFACE
+
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
+
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+
+directive @cascade on FIELD
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+input AddBlobInput {
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy: UserRef!
+  message: String
+  tension: TensionRef!
+  blob_type: BlobType!
+  node: NodeFragmentRef
+  md: String
+}
 
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
-
-directive @remote on OBJECT | INTERFACE
-
-directive @cascade on FIELD
+type AddBlobPayload {
+  blob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  numUids: Int
+}
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -26,6 +42,21 @@ input AddCommentInput {
 
 type AddCommentPayload {
   comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  numUids: Int
+}
+
+input AddEventInput {
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy: UserRef!
+  message: String
+  event_type: TensionEvent!
+  old: String!
+  new: String!
+}
+
+type AddEventPayload {
+  event(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   numUids: Int
 }
 
@@ -94,6 +125,8 @@ input AddNodeInput {
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
+  docs: [TensionRef]
+  source: TensionRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -136,11 +169,13 @@ input AddTensionInput {
   emitterid: String!
   receiver: NodeRef!
   receiverid: String!
-  labels: [LabelRef!]
   status: TensionStatus!
   action: TensionAction
+  labels: [LabelRef!]
   comments: [CommentRef!]
-  data: NodeFragmentRef
+  blobs: [BlobRef!]
+  history: [EventRef!]
+  head: BlobRef
   n_comments: Int
 }
 
@@ -184,6 +219,76 @@ input AuthRule {
   or: [AuthRule]
   not: AuthRule
   rule: String
+}
+
+type Blob implements Post {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy(filter: UserFilter): User!
+  message: String
+  tension(filter: TensionFilter): Tension!
+  blob_type: BlobType!
+  node: NodeFragment
+  md: String
+}
+
+input BlobFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  message: StringFullTextFilter
+  blob_type: BlobType_hash
+  and: BlobFilter
+  or: BlobFilter
+  not: BlobFilter
+}
+
+input BlobOrder {
+  asc: BlobOrderable
+  desc: BlobOrderable
+  then: BlobOrder
+}
+
+enum BlobOrderable {
+  createdAt
+  updatedAt
+  message
+  md
+}
+
+input BlobPatch {
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  tension: TensionRef
+  blob_type: BlobType
+  node: NodeFragmentRef
+  md: String
+}
+
+input BlobRef {
+  id: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  tension: TensionRef
+  blob_type: BlobType
+  node: NodeFragmentRef
+  md: String
+}
+
+enum BlobType {
+  InitBlob
+  OnAbout
+  OnMandate
+  OnFirstLink
+  OnDoc
+}
+
+input BlobType_hash {
+  eq: BlobType!
 }
 
 type Comment implements Post {
@@ -255,7 +360,17 @@ input DateTimeFilter {
   gt: DateTime
 }
 
+type DeleteBlobPayload {
+  msg: String
+  numUids: Int
+}
+
 type DeleteCommentPayload {
+  msg: String
+  numUids: Int
+}
+
+type DeleteEventPayload {
   msg: String
   numUids: Int
 }
@@ -309,6 +424,61 @@ enum DgraphIndex {
   month
   day
   hour
+}
+
+type Event implements Post {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy(filter: UserFilter): User!
+  message: String
+  event_type: TensionEvent!
+  old: String!
+  new: String!
+}
+
+input EventFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  message: StringFullTextFilter
+  and: EventFilter
+  or: EventFilter
+  not: EventFilter
+}
+
+input EventOrder {
+  asc: EventOrderable
+  desc: EventOrderable
+  then: EventOrder
+}
+
+enum EventOrderable {
+  createdAt
+  updatedAt
+  message
+  old
+  new
+}
+
+input EventPatch {
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  event_type: TensionEvent
+  old: String
+  new: String
+}
+
+input EventRef {
+  id: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  event_type: TensionEvent
+  old: String
+  new: String
 }
 
 input FloatFilter {
@@ -433,9 +603,18 @@ type Mutation {
   addTension(input: [AddTensionInput!]!): AddTensionPayload
   updateTension(input: UpdateTensionInput!): UpdateTensionPayload
   deleteTension(filter: TensionFilter!): DeleteTensionPayload
+  addLabel(input: [AddLabelInput!]!): AddLabelPayload
+  updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
+  deleteLabel(filter: LabelFilter!): DeleteLabelPayload
   addComment(input: [AddCommentInput!]!): AddCommentPayload
   updateComment(input: UpdateCommentInput!): UpdateCommentPayload
   deleteComment(filter: CommentFilter!): DeleteCommentPayload
+  addBlob(input: [AddBlobInput!]!): AddBlobPayload
+  updateBlob(input: UpdateBlobInput!): UpdateBlobPayload
+  deleteBlob(filter: BlobFilter!): DeleteBlobPayload
+  addEvent(input: [AddEventInput!]!): AddEventPayload
+  updateEvent(input: UpdateEventInput!): UpdateEventPayload
+  deleteEvent(filter: EventFilter!): DeleteEventPayload
   addMandate(input: [AddMandateInput!]!): AddMandatePayload
   updateMandate(input: UpdateMandateInput!): UpdateMandatePayload
   deleteMandate(filter: MandateFilter!): DeleteMandatePayload
@@ -443,9 +622,6 @@ type Mutation {
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
   addUserRights(input: [AddUserRightsInput!]!): AddUserRightsPayload
-  addLabel(input: [AddLabelInput!]!): AddLabelPayload
-  updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
-  deleteLabel(filter: LabelFilter!): DeleteLabelPayload
 }
 
 type Node {
@@ -462,6 +638,8 @@ type Node {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   about: String
   mandate(filter: MandateFilter): Mandate
+  docs(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
+  source(filter: TensionFilter): Tension
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -602,6 +780,8 @@ input NodePatch {
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
+  docs: [TensionRef]
+  source: TensionRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -629,6 +809,8 @@ input NodeRef {
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
+  docs: [TensionRef]
+  source: TensionRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -729,15 +911,19 @@ type Query {
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
   queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
+  getLabel(id: ID, name: String): Label
+  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
   getComment(id: ID!): Comment
   queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  getBlob(id: ID!): Blob
+  queryBlob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  getEvent(id: ID!): Event
+  queryEvent(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   getMandate(id: ID!): Mandate
   queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   queryUserRights(first: Int, offset: Int): [UserRights]
-  getLabel(id: ID, name: String): Label
-  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
 }
 
 enum RoleType {
@@ -795,21 +981,29 @@ type Tension implements Post {
   emitterid: String!
   receiver(filter: NodeFilter): Node!
   receiverid: String!
-  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   status: TensionStatus!
   action: TensionAction
+  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
-  data: NodeFragment
+  blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!]
+  history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]
+  head(filter: BlobFilter): Blob
   n_comments: Int
 }
 
 enum TensionAction {
   NewRole
   NewCircle
-  UpdateRoleAbout
-  UpdateCircleAbout
-  UpdateRoleMandate
-  UpdateCircleMandate
+  EditRole
+  EditCircle
+}
+
+enum TensionEvent {
+  Created
+  Reopened
+  Closed
+  BlobPushed
+  BlobCommitted
 }
 
 input TensionFilter {
@@ -856,11 +1050,13 @@ input TensionPatch {
   emitterid: String
   receiver: NodeRef
   receiverid: String
-  labels: [LabelRef!]
   status: TensionStatus
   action: TensionAction
+  labels: [LabelRef!]
   comments: [CommentRef!]
-  data: NodeFragmentRef
+  blobs: [BlobRef!]
+  history: [EventRef!]
+  head: BlobRef
   n_comments: Int
 }
 
@@ -877,11 +1073,13 @@ input TensionRef {
   emitterid: String
   receiver: NodeRef
   receiverid: String
-  labels: [LabelRef!]
   status: TensionStatus
   action: TensionAction
+  labels: [LabelRef!]
   comments: [CommentRef!]
-  data: NodeFragmentRef
+  blobs: [BlobRef!]
+  history: [EventRef!]
+  head: BlobRef
   n_comments: Int
 }
 
@@ -905,6 +1103,17 @@ input TensionType_hash {
   eq: TensionType!
 }
 
+input UpdateBlobInput {
+  filter: BlobFilter!
+  set: BlobPatch
+  remove: BlobPatch
+}
+
+type UpdateBlobPayload {
+  blob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  numUids: Int
+}
+
 input UpdateCommentInput {
   filter: CommentFilter!
   set: CommentPatch
@@ -913,6 +1122,17 @@ input UpdateCommentInput {
 
 type UpdateCommentPayload {
   comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  numUids: Int
+}
+
+input UpdateEventInput {
+  filter: EventFilter!
+  set: EventPatch
+  remove: EventPatch
+}
+
+type UpdateEventPayload {
+  event(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   numUids: Int
 }
 

@@ -15,6 +15,8 @@ type Node  {
   tensions_in: [Tension!] @hasInverse(field: receiver)
   about: String @search(by: [fulltext])
   mandate: Mandate
+  docs: [Tension]
+  source: Tension
   n_tensions_out: Int 
   n_tensions_in: Int 
   n_children: Int 
@@ -72,16 +74,37 @@ type Tension implements Post {
   emitterid: String! @search(by: [hash, regexp])
   receiver: Node!
   receiverid: String! @search(by: [hash, regexp])
-  labels: [Label!]
   status: TensionStatus! @search
   action: TensionAction
+  labels: [Label!]
   comments: [Comment!]
-  data: NodeFragment
+  blobs: [Blob!] @hasInverse(field: tension)
+  history: [Event!]
+  head: Blob
   n_comments: Int 
+}
+
+type Label {
+  id: ID!
+  name: String! @id
+  color: String
 }
 
 type Comment implements Post{
 _VOID: String
+}
+
+type Blob implements Post {
+  tension: Tension!
+  blob_type: BlobType! @search
+  node: NodeFragment
+  md: String
+}
+
+type Event implements Post {
+  event_type: TensionEvent!
+  old: String!
+  new: String!
 }
 
 type Mandate {
@@ -98,7 +121,7 @@ type User {
   username: String! @id
   name: String
   password: String! 
-  email: String!  @search(by: [hash])
+  email: String! @search(by: [hash]) 
   emailHash: String 
   emailValidated: Boolean! 
   rights: UserRights!
@@ -113,24 +136,9 @@ type UserRights {
   canCreateRoot: Boolean!
 }
 
-type Label {
-  id: ID!
-  name: String! @id
-  color: String
-}
-
 enum NodeType {
   Circle
   Role
-}
-
-enum TensionType {
-  Governance
-  Operational
-  Personal
-  Help
-
-
 }
 
 enum RoleType {
@@ -155,22 +163,50 @@ enum TensionStatus {
   Closed
 }
 
+enum TensionType {
+  Governance
+  Operational
+  Personal
+  Help
+
+
+}
+
 enum TensionAction {
 
   NewRole
   NewCircle
 
 
-
-
-
-  UpdateRoleAbout
-  UpdateCircleAbout
-  UpdateRoleMandate
-  UpdateCircleMandate
+  EditRole
+  EditCircle
 
 
 
 
 
+
+
+}
+
+enum TensionEvent {
+  Created
+  Reopened
+  Closed
+
+
+
+
+
+
+  BlobPushed
+  BlobCommitted
+}
+
+enum BlobType {
+  InitBlob
+  OnAbout
+  OnMandate
+  OnFirstLink
+  OnDoc
 }

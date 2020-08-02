@@ -7,14 +7,17 @@
 # Universe (graph of graph)
 #
 # @DEBUG: with Union and circle/leaf
-#type Universe {
-#  nodes: [Node] @hasInverse(field: universe)
+#type Network {
+#  name: String
+#  nameid: String
+#  nodes: [Node] @hasInverse(field: network) # root nodes only
 #  category: String! 
 #}
 
 #
-# Node Interface
+# Node Interface (Role and Circle)
 #
+
 type Node @hidePrivate {
   id: ID!
   createdAt: DateTime!  @patch_RO @search 
@@ -35,8 +38,10 @@ type Node @hidePrivate {
   tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_hasRole(n:["parent"], r:Coordinator)
 
   # Documents, data...
-  about: String @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [fulltext]) @alter_maxLength(f:"about", n:280)
-  mandate: Mandate @patch_hasRole(n:["parent"], r:Coordinator)
+  about: String     @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [fulltext])
+  mandate: Mandate  @patch_hasRole(n:["parent"], r:Coordinator)
+  docs: [Tension]   @patch_RO
+  source: Tension   @patch_RO
 
   # --method--
   n_tensions_out: Int  @count(f: tensions_out)
@@ -52,7 +57,7 @@ type Node @hidePrivate {
   isRoot: Boolean!  @patch_RO @search 
   isPrivate: Boolean! @patch_RO @search # Invitation required for an R/W access
   charac: NodeCharac!  @patch_hasRole(n:["parent"], r:Coordinator) # Root... inherits attributes
-  # universe: Universe
+  #network: [Network] @hasInverse(field: nodes)
 
   # Role... is a Leaf
   first_link: User      @patch_hasRole(n:["parent"], r:Coordinator)
@@ -68,7 +73,7 @@ type NodeFragment  {
 
   children: [NodeFragment]
   type_: NodeType
-  about: String
+  about: String  @alter_maxLength(f:"about", n:280)
   mandate: Mandate
 
   isPrivate: Boolean
@@ -96,8 +101,9 @@ type NodeStats {
 }
 
 #
-# Post Interface
+# Post Interface (Tension, Comment, Event, etc)
 #
+
 interface Post {
   id: ID!
   createdAt: DateTime!  @patch_RO @search 
@@ -109,24 +115,45 @@ interface Post {
 
 type Tension implements Post {
   nth: String  @search # @id...Upsert in BLL
-  title: String!        @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
-  type_: TensionType!   @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
-  emitter: Node!        @alter_hasRoot(n:["emitter"]) @patch_RO
-  emitterid: String!    @alter_hasRoot(n:["emitter"]) @patch_RO @search(by: [hash, regexp]) 
-  receiver: Node!       @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy")
-  receiverid: String!   @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
-  status: TensionStatus! @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy") @search
-  labels: [Label!]      @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
-  comments: [Comment!]   @alter_hasRoot(n:["emitter", "receiver"])
-  action: TensionAction  @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
-  data: NodeFragment     @alter_hasRole(n:["emitter", "receiver"], r:Coordinator, u:"createdBy")
+  title: String!         @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
+  type_: TensionType!    @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
+  emitter: Node!         @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy")  
+  emitterid: String!     @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
+  receiver: Node!        @alter_hasRole(n:["receiver"],r:Coordinator, u:"createdBy")
+  receiverid: String!    @alter_hasRole(n:["receiver"],r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
+  status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy") @search
+  action: TensionAction    @alter_hasRoot(n:["emitter","receiver"])
+  labels: [Label!]       @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
+  comments: [Comment!]     @alter_hasRoot(n:["emitter","receiver"])
+  blobs: [Blob!]         @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy") @hasInverse(field: tension)
+  history: [Event!]      #...RO ? manage in the BLL
+  head: Blob             @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
 
+  # --method--
   n_comments: Int  @count(f: comments)
 }
 
+type Label {
+  id: ID!
+  name: String! @id 
+  color: String
+}
 
 type Comment implements Post {
   message: String!  @patch_isOwner(u:"createdBy") @search(by: [fulltext]) 
+}
+
+type Blob implements Post {
+  tension: Tension!
+  blob_type: BlobType! @patch_RO @search
+  node: NodeFragment @patch_RO
+  md: String @patch_RO
+}
+
+type Event implements Post {
+  event_type: TensionEvent!
+  old: String!
+  new: String!
 }
 
 type Mandate {
@@ -146,18 +173,18 @@ type Mandate {
 type User {
   id: ID!
   createdAt: DateTime!   @patch_RO
-  username: String!  @id @patch_RO  @alter_maxLength(f:"username", n:42) @alter_toLower(f:"username")
-  name: String       @patch_isOwner @alter_maxLength(f:"name", n:100)    @alter_toLower(f:"name")
-  password: String!  @patch_isOwner @alter_maxLength(f:"password", n:100) @hidden 
+  username: String!  @id @patch_RO  @alter_toLower(f:"username")
+  name: String       @patch_isOwner @alter_toLower(f:"name")
+  password: String!  @patch_isOwner @hidden 
   # @DEBUG: several @id currentlynot allowed !
   # Q: how to enfore uniqueness ?
-  email: String!     @patch_isOwner @alter_maxLength(f:"email", n:100) @search(by: [hash]) @hidden # Only one @id allowing in dgraph.
+  email: String!     @patch_isOwner @search(by: [hash]) @hidden # Only one @id allowing in dgraph.
   emailHash: String        @patch_RO @hidden 
   emailValidated: Boolean! @patch_RO @hidden 
   #
   rights: UserRights! @patch_RO
   #
-  roles: [Node!] @hasInverse(field: first_link)         @patch_RO @alter_assertType(f:"roles", t:Role)
+  roles: [Node!]        @hasInverse(field: first_link)  @patch_RO @alter_assertType(f:"roles", t:Role)
   backed_roles: [Node!] @hasInverse(field: second_link) @patch_RO @alter_assertType(f:"backed_roles", t:Role)
   bio: String @patch_isOwner
   utc: String @patch_isOwner
@@ -173,34 +200,14 @@ type UserRights {
 }
 
 #
-# Labels
-#
-
-type Label {
-  id: ID!
-  name: String! @id 
-  color: String
-  #project: Project...
-}
-
-
-
-#
 # Enum
 #
+
+### Node
 
 enum NodeType {
   Circle
   Role
-}
-
-enum TensionType {
-  Governance
-  Operational
-  Personal
-  Help
-  # Alert # BotAlert. Circle can emit tension ?
-  # Poll ?
 }
 
 enum RoleType { # LeafType
@@ -216,27 +223,58 @@ enum NodeMode {
   Coordinated
 }
 
+### Tension
+
 enum TensionStatus {
   Open
   Closed
+}
+
+enum TensionType {
+  Governance
+  Operational
+  Personal
+  Help
+  # Alert # BotAlert. Circle can emit tension ?
+  # Poll ?
 }
 
 enum TensionAction {
   # Creating
   NewRole
   NewCircle
-  #NewLabel
+  #NewDoc
   # Updating
-  #  * UpdateParent
-  #  * UpdateEmitter
-  #  * UpdateReceiver
-  UpdateRoleAbout
-  UpdateCircleAbout
-  UpdateRoleMandate
-  UpdateCircleMandate
-  #  * UpdateStatus
+  EditRole 
+  EditCircle 
+  #EditDoc 
   # Deleting
-  #  * DeleteRole
-  #  * DeleteCircle
-  #  * DeleteLabel
+  #DeleteRole
+  #DeleteCircle
+  #DeleteDoc
+  #Extra
+  # NewPoll
 }
+
+enum TensionEvent {
+  Created
+  Reopened
+  Closed
+  # TitleUpdated
+  # EmitterUpdated
+  # ReceiverUpdated
+  # LabelAdded
+  # LabelRemoved
+  # CommentPushed
+  BlobPushed
+  BlobCommitted
+}
+
+enum BlobType {
+  InitBlob
+  OnAbout
+  OnMandate
+  OnFirstLink
+  OnDoc
+}
+

@@ -51,6 +51,8 @@ type Node @hidePrivate {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: receiver)
   about: String @search(by: [fulltext])
   mandate(filter: MandateFilter): Mandate
+  docs(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
+  source(filter: TensionFilter): Tension
   n_tensions_out: Int @count(f: tensions_out)
   n_tensions_in: Int @count(f: tensions_in)
   n_children: Int @count(f: children)
@@ -108,11 +110,13 @@ type Tension {
   emitterid: String! @search(by: [hash, regexp])
   receiver(filter: NodeFilter): Node!
   receiverid: String! @search(by: [hash, regexp])
-  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   status: TensionStatus! @search
   action: TensionAction
+  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
-  data: NodeFragment
+  blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!] @hasInverse(field: tension)
+  history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]
+  head(filter: BlobFilter): Blob
   n_comments: Int @count(f: comments)
   id: ID!
   createdAt: DateTime! @search
@@ -121,12 +125,41 @@ type Tension {
   message: String @search(by: [fulltext])
 }
 
+type Label {
+  id: ID!
+  name: String! @id
+  color: String
+}
+
 type Comment {
   message: String! @search(by: [fulltext])
   id: ID!
   createdAt: DateTime! @search
   updatedAt: DateTime
   createdBy(filter: UserFilter): User!
+}
+
+type Blob {
+  tension(filter: TensionFilter): Tension!
+  blob_type: BlobType! @search
+  node: NodeFragment
+  md: String
+  id: ID!
+  createdAt: DateTime! @search
+  updatedAt: DateTime
+  createdBy(filter: UserFilter): User!
+  message: String @search(by: [fulltext])
+}
+
+type Event {
+  event_type: TensionEvent!
+  old: String!
+  new: String!
+  id: ID!
+  createdAt: DateTime! @search
+  updatedAt: DateTime
+  createdBy(filter: UserFilter): User!
+  message: String @search(by: [fulltext])
 }
 
 type Mandate {
@@ -143,7 +176,7 @@ type User {
   username: String! @id
   name: String
   password: String! @hidden
-  email: String! @hidden @search(by: [hash])
+  email: String! @search(by: [hash]) @hidden
   emailHash: String @hidden
   emailValidated: Boolean! @hidden
   rights: UserRights!
@@ -158,24 +191,9 @@ type UserRights {
   canCreateRoot: Boolean!
 }
 
-type Label {
-  id: ID!
-  name: String! @id
-  color: String
-}
-
 enum NodeType {
   Circle
   Role
-}
-
-enum TensionType {
-  Governance
-  Operational
-  Personal
-  Help
-
-
 }
 
 enum RoleType {
@@ -200,19 +218,25 @@ enum TensionStatus {
   Closed
 }
 
+enum TensionType {
+  Governance
+  Operational
+  Personal
+  Help
+
+
+}
+
 enum TensionAction {
 
   NewRole
   NewCircle
 
 
+  EditRole
+  EditCircle
 
 
-
-  UpdateRoleAbout
-  UpdateCircleAbout
-  UpdateRoleMandate
-  UpdateCircleMandate
 
 
 
@@ -220,23 +244,61 @@ enum TensionAction {
 
 }
 
+enum TensionEvent {
+  Created
+  Reopened
+  Closed
+
+
+
+
+
+
+  BlobPushed
+  BlobCommitted
+}
+
+enum BlobType {
+  InitBlob
+  OnAbout
+  OnMandate
+  OnFirstLink
+  OnDoc
+}
+
+directive @remote on OBJECT|INTERFACE
+
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+
+directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
+
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+
+directive @cascade on FIELD
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+input AddBlobInput {
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy: UserRef!
+  message: String
+  tension: TensionRef!
+  blob_type: BlobType!
+  node: NodeFragmentRef
+  md: String
+}
 
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
-
-directive @remote on OBJECT|INTERFACE
-
-directive @cascade on FIELD
+type AddBlobPayload {
+  blob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  numUids: Int
+}
 
 input AddCommentInput {
   createdAt: DateTime!
@@ -248,6 +310,21 @@ input AddCommentInput {
 
 type AddCommentPayload {
   comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  numUids: Int
+}
+
+input AddEventInput {
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy: UserRef!
+  message: String
+  event_type: TensionEvent!
+  old: String!
+  new: String!
+}
+
+type AddEventPayload {
+  event(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   numUids: Int
 }
 
@@ -288,7 +365,7 @@ input AddNodeFragmentInput {
   nameid: String
   children: [NodeFragmentRef]
   type_: NodeType
-  about: String
+  about: String @alter_maxLength(f:"about", n:280)
   mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
@@ -314,8 +391,10 @@ input AddNodeInput {
   type_: NodeType!
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
-  about: String @alter_maxLength(f:"about", n:280)
+  about: String
   mandate: MandateRef
+  docs: [TensionRef]
+  source: TensionRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -354,15 +433,17 @@ input AddTensionInput {
   nth: String
   title: String! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
   type_: TensionType! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
-  emitter: NodeRef! @alter_hasRoot(n:["emitter"])
-  emitterid: String! @alter_hasRoot(n:["emitter"])
-  receiver: NodeRef! @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
-  receiverid: String! @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
-  labels: [LabelRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  emitter: NodeRef! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  emitterid: String! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  receiver: NodeRef! @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
+  receiverid: String! @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
   status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
-  action: TensionAction @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  action: TensionAction @alter_hasRoot(n:["emitter","receiver"])
+  labels: [LabelRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   comments: [CommentRef!] @alter_hasRoot(n:["emitter","receiver"])
-  data: NodeFragmentRef @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  blobs: [BlobRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  history: [EventRef!]
+  head: BlobRef @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   n_comments: Int
 }
 
@@ -373,10 +454,10 @@ type AddTensionPayload {
 
 input AddUserInput {
   createdAt: DateTime!
-  username: String! @alter_maxLength(f:"username", n:42) @alter_toLower(f:"username")
-  name: String @alter_maxLength(f:"name", n:100) @alter_toLower(f:"name")
-  password: String! @alter_maxLength(f:"password", n:100)
-  email: String! @alter_maxLength(f:"email", n:100)
+  username: String! @alter_toLower(f:"username")
+  name: String @alter_toLower(f:"name")
+  password: String!
+  email: String!
   emailHash: String
   emailValidated: Boolean!
   rights: UserRightsRef!
@@ -406,6 +487,56 @@ input AuthRule {
   or: [AuthRule]
   not: AuthRule
   rule: String
+}
+
+input BlobFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  message: StringFullTextFilter
+  blob_type: BlobType_hash
+  and: BlobFilter
+  or: BlobFilter
+  not: BlobFilter
+}
+
+input BlobOrder {
+  asc: BlobOrderable
+  desc: BlobOrderable
+  then: BlobOrder
+}
+
+enum BlobOrderable {
+  createdAt
+  updatedAt
+  message
+  md
+}
+
+input BlobPatch {
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  tension: TensionRef
+  blob_type: BlobType @patch_RO
+  node: NodeFragmentRef @patch_RO
+  md: String @patch_RO
+}
+
+input BlobRef {
+  id: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  tension: TensionRef
+  blob_type: BlobType
+  node: NodeFragmentRef
+  md: String
+}
+
+input BlobType_hash {
+  eq: BlobType!
 }
 
 input CommentFilter {
@@ -468,7 +599,17 @@ input DateTimeFilter {
   gt: DateTime
 }
 
+type DeleteBlobPayload {
+  msg: String
+  numUids: Int
+}
+
 type DeleteCommentPayload {
+  msg: String
+  numUids: Int
+}
+
+type DeleteEventPayload {
   msg: String
   numUids: Int
 }
@@ -522,6 +663,50 @@ enum DgraphIndex {
   month
   day
   hour
+}
+
+input EventFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  message: StringFullTextFilter
+  and: EventFilter
+  or: EventFilter
+  not: EventFilter
+}
+
+input EventOrder {
+  asc: EventOrderable
+  desc: EventOrderable
+  then: EventOrder
+}
+
+enum EventOrderable {
+  createdAt
+  updatedAt
+  message
+  old
+  new
+}
+
+input EventPatch {
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  event_type: TensionEvent
+  old: String
+  new: String
+}
+
+input EventRef {
+  id: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+  createdBy: UserRef
+  message: String
+  event_type: TensionEvent
+  old: String
+  new: String
 }
 
 input FloatFilter {
@@ -631,10 +816,19 @@ type Mutation {
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]!): AddTensionPayload
   updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload
-  deleteTension(filter: TensionFilter!): DeleteTensionPayload
+  deleteTension(filter: TensionFilter!): DeleteTensionPayload                   
+  addLabel(input: [AddLabelInput!]!): AddLabelPayload                           
+  updateLabel(input: UpdateLabelInput!): UpdateLabelPayload                     
+  deleteLabel(filter: LabelFilter!): DeleteLabelPayload
   addComment(input: [AddCommentInput!]!): AddCommentPayload
   updateComment(input: UpdateCommentInput! @hook_updateComment): UpdateCommentPayload
   deleteComment(filter: CommentFilter!): DeleteCommentPayload
+  addBlob(input: [AddBlobInput!]!): AddBlobPayload
+  updateBlob(input: UpdateBlobInput!): UpdateBlobPayload
+  deleteBlob(filter: BlobFilter!): DeleteBlobPayload
+  addEvent(input: [AddEventInput!]!): AddEventPayload
+  updateEvent(input: UpdateEventInput!): UpdateEventPayload
+  deleteEvent(filter: EventFilter!): DeleteEventPayload
   addMandate(input: [AddMandateInput!]!): AddMandatePayload
   updateMandate(input: UpdateMandateInput!): UpdateMandatePayload
   deleteMandate(filter: MandateFilter!): DeleteMandatePayload
@@ -642,9 +836,6 @@ type Mutation {
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
   addUserRights(input: [AddUserRightsInput!]!): AddUserRightsPayload
-  addLabel(input: [AddLabelInput!]!): AddLabelPayload
-  updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
-  deleteLabel(filter: LabelFilter!): DeleteLabelPayload
 }
 
 input NodeCharacFilter {
@@ -746,8 +937,10 @@ input NodePatch {
   type_: NodeType @patch_RO
   tensions_out: [TensionRef!] @patch_RO
   tensions_in: [TensionRef!] @patch_hasRole(n:["parent"], r: Coordinator)
-  about: String @patch_hasRole(n:["parent"], r: Coordinator) @alter_maxLength(f:"about", n:280)
+  about: String @patch_hasRole(n:["parent"], r: Coordinator)
   mandate: MandateRef @patch_hasRole(n:["parent"], r: Coordinator)
+  docs: [TensionRef] @patch_RO
+  source: TensionRef @patch_RO
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -775,6 +968,8 @@ input NodeRef {
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
+  docs: [TensionRef]
+  source: TensionRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -855,15 +1050,19 @@ type Query {
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
   queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
+  getLabel(id: ID, name: String): Label
+  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
   getComment(id: ID!): Comment
   queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  getBlob(id: ID!): Blob
+  queryBlob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  getEvent(id: ID!): Event
+  queryEvent(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   getMandate(id: ID!): Mandate
   queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   queryUserRights(first: Int, offset: Int): [UserRights]
-  getLabel(id: ID, name: String): Label
-  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
 }
 
 input RoleType_hash {
@@ -941,15 +1140,17 @@ input TensionPatch {
   nth: String
   title: String @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
   type_: TensionType @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
-  emitter: NodeRef @patch_RO @alter_hasRoot(n:["emitter"])
-  emitterid: String @patch_RO @alter_hasRoot(n:["emitter"])
-  receiver: NodeRef @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
-  receiverid: String @alter_hasRoot(n:["receiver"]) @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
-  labels: [LabelRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  emitter: NodeRef @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  emitterid: String @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy")
+  receiver: NodeRef @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
+  receiverid: String @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy")
   status: TensionStatus @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
-  action: TensionAction @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  action: TensionAction @alter_hasRoot(n:["emitter","receiver"])
+  labels: [LabelRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   comments: [CommentRef!] @alter_hasRoot(n:["emitter","receiver"])
-  data: NodeFragmentRef @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  blobs: [BlobRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
+  history: [EventRef!]
+  head: BlobRef @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   n_comments: Int
 }
 
@@ -966,11 +1167,13 @@ input TensionRef {
   emitterid: String
   receiver: NodeRef
   receiverid: String
-  labels: [LabelRef!]
   status: TensionStatus
   action: TensionAction
+  labels: [LabelRef!]
   comments: [CommentRef!]
-  data: NodeFragmentRef
+  blobs: [BlobRef!]
+  history: [EventRef!]
+  head: BlobRef
   n_comments: Int
 }
 
@@ -982,6 +1185,17 @@ input TensionType_hash {
   eq: TensionType!
 }
 
+input UpdateBlobInput {
+  filter: BlobFilter!
+  set: BlobPatch
+  remove: BlobPatch
+}
+
+type UpdateBlobPayload {
+  blob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  numUids: Int
+}
+
 input UpdateCommentInput {
   filter: CommentFilter!
   set: CommentPatch
@@ -990,6 +1204,17 @@ input UpdateCommentInput {
 
 type UpdateCommentPayload {
   comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  numUids: Int
+}
+
+input UpdateEventInput {
+  filter: EventFilter!
+  set: EventPatch
+  remove: EventPatch
+}
+
+type UpdateEventPayload {
+  event(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   numUids: Int
 }
 
@@ -1098,9 +1323,9 @@ enum UserOrderable {
 
 input UserPatch {
   createdAt: DateTime @patch_RO
-  name: String @patch_isOwner @alter_maxLength(f:"name", n:100) @alter_toLower(f:"name")
-  password: String @patch_isOwner @alter_maxLength(f:"password", n:100)
-  email: String @patch_isOwner @alter_maxLength(f:"email", n:100)
+  name: String @patch_isOwner @alter_toLower(f:"name")
+  password: String @patch_isOwner
+  email: String @patch_isOwner
   emailHash: String @patch_RO
   emailValidated: Boolean @patch_RO
   rights: UserRightsRef @patch_RO
