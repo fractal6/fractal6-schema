@@ -54,8 +54,8 @@ type Node @hidePrivate {
   # Furthermore, required field (role_type, charac, can have no semantics depending if tis on Role or Circle
 
   # Circle... is a Supernode/HyperEdge
-  isRoot: Boolean!  @patch_RO @search 
-  isPrivate: Boolean! @patch_RO @search # Invitation required for an R/W access
+  isRoot: Boolean!     @patch_RO @search 
+  isPrivate: Boolean!  @patch_RO @search # Invitation required for an R/W access
   charac: NodeCharac!  @patch_hasRole(n:["parent"], r:Coordinator) # Root... inherits attributes
   #network: [Network] @hasInverse(field: nodes)
 
@@ -71,7 +71,7 @@ type NodeFragment  {
   name: String
   nameid: String
 
-  children: [NodeFragment]
+  children: [NodeFragment!] # Role only for sub-cirles
   type_: NodeType
   about: String  @alter_maxLength(f:"about", n:280)
   mandate: Mandate
@@ -126,7 +126,7 @@ type Tension implements Post {
   labels: [Label!]       @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
   comments: [Comment!]     @alter_hasRoot(n:["emitter","receiver"])
   blobs: [Blob!]         @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy") @hasInverse(field: tension)
-  history: [Event!]      #...RO ? manage in the BLL
+  history: [Event!]!      #...RO ? manage in the BLL
   head: Blob             @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
 
   # --method--
@@ -151,7 +151,7 @@ type Blob implements Post {
 }
 
 type Event implements Post {
-  event_type: TensionEvent!
+  event_type: TensionEvent! @search
   old: String!
   new: String!
 }
@@ -260,12 +260,12 @@ enum TensionEvent {
   Created
   Reopened
   Closed
-  # TitleUpdated
-  # EmitterUpdated
-  # ReceiverUpdated
+  TitleUpdated
+  CommentPushed
   # LabelAdded
   # LabelRemoved
-  # CommentPushed
+  # EmitterUpdated
+  # ReceiverUpdated
   BlobPushed
   BlobCommitted
 }

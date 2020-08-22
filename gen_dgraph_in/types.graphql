@@ -33,7 +33,7 @@ type Node  {
 type NodeFragment {
   name: String
   nameid: String
-  children: [NodeFragment]
+  children: [NodeFragment!]
   type_: NodeType
   about: String
   mandate: Mandate
@@ -79,7 +79,7 @@ type Tension implements Post {
   labels: [Label!]
   comments: [Comment!]
   blobs: [Blob!] @hasInverse(field: tension)
-  history: [Event!]
+  history: [Event!]!
   head: Blob
   n_comments: Int 
 }
@@ -102,7 +102,7 @@ type Blob implements Post {
 }
 
 type Event implements Post {
-  event_type: TensionEvent!
+  event_type: TensionEvent! @search
   old: String!
   new: String!
 }
@@ -193,8 +193,8 @@ enum TensionEvent {
   Created
   Reopened
   Closed
-
-
+  TitleUpdated
+  CommentPushed
 
 
 
