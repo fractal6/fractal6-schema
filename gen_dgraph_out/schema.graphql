@@ -1,20 +1,20 @@
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
+
+directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
 directive @remote on OBJECT | INTERFACE
 
 directive @cascade on FIELD
 
-directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdAt: DateTime!
@@ -108,7 +108,7 @@ input AddNodeFragmentInput {
 }
 
 type AddNodeFragmentPayload {
-  nodeFragment(order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
+  nodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
   numUids: Int
 }
 
@@ -229,7 +229,7 @@ type Blob implements Post {
   message: String
   tension(filter: TensionFilter): Tension!
   blob_type: BlobType!
-  node: NodeFragment
+  node(filter: NodeFragmentFilter): NodeFragment
   md: String
 }
 
@@ -386,6 +386,11 @@ type DeleteMandatePayload {
 }
 
 type DeleteNodeCharacPayload {
+  msg: String
+  numUids: Int
+}
+
+type DeleteNodeFragmentPayload {
   msg: String
   numUids: Int
 }
@@ -595,6 +600,8 @@ type Mutation {
   updateNode(input: UpdateNodeInput!): UpdateNodePayload
   deleteNode(filter: NodeFilter!): DeleteNodePayload
   addNodeFragment(input: [AddNodeFragmentInput!]!): AddNodeFragmentPayload
+  updateNodeFragment(input: UpdateNodeFragmentInput!): UpdateNodeFragmentPayload
+  deleteNodeFragment(filter: NodeFragmentFilter!): DeleteNodeFragmentPayload
   addNodeCharac(input: [AddNodeCharacInput!]!): AddNodeCharacPayload
   updateNodeCharac(input: UpdateNodeCharacInput!): UpdateNodeCharacPayload
   deleteNodeCharac(filter: NodeCharacFilter!): DeleteNodeCharacPayload
@@ -698,9 +705,10 @@ input NodeFilter {
 }
 
 type NodeFragment {
+  id: ID!
   name: String
   nameid: String
-  children(order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment!]
+  children(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment!]
   type_: NodeType
   about: String
   mandate(filter: MandateFilter): Mandate
@@ -710,6 +718,11 @@ type NodeFragment {
   second_link: String
   skills: [String!]
   role_type: RoleType
+}
+
+input NodeFragmentFilter {
+  id: [ID!]
+  not: NodeFragmentFilter
 }
 
 input NodeFragmentOrder {
@@ -727,7 +740,23 @@ enum NodeFragmentOrderable {
   skills
 }
 
+input NodeFragmentPatch {
+  name: String
+  nameid: String
+  children: [NodeFragmentRef!]
+  type_: NodeType
+  about: String
+  mandate: MandateRef
+  isPrivate: Boolean
+  charac: NodeCharacRef
+  first_link: String
+  second_link: String
+  skills: [String!]
+  role_type: RoleType
+}
+
 input NodeFragmentRef {
+  id: ID
   name: String
   nameid: String
   children: [NodeFragmentRef!]
@@ -904,7 +933,8 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
-  queryNodeFragment(order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
+  getNodeFragment(id: ID!): NodeFragment
+  queryNodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
   getNodeCharac(id: ID!): NodeCharac
   queryNodeCharac(filter: NodeCharacFilter, first: Int, offset: Int): [NodeCharac]
   queryNodeStats(order: NodeStatsOrder, first: Int, offset: Int): [NodeStats]
@@ -1005,8 +1035,9 @@ enum TensionEvent {
   Closed
   TitleUpdated
   CommentPushed
-  BlobPushed
+  BlobCreated
   BlobCommitted
+  BlobPushed
 }
 
 input TensionEvent_hash {
@@ -1173,6 +1204,17 @@ input UpdateNodeCharacInput {
 
 type UpdateNodeCharacPayload {
   nodeCharac(filter: NodeCharacFilter, first: Int, offset: Int): [NodeCharac]
+  numUids: Int
+}
+
+input UpdateNodeFragmentInput {
+  filter: NodeFragmentFilter!
+  set: NodeFragmentPatch
+  remove: NodeFragmentPatch
+}
+
+type UpdateNodeFragmentPayload {
+  nodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
   numUids: Int
 }
 

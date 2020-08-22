@@ -26,7 +26,7 @@ type Node @hidePrivate @hook_add @hook_update {
   # Node naming/ID
   name: String!        @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
   nameid: String!  @id @patch_RO @search(by: [hash, regexp]) @alter_toLower(f:"nameid")
-  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) @alter_toLower(f:"rootnameid")  # to recursively get children object in GraphQL.
+  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) @alter_toLower(f:"rootnameid")  # to recursively access children
 
   # Node linking
   parent: Node       @patch_RO # If parent is null, Node is a root node
@@ -37,7 +37,7 @@ type Node @hidePrivate @hook_add @hook_update {
   tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO
   tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_hasRole(n:["parent"], r:Coordinator)
 
-  # Documents, data...
+  # Documents, data, etc.
   about: String     @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [fulltext])
   mandate: Mandate  @patch_hasRole(n:["parent"], r:Coordinator)
   docs: [Tension]   @patch_RO
@@ -68,6 +68,7 @@ type Node @hidePrivate @hook_add @hook_update {
 }
 
 type NodeFragment {
+  id: ID!
   name: String
   nameid: String
 
@@ -266,8 +267,9 @@ enum TensionEvent {
   # LabelRemoved
   # EmitterUpdated
   # ReceiverUpdated
-  BlobPushed
+  BlobCreated
   BlobCommitted
+  BlobPushed
 }
 
 enum BlobType {

@@ -31,6 +31,7 @@ type Node  {
 }
 
 type NodeFragment {
+  id: ID!
   name: String
   nameid: String
   children: [NodeFragment!]
@@ -199,8 +200,9 @@ enum TensionEvent {
 
 
 
-  BlobPushed
+  BlobCreated
   BlobCommitted
+  BlobPushed
 }
 
 enum BlobType {

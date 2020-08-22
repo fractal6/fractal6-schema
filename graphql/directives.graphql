@@ -10,13 +10,14 @@ directive @count(f: String!) on FIELD_DEFINITION
 directive @meta_getNodeStats on FIELD_DEFINITION
 
 # Hook directive for mutation
+# Gqlast automatically append hook in Dgraph Type, as:
+#   addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
 directive @hook_addNode on ARGUMENT_DEFINITION
 directive @hook_updateNode on ARGUMENT_DEFINITION
 directive @hook_updateTension on ARGUMENT_DEFINITION
 directive @hook_updateComment on ARGUMENT_DEFINITION
-# @DEBUG: [gqlast] automatically @hook directive in mutation, ie: addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
 
-# @DEBUG: Track this to remove the need of the field string value on input
+# @DEBUG: Track this to remove the need of the field string value mentionned on input
 # https://github.com/99designs/gqlgen/issues/1084
 
 directive @alter_toLower(f: String!) on INPUT_FIELD_DEFINITION
