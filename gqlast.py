@@ -113,6 +113,19 @@ class SemanticFilter:
     def _populate_data(self, data, name, ast, filter_directives=True):
         ''' Populate data from ast parsing. '''
 
+        # Populate Types Directives
+        data[name+"__directives"] = []
+        if ast.get('_directives'):
+            to_remove = []
+            for i, d in enumerate(ast._directives):
+                data[name+"__directives"].append(d)
+                if d._name.name.startswith('hook_'):
+                    to_remove.append(i)
+
+            for i in to_remove[::-1]:
+                ast._directives.pop(i)
+
+        # Populate fields
         fields = self.get_fields(ast)
         for f in fields:
             field = f.field
@@ -138,7 +151,7 @@ class SemanticFilter:
                     field_data['directives'].append({
                         'name': dn,
                         'ast': d,
-                        'ast_cpy': d.copy(),
+                        'ast_copy': d.copy(),
                     })
                     if (dn.startswith('alter_')
                         or dn.startswith('add_')
@@ -146,8 +159,8 @@ class SemanticFilter:
                         to_remove.append(i)
 
                 # filter directives
-                for i in to_remove[::-1]:
-                    if filter_directives:
+                if filter_directives:
+                    for i in to_remove[::-1]:
                         field._directives.pop(i)
 
             data[name].append(field_data)
@@ -231,6 +244,23 @@ class SemanticFilter:
 
                         f['ast'].field['_directives'].append(d['ast'])
         return
+
+    def copy_hook_directives(self, data_types_in, name_out, data_type_out):
+
+        for data_type in data_types_in:
+            data_in = getattr(self, data_type)
+            data_out = getattr(self, data_type_out)
+            for f in data_out[name_out]:
+                groups = re.match(r"(add|update|delete|query|get)(\w*)", f['name']).groups()
+                op = groups[0]
+                type_ = groups[1]
+                if type_ in data_in:
+                    for directive_ in data_in[type_ + '__directives']:
+                        directive_group = directive_._name.name.split("_")
+                        if len(directive_group) > 1 and op == directive_group[1]:
+                            args = self.get_args(f['ast'].field)
+                            directive_["cst"] = type_
+                            args.insert(len(args)-1, directive_)
 
     def update_args(self, data_type, name, ast):
 
@@ -320,6 +350,10 @@ class GqlgenSemantics(GraphqlSemantics):
 
         # remove interface gqlgen compatibility !
         self.sf._ast_set(ast, '_implements', None)
+
+        if name in ("Mutation", "Query"):
+            self.sf.copy_hook_directives(['types', 'interfaces'],
+                                         name, 'types')
 
         return ast
 
