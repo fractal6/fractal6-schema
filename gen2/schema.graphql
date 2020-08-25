@@ -11,6 +11,10 @@ directive @hook_addNode on ARGUMENT_DEFINITION
 
 directive @hook_updateNode on ARGUMENT_DEFINITION
 
+directive @hook_addTension on ARGUMENT_DEFINITION
+
+directive @hook_postAddTension on FIELD_DEFINITION
+
 directive @hook_updateTension on ARGUMENT_DEFINITION
 
 directive @hook_updateComment on ARGUMENT_DEFINITION
@@ -70,12 +74,12 @@ type NodeFragment {
   id: ID!
   name: String
   nameid: String
-  children(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment!]
   type_: NodeType
-  about: String
-  mandate(filter: MandateFilter): Mandate
   isPrivate: Boolean
   charac(filter: NodeCharacFilter): NodeCharac
+  about: String
+  mandate(filter: MandateFilter): Mandate
+  children(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment!]
   first_link: String
   second_link: String
   skills: [String!]
@@ -154,8 +158,8 @@ type Blob {
 
 type Event {
   event_type: TensionEvent! @search
-  old: String!
-  new: String!
+  old: String
+  new: String
   id: ID!
   createdAt: DateTime! @search
   updatedAt: DateTime
@@ -268,23 +272,23 @@ enum BlobType {
   OnDoc
 }
 
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
+
+directive @remote on OBJECT|INTERFACE
+
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @remote on OBJECT|INTERFACE
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
 directive @cascade on FIELD
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdAt: DateTime!
@@ -321,8 +325,8 @@ input AddEventInput {
   createdBy: UserRef!
   message: String
   event_type: TensionEvent!
-  old: String!
-  new: String!
+  old: String
+  new: String
 }
 
 type AddEventPayload {
@@ -364,13 +368,13 @@ type AddNodeCharacPayload {
 
 input AddNodeFragmentInput {
   name: String
-  nameid: String
-  children: [NodeFragmentRef!]
+  nameid: String @alter_toLower(f:"nameid")
   type_: NodeType
-  about: String @alter_maxLength(f:"about", n:280)
-  mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
+  about: String @alter_maxLength(f:"about", n:280)
+  mandate: MandateRef
+  children: [NodeFragmentRef!]
   first_link: String
   second_link: String
   skills: [String!]
@@ -386,8 +390,8 @@ input AddNodeInput {
   createdAt: DateTime!
   createdBy: UserRef! @add_isOwner(u:"createdBy")
   name: String!
-  nameid: String! @alter_toLower(f:"nameid")
-  rootnameid: String! @alter_toLower(f:"rootnameid")
+  nameid: String!
+  rootnameid: String!
   parent: NodeRef
   children: [NodeRef!]
   type_: NodeType!
@@ -824,7 +828,7 @@ type Mutation {
   addNodeStats(input: [AddNodeStatsInput!]!): AddNodeStatsPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
-  addTension(input: [AddTensionInput!]!): AddTensionPayload
+  addTension(input: [AddTensionInput!]! @hook_addTension): AddTensionPayload @hook_postAddTension
   updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload
   deleteTension(filter: TensionFilter!): DeleteTensionPayload
   addLabel(input: [AddLabelInput!]!): AddLabelPayload
@@ -907,13 +911,13 @@ enum NodeFragmentOrderable {
 
 input NodeFragmentPatch {
   name: String
-  nameid: String
-  children: [NodeFragmentRef!]
+  nameid: String @alter_toLower(f:"nameid")
   type_: NodeType
-  about: String @alter_maxLength(f:"about", n:280)
-  mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
+  about: String @alter_maxLength(f:"about", n:280)
+  mandate: MandateRef
+  children: [NodeFragmentRef!]
   first_link: String
   second_link: String
   skills: [String!]
@@ -924,12 +928,12 @@ input NodeFragmentRef {
   id: ID
   name: String
   nameid: String
-  children: [NodeFragmentRef!]
   type_: NodeType
-  about: String
-  mandate: MandateRef
   isPrivate: Boolean
   charac: NodeCharacRef
+  about: String
+  mandate: MandateRef
+  children: [NodeFragmentRef!]
   first_link: String
   second_link: String
   skills: [String!]
@@ -962,7 +966,7 @@ input NodePatch {
   createdAt: DateTime @patch_RO
   createdBy: UserRef @patch_RO
   name: String @patch_hasRole(n:["parent"], r: Coordinator)
-  rootnameid: String @patch_RO @alter_toLower(f:"rootnameid")
+  rootnameid: String @patch_RO
   parent: NodeRef @patch_RO
   children: [NodeRef!] @patch_RO
   type_: NodeType @patch_RO

@@ -25,8 +25,8 @@ type Node @hidePrivate @hook_add @hook_update {
 
   # Node naming/ID
   name: String!        @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
-  nameid: String!  @id @patch_RO @search(by: [hash, regexp]) @alter_toLower(f:"nameid")
-  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) @alter_toLower(f:"rootnameid")  # to recursively access children
+  nameid: String!  @id @patch_RO @search(by: [hash, regexp])
+  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) # to recursively access children
 
   # Node linking
   parent: Node       @patch_RO # If parent is null, Node is a root node
@@ -70,16 +70,19 @@ type Node @hidePrivate @hook_add @hook_update {
 type NodeFragment {
   id: ID!
   name: String
-  nameid: String
+  nameid: String @alter_toLower(f:"nameid")
 
-  children: [NodeFragment!] # Role only for sub-cirles
   type_: NodeType
-  about: String  @alter_maxLength(f:"about", n:280)
-  mandate: Mandate
-
   isPrivate: Boolean
   charac: NodeCharac
 
+  about: String  @alter_maxLength(f:"about", n:280)
+  mandate: Mandate
+
+  # For Circles
+  children: [NodeFragment!] # Role only for sub-cirles
+
+  # For Roles
   first_link: String
   second_link: String
   skills: [String!]
@@ -114,7 +117,7 @@ interface Post {
 }
 
 
-type Tension implements Post @hook_update {
+type Tension implements Post @hook_add @hook_update {
   nth: String  @search # @id...Upsert in BLL
   title: String!         @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
   type_: TensionType!    @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
@@ -153,8 +156,8 @@ type Blob implements Post {
 
 type Event implements Post {
   event_type: TensionEvent! @search
-  old: String!
-  new: String!
+  old: String
+  new: String
 }
 
 type Mandate {

@@ -34,12 +34,12 @@ type NodeFragment {
   id: ID!
   name: String
   nameid: String
-  children: [NodeFragment!]
   type_: NodeType
-  about: String
-  mandate: Mandate
   isPrivate: Boolean
   charac: NodeCharac
+  about: String
+  mandate: Mandate
+  children: [NodeFragment!]
   first_link: String
   second_link: String
   skills: [String!]
@@ -104,8 +104,8 @@ type Blob implements Post {
 
 type Event implements Post {
   event_type: TensionEvent! @search
-  old: String!
-  new: String!
+  old: String
+  new: String
 }
 
 type Mandate {
