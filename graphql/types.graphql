@@ -152,6 +152,7 @@ type Blob implements Post {
   blob_type: BlobType! @patch_RO @search
   node: NodeFragment @patch_RO
   md: String @patch_RO
+  pushedFlag: String @patch_RO
 }
 
 type Event implements Post {
