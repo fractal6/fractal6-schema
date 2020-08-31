@@ -81,7 +81,6 @@ type Tension implements Post {
   comments: [Comment!]
   blobs: [Blob!] @hasInverse(field: tension)
   history: [Event!]!
-  head: Blob
   n_comments: Int 
 }
 

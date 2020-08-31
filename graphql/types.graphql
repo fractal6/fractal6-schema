@@ -131,7 +131,6 @@ type Tension implements Post @hook_add @hook_update {
   comments: [Comment!]     @alter_hasRoot(n:["emitter","receiver"])
   blobs: [Blob!]         @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy") @hasInverse(field: tension)
   history: [Event!]!      #...RO ? manage in the BLL
-  head: Blob             @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
 
   # --method--
   n_comments: Int  @count(f: comments)
