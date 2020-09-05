@@ -122,6 +122,7 @@ type Tension {
   blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!] @hasInverse(field: tension)
   history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]!
   n_comments: Int @count(f: comments)
+  n_blobs: Int @count(f: blobs)
   id: ID!
   createdAt: DateTime! @search
   updatedAt: DateTime
@@ -146,9 +147,9 @@ type Comment {
 type Blob {
   tension(filter: TensionFilter): Tension!
   blob_type: BlobType! @search
+  pushedFlag: DateTime @search
   node(filter: NodeFragmentFilter): NodeFragment
   md: String
-  pushedFlag: String
   id: ID!
   createdAt: DateTime! @search
   updatedAt: DateTime
@@ -265,30 +266,30 @@ enum TensionEvent {
 }
 
 enum BlobType {
-  InitBlob
+  OnNode
   OnAbout
   OnMandate
   OnFirstLink
   OnDoc
 }
 
+directive @remote on OBJECT|INTERFACE
+
+directive @cascade on FIELD
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @id on FIELD_DEFINITION
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
+directive @id on FIELD_DEFINITION
+
 directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
-directive @remote on OBJECT|INTERFACE
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
-directive @cascade on FIELD
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 input AddBlobInput {
   createdAt: DateTime!
@@ -297,9 +298,9 @@ input AddBlobInput {
   message: String
   tension: TensionRef!
   blob_type: BlobType!
+  pushedFlag: DateTime
   node: NodeFragmentRef
   md: String
-  pushedFlag: String
 }
 
 type AddBlobPayload {
@@ -451,6 +452,7 @@ input AddTensionInput {
   blobs: [BlobRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   history: [EventRef!]!
   n_comments: Int
+  n_blobs: Int
 }
 
 type AddTensionPayload {
@@ -500,6 +502,7 @@ input BlobFilter {
   createdAt: DateTimeFilter
   message: StringFullTextFilter
   blob_type: BlobType_hash
+  pushedFlag: DateTimeFilter
   and: BlobFilter
   or: BlobFilter
   not: BlobFilter
@@ -515,8 +518,8 @@ enum BlobOrderable {
   createdAt
   updatedAt
   message
-  md
   pushedFlag
+  md
 }
 
 input BlobPatch {
@@ -526,9 +529,9 @@ input BlobPatch {
   message: String
   tension: TensionRef
   blob_type: BlobType @patch_RO
+  pushedFlag: DateTime @patch_RO
   node: NodeFragmentRef @patch_RO
   md: String @patch_RO
-  pushedFlag: String @patch_RO
 }
 
 input BlobRef {
@@ -539,9 +542,9 @@ input BlobRef {
   message: String
   tension: TensionRef
   blob_type: BlobType
+  pushedFlag: DateTime
   node: NodeFragmentRef
   md: String
-  pushedFlag: String
 }
 
 input BlobType_hash {
@@ -832,7 +835,7 @@ type Mutation {
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
   addTension(input: [AddTensionInput!]! @hook_addTension): AddTensionPayload @hook_postAddTension
-  updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload
+  updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload  @hook_postUpdateTension
   deleteTension(filter: TensionFilter!): DeleteTensionPayload
   addLabel(input: [AddLabelInput!]!): AddLabelPayload
   updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
@@ -1173,6 +1176,7 @@ enum TensionOrderable {
   emitterid
   receiverid
   n_comments
+  n_blobs
 }
 
 input TensionPatch {
@@ -1194,6 +1198,7 @@ input TensionPatch {
   blobs: [BlobRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy")
   history: [EventRef!]
   n_comments: Int
+  n_blobs: Int
 }
 
 input TensionRef {
@@ -1216,6 +1221,7 @@ input TensionRef {
   blobs: [BlobRef!]
   history: [EventRef!]
   n_comments: Int
+  n_blobs: Int
 }
 
 input TensionStatus_hash {

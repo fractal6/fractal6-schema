@@ -134,6 +134,7 @@ type Tension implements Post @hook_add @hook_update {
 
   # --method--
   n_comments: Int  @count(f: comments)
+  n_blobs: Int  @count(f: blobs)
 }
 
 type Label {
@@ -149,15 +150,17 @@ type Comment implements Post @hook_update {
 type Blob implements Post {
   tension: Tension!
   blob_type: BlobType! @patch_RO @search
+  pushedFlag: DateTime @alter_RO @search
+
+  # data
   node: NodeFragment @patch_RO
   md: String @patch_RO
-  pushedFlag: String @patch_RO
 }
 
 type Event implements Post {
   event_type: TensionEvent! @search
-  old: String
-  new: String
+  old: String # Store blodid for Commit and Pushed event
+  new: String #
 }
 
 type Mandate {
@@ -276,7 +279,7 @@ enum TensionEvent {
 }
 
 enum BlobType {
-  InitBlob
+  OnNode
   OnAbout
   OnMandate
   OnFirstLink

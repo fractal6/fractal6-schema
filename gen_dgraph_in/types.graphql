@@ -82,6 +82,7 @@ type Tension implements Post {
   blobs: [Blob!] @hasInverse(field: tension)
   history: [Event!]!
   n_comments: Int 
+  n_blobs: Int 
 }
 
 type Label {
@@ -97,9 +98,9 @@ _VOID: String
 type Blob implements Post {
   tension: Tension!
   blob_type: BlobType! @search
+  pushedFlag: DateTime @search
   node: NodeFragment
   md: String
-  pushedFlag: String
 }
 
 type Event implements Post {
@@ -206,7 +207,7 @@ enum TensionEvent {
 }
 
 enum BlobType {
-  InitBlob
+  OnNode
   OnAbout
   OnMandate
   OnFirstLink

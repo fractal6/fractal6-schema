@@ -16,6 +16,7 @@ directive @hook_addNode on ARGUMENT_DEFINITION
 directive @hook_updateNode on ARGUMENT_DEFINITION
 directive @hook_addTension on ARGUMENT_DEFINITION
 directive @hook_postAddTension on FIELD_DEFINITION
+directive @hook_postUpdateTension on FIELD_DEFINITION
 directive @hook_updateTension on ARGUMENT_DEFINITION
 directive @hook_updateComment on ARGUMENT_DEFINITION
 
@@ -53,8 +54,8 @@ directive @isAuth on OBJECT | FIELD_DEFINITION
 # Authorize mutations if the user has at least:
 # * the given role(r) with the given node(n)
 # * the owner/ship against user(u) (if given)
-directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
 directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
+directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
  
 # Authorize mutation if user has the same root node than at least 
 # one of the given node(n) (i.e. is in the same organisation)
@@ -69,9 +70,9 @@ directive @alter_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
 
 # Authorize update only if the field's value match the user(u) credential.
 # If user(u) field is empty, assume a user object.
-directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
 directive @add_isOwner(u: String) on INPUT_FIELD_DEFINITION
+directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
 
-# Read Only field (Non Patchable)
-directive @patch_RO on INPUT_FIELD_DEFINITION # for field defined at creation
+directive @patch_RO on INPUT_FIELD_DEFINITION # for field defined at creation, Non Patchable
+directive @alter_RO on INPUT_FIELD_DEFINITION # for field defined at creation, Non Patchable
 
