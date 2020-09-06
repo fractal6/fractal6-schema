@@ -84,6 +84,18 @@ class SemanticFilter:
         else:
             return None
 
+    @classmethod
+    def get_directives(cls, field):
+        ''' field is an ast.
+            Returns an ast representing the directives
+        '''
+
+        if field.get('_directives'):
+            return field._directives
+        else:
+            cls._ast_set(field, '_directives', [])
+            return field._directives
+
     @staticmethod
     def _ast_set(ast, rule_name, value, pos=None):
         assert(isinstance(ast, AST))
@@ -258,9 +270,18 @@ class SemanticFilter:
                     for directive_ in data_in[type_ + '__directives']:
                         directive_group = directive_._name.name.split("_")
                         if len(directive_group) > 1 and op == directive_group[1]:
+                            pre_directive = directive_
+                            post_directive = directive_.copy()
+
+                            # Add Pre Hook
+                            pre_directive["cst"] = type_
                             args = self.get_args(f['ast'].field)
-                            directive_["cst"] = type_
-                            args.insert(len(args)-1, directive_)
+                            args.insert(len(args)-1, pre_directive)
+
+                            # Add Post Hook
+                            post_directive["cst"] = type_.title() + "Post"
+                            post_directives = self.get_directives(f['ast'].field)
+                            post_directives.insert(len(post_directives)-1, post_directive)
 
     def update_args(self, data_type, name, ast):
 
