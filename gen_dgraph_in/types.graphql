@@ -178,11 +178,11 @@ enum TensionAction {
 
   NewRole
   NewCircle
-
+  NewMd
 
   EditRole
   EditCircle
-
+  EditMd
 
 
 

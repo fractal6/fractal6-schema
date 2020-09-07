@@ -9,15 +9,23 @@ directive @meta_getNodeStats on FIELD_DEFINITION
 
 directive @hook_addNode on ARGUMENT_DEFINITION
 
+directive @hook_addNodePost on FIELD_DEFINITION
+
 directive @hook_updateNode on ARGUMENT_DEFINITION
+
+directive @hook_updateNodePost on FIELD_DEFINITION
 
 directive @hook_addTension on ARGUMENT_DEFINITION
 
-directive @hook_postAddTension on FIELD_DEFINITION
+directive @hook_addTensionPost on FIELD_DEFINITION
 
 directive @hook_updateTension on ARGUMENT_DEFINITION
 
+directive @hook_updateTensionPost on FIELD_DEFINITION
+
 directive @hook_updateComment on ARGUMENT_DEFINITION
+
+directive @hook_updateCommentPost on FIELD_DEFINITION
 
 directive @alter_toLower(f: String!) on INPUT_FIELD_DEFINITION
 
@@ -29,17 +37,19 @@ directive @hidePrivate on OBJECT|FIELD_DEFINITION
 
 directive @isAuth on OBJECT|FIELD_DEFINITION
 
-directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
-
 directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
+
+directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
 
 directive @alter_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
 
-directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
-
 directive @add_isOwner(u: String) on INPUT_FIELD_DEFINITION
 
+directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
+
 directive @patch_RO on INPUT_FIELD_DEFINITION
+
+directive @alter_RO on INPUT_FIELD_DEFINITION
 
 type Node @hidePrivate {
   id: ID!
@@ -237,11 +247,11 @@ enum TensionAction {
 
   NewRole
   NewCircle
-
+  NewMd
 
   EditRole
   EditCircle
-
+  EditMd
 
 
 
@@ -273,23 +283,23 @@ enum BlobType {
   OnDoc
 }
 
-directive @remote on OBJECT|INTERFACE
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
-directive @cascade on FIELD
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
-directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
+
+directive @remote on OBJECT|INTERFACE
+
+directive @cascade on FIELD
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdAt: DateTime!
@@ -298,7 +308,7 @@ input AddBlobInput {
   message: String
   tension: TensionRef!
   blob_type: BlobType!
-  pushedFlag: DateTime
+  pushedFlag: DateTime @alter_RO
   node: NodeFragmentRef
   md: String
 }
@@ -529,7 +539,7 @@ input BlobPatch {
   message: String
   tension: TensionRef
   blob_type: BlobType @patch_RO
-  pushedFlag: DateTime @patch_RO
+  pushedFlag: DateTime @alter_RO
   node: NodeFragmentRef @patch_RO
   md: String @patch_RO
 }
@@ -822,8 +832,8 @@ enum Mode {
 }
 
 type Mutation {
-  addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload
-  updateNode(input: UpdateNodeInput! @hook_updateNode): UpdateNodePayload
+  addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload @hook_addNodePost
+  updateNode(input: UpdateNodeInput! @hook_updateNode): UpdateNodePayload @hook_updateNodePost
   deleteNode(filter: NodeFilter!): DeleteNodePayload
   addNodeFragment(input: [AddNodeFragmentInput!]!): AddNodeFragmentPayload
   updateNodeFragment(input: UpdateNodeFragmentInput!): UpdateNodeFragmentPayload
@@ -834,14 +844,14 @@ type Mutation {
   addNodeStats(input: [AddNodeStatsInput!]!): AddNodeStatsPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
-  addTension(input: [AddTensionInput!]! @hook_addTension): AddTensionPayload @hook_postAddTension
-  updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload  @hook_postUpdateTension
+  addTension(input: [AddTensionInput!]! @hook_addTension): AddTensionPayload @hook_addTensionPost
+  updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload @hook_updateTensionPost
   deleteTension(filter: TensionFilter!): DeleteTensionPayload
   addLabel(input: [AddLabelInput!]!): AddLabelPayload
   updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
   addComment(input: [AddCommentInput!]!): AddCommentPayload
-  updateComment(input: UpdateCommentInput! @hook_updateComment): UpdateCommentPayload
+  updateComment(input: UpdateCommentInput! @hook_updateComment): UpdateCommentPayload @hook_updateCommentPost
   deleteComment(filter: CommentFilter!): DeleteCommentPayload
   addBlob(input: [AddBlobInput!]!): AddBlobPayload
   updateBlob(input: UpdateBlobInput!): UpdateBlobPayload

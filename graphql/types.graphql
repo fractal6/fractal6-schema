@@ -116,7 +116,6 @@ interface Post {
   message: String  @patch_isOwner(u:"createdBy") @search(by: [fulltext])
 }
 
-
 type Tension implements Post @hook_add @hook_update {
   nth: String  @search # @id...Upsert in BLL
   title: String!         @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
@@ -250,17 +249,19 @@ enum TensionAction {
   # Creating
   NewRole
   NewCircle
-  #NewDoc
+  NewMd
   # Updating
   EditRole 
   EditCircle 
-  #EditDoc 
+  EditMd
   # Deleting
   #DeleteRole
   #DeleteCircle
-  #DeleteDoc
-  #Extra
-  # NewPoll
+  #DeleteMd
+  # -- Extra
+  # * Poll ?
+  # * Annoucement ?
+  # * Articles ?
 }
 
 enum TensionEvent {
@@ -283,6 +284,6 @@ enum BlobType {
   OnAbout
   OnMandate
   OnFirstLink
-  OnDoc
+  OnDoc # for any doc edition (md, spreadsheet, etc)
 }
 
