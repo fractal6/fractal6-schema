@@ -71,13 +71,14 @@ type Tension implements Post {
   nth: String @search
   title: String! @search(by: [fulltext])
   type_: TensionType! @search
-  emitter: Node!
   emitterid: String! @search(by: [hash, regexp])
-  receiver: Node!
+  emitter: Node!
   receiverid: String! @search(by: [hash, regexp])
+  receiver: Node!
   status: TensionStatus! @search
-  action: TensionAction
   labels: [Label!]
+  assignees: [User!]
+  action: TensionAction
   comments: [Comment!]
   blobs: [Blob!] @hasInverse(field: tension)
   history: [Event!]!
@@ -129,6 +130,8 @@ type User {
   rights: UserRights!
   roles: [Node!] @hasInverse(field: first_link)
   backed_roles: [Node!] @hasInverse(field: second_link)
+  tensions_created: [Tension!] @hasInverse(field: createdBy)
+  tensions_assigned: [Tension!] @hasInverse(field: assignees)
   bio: String
   utc: String
 }
@@ -189,14 +192,20 @@ enum TensionAction {
 
 
 
+
+
 }
 
 enum TensionEvent {
+
   Created
   Reopened
   Closed
   TitleUpdated
   CommentPushed
+  AssigneeAdded
+  AssigneeRemoved
+
 
 
 
@@ -207,9 +216,12 @@ enum TensionEvent {
 }
 
 enum BlobType {
+
   OnNode
   OnAbout
   OnMandate
   OnFirstLink
+
   OnDoc
+
 }

@@ -117,19 +117,22 @@ interface Post {
 }
 
 type Tension implements Post @hook_add @hook_update {
+  createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
+
   nth: String  @search # @id...Upsert in BLL
-  title: String!         @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
-  type_: TensionType!    @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
-  emitter: Node!         @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy")  
-  emitterid: String!     @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
-  receiver: Node!        @alter_hasRole(n:["receiver"],r:Coordinator, u:"createdBy")
-  receiverid: String!    @alter_hasRole(n:["receiver"],r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
-  status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy") @search
-  action: TensionAction    @alter_hasRoot(n:["emitter","receiver"])
-  labels: [Label!]       @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
-  comments: [Comment!]     @alter_hasRoot(n:["emitter","receiver"])
-  blobs: [Blob!]         @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy") @hasInverse(field: tension)
-  history: [Event!]!      #...RO ? manage in the BLL
+  title: String!           @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [fulltext])
+  type_: TensionType!      @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search 
+  emitterid: String!       @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
+  emitter: Node!           @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy")  
+  receiverid: String!      @alter_hasRole(n:["receiver"],r:Coordinator, u:"createdBy") @search(by: [hash, regexp]) 
+  receiver: Node!          @alter_hasRole(n:["receiver"],r:Coordinator, u:"createdBy")
+  status: TensionStatus!   @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy") @search
+  labels: [Label!]         @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
+  assignees: [User!]       @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy")
+  action: TensionAction  @alter_hasRoot(n:["emitter","receiver"])
+  comments: [Comment!]   @alter_hasRoot(n:["emitter","receiver"])
+  blobs: [Blob!]         @alter_hasRoot(n:["emitter","receiver"]) @hasInverse(field: tension)
+  history: [Event!]!     @alter_hasRoot(n:["emitter","receiver"])
 
   # --method--
   n_comments: Int  @count(f: comments)
@@ -187,11 +190,15 @@ type User {
   email: String!     @patch_isOwner @search(by: [hash]) @hidden # Only one @id allowing in dgraph.
   emailHash: String        @patch_RO @hidden 
   emailValidated: Boolean! @patch_RO @hidden 
-  #
+  # User Rights
   rights: UserRights! @patch_RO
-  #
+  # User Roles
   roles: [Node!]        @hasInverse(field: first_link)  @patch_RO @alter_assertType(f:"roles", t:Role)
   backed_roles: [Node!] @hasInverse(field: second_link) @patch_RO @alter_assertType(f:"backed_roles", t:Role)
+  # User Tensions
+  tensions_created: [Tension!] @hasInverse(field: createdBy)
+  tensions_assigned: [Tension!] @hasInverse(field: assignees)
+  # Profile
   bio: String @patch_isOwner
   utc: String @patch_isOwner
   #skills
@@ -265,25 +272,32 @@ enum TensionAction {
 }
 
 enum TensionEvent {
+  # Tension patch
   Created
   Reopened
   Closed
   TitleUpdated
   CommentPushed
+  AssigneeAdded
+  AssigneeRemoved
   # LabelAdded
   # LabelRemoved
   # EmitterUpdated
   # ReceiverUpdated
+  # Blob action
   BlobCreated
   BlobCommitted
   BlobPushed
 }
 
 enum BlobType {
+  # Node
   OnNode
   OnAbout
   OnMandate
   OnFirstLink
-  OnDoc # for any doc edition (md, spreadsheet, etc)
+  # Doc (md, spreadsheet, etc)
+  OnDoc
+  #OnDocTitle ?
 }
 

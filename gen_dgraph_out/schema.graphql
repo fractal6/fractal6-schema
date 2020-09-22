@@ -2,19 +2,19 @@ directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
-directive @id on FIELD_DEFINITION
-
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
-
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @remote on OBJECT | INTERFACE
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 directive @cascade on FIELD
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @id on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @remote on OBJECT | INTERFACE
 
 input AddBlobInput {
   createdAt: DateTime!
@@ -166,13 +166,14 @@ input AddTensionInput {
   nth: String
   title: String!
   type_: TensionType!
-  emitter: NodeRef!
   emitterid: String!
-  receiver: NodeRef!
+  emitter: NodeRef!
   receiverid: String!
+  receiver: NodeRef!
   status: TensionStatus!
-  action: TensionAction
   labels: [LabelRef!]
+  assignees: [UserRef!]
+  action: TensionAction
   comments: [CommentRef!]
   blobs: [BlobRef!]
   history: [EventRef!]!
@@ -196,6 +197,8 @@ input AddUserInput {
   rights: UserRightsRef!
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
+  tensions_created: [TensionRef!]
+  tensions_assigned: [TensionRef!]
   bio: String
   utc: String
 }
@@ -1014,13 +1017,14 @@ type Tension implements Post {
   nth: String
   title: String!
   type_: TensionType!
-  emitter(filter: NodeFilter): Node!
   emitterid: String!
-  receiver(filter: NodeFilter): Node!
+  emitter(filter: NodeFilter): Node!
   receiverid: String!
+  receiver(filter: NodeFilter): Node!
   status: TensionStatus!
-  action: TensionAction
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
+  assignees(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
+  action: TensionAction
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!]
   history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]!
@@ -1031,8 +1035,10 @@ type Tension implements Post {
 enum TensionAction {
   NewRole
   NewCircle
+  NewMd
   EditRole
   EditCircle
+  EditMd
 }
 
 enum TensionEvent {
@@ -1041,6 +1047,8 @@ enum TensionEvent {
   Closed
   TitleUpdated
   CommentPushed
+  AssigneeAdded
+  AssigneeRemoved
   BlobCreated
   BlobCommitted
   BlobPushed
@@ -1091,13 +1099,14 @@ input TensionPatch {
   nth: String
   title: String
   type_: TensionType
-  emitter: NodeRef
   emitterid: String
-  receiver: NodeRef
+  emitter: NodeRef
   receiverid: String
+  receiver: NodeRef
   status: TensionStatus
-  action: TensionAction
   labels: [LabelRef!]
+  assignees: [UserRef!]
+  action: TensionAction
   comments: [CommentRef!]
   blobs: [BlobRef!]
   history: [EventRef!]
@@ -1114,13 +1123,14 @@ input TensionRef {
   nth: String
   title: String
   type_: TensionType
-  emitter: NodeRef
   emitterid: String
-  receiver: NodeRef
+  emitter: NodeRef
   receiverid: String
+  receiver: NodeRef
   status: TensionStatus
-  action: TensionAction
   labels: [LabelRef!]
+  assignees: [UserRef!]
+  action: TensionAction
   comments: [CommentRef!]
   blobs: [BlobRef!]
   history: [EventRef!]
@@ -1281,6 +1291,8 @@ type User {
   rights: UserRights!
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  tensions_created(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  tensions_assigned(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   bio: String
   utc: String
 }
@@ -1321,6 +1333,8 @@ input UserPatch {
   rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
+  tensions_created: [TensionRef!]
+  tensions_assigned: [TensionRef!]
   bio: String
   utc: String
 }
@@ -1337,6 +1351,8 @@ input UserRef {
   rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
+  tensions_created: [TensionRef!]
+  tensions_assigned: [TensionRef!]
   bio: String
   utc: String
 }
