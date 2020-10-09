@@ -56,6 +56,7 @@ type Node @hidePrivate @hook_add @hook_update {
   # Circle... is a Supernode/HyperEdge
   isRoot: Boolean!     @patch_RO @search 
   isPrivate: Boolean!  @patch_RO @search # Invitation required for an R/W access
+  isArchived: Boolean! @patch_RO @search # Not visible
   charac: NodeCharac!  @patch_hasRole(n:["parent"], r:Coordinator) # Root... inherits attributes
   #network: [Network] @hasInverse(field: nodes)
 
@@ -92,9 +93,9 @@ type NodeFragment {
 
 type NodeCharac {
   id: ID!
-  userCanJoin: Boolean! @search
   # define the governance process
   mode: NodeMode! @search
+  userCanJoin: Boolean! @search
 }
 
 type NodeStats {
@@ -153,6 +154,7 @@ type Blob implements Post {
   tension: Tension!
   blob_type: BlobType! @patch_RO @search
   pushedFlag: DateTime @alter_RO @search
+  archivedFlag: DateTime @alter_RO @search
 
   # data
   node: NodeFragment @patch_RO
@@ -261,10 +263,10 @@ enum TensionAction {
   EditRole 
   EditCircle 
   EditMd
-  # Deleting
-  #DeleteRole
-  #DeleteCircle
-  #DeleteMd
+  # Archiving
+  ArchivedRole
+  ArchivedCircle
+  ArchivedMd
   # -- Extra
   # * Poll ?
   # * Annoucement ?
@@ -288,6 +290,8 @@ enum TensionEvent {
   BlobCreated
   BlobCommitted
   BlobPushed
+  BlobArchived
+  BlobUnarchived
 }
 
 enum BlobType {

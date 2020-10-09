@@ -23,6 +23,7 @@ type Node  {
   stats: NodeStats 
   isRoot: Boolean! @search
   isPrivate: Boolean! @search
+  isArchived: Boolean! @search
   charac: NodeCharac!
   first_link: User
   second_link: User
@@ -48,8 +49,8 @@ type NodeFragment {
 
 type NodeCharac {
   id: ID!
-  userCanJoin: Boolean! @search
   mode: NodeMode! @search
+  userCanJoin: Boolean! @search
 }
 
 type NodeStats {
@@ -100,6 +101,7 @@ type Blob implements Post {
   tension: Tension!
   blob_type: BlobType! @search
   pushedFlag: DateTime @search
+  archivedFlag: DateTime @search
   node: NodeFragment
   md: String
 }
@@ -187,9 +189,9 @@ enum TensionAction {
   EditCircle
   EditMd
 
-
-
-
+  ArchivedRole
+  ArchivedCircle
+  ArchivedMd
 
 
 
@@ -213,6 +215,8 @@ enum TensionEvent {
   BlobCreated
   BlobCommitted
   BlobPushed
+  BlobArchived
+  BlobUnarchived
 }
 
 enum BlobType {

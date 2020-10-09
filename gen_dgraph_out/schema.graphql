@@ -1,20 +1,20 @@
+directive @remote on OBJECT | INTERFACE
+
+directive @cascade on FIELD
+
 directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
-
-directive @cascade on FIELD
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
-directive @remote on OBJECT | INTERFACE
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdAt: DateTime!
@@ -24,6 +24,7 @@ input AddBlobInput {
   tension: TensionRef!
   blob_type: BlobType!
   pushedFlag: DateTime
+  archivedFlag: DateTime
   node: NodeFragmentRef
   md: String
 }
@@ -84,8 +85,8 @@ type AddMandatePayload {
 }
 
 input AddNodeCharacInput {
-  userCanJoin: Boolean!
   mode: NodeMode!
+  userCanJoin: Boolean!
 }
 
 type AddNodeCharacPayload {
@@ -134,6 +135,7 @@ input AddNodeInput {
   stats: NodeStatsRef
   isRoot: Boolean!
   isPrivate: Boolean!
+  isArchived: Boolean!
   charac: NodeCharacRef!
   first_link: UserRef
   second_link: UserRef
@@ -234,6 +236,7 @@ type Blob implements Post {
   tension(filter: TensionFilter): Tension!
   blob_type: BlobType!
   pushedFlag: DateTime
+  archivedFlag: DateTime
   node(filter: NodeFragmentFilter): NodeFragment
   md: String
 }
@@ -244,6 +247,7 @@ input BlobFilter {
   message: StringFullTextFilter
   blob_type: BlobType_hash
   pushedFlag: DateTimeFilter
+  archivedFlag: DateTimeFilter
   and: BlobFilter
   or: BlobFilter
   not: BlobFilter
@@ -260,6 +264,7 @@ enum BlobOrderable {
   updatedAt
   message
   pushedFlag
+  archivedFlag
   md
 }
 
@@ -271,6 +276,7 @@ input BlobPatch {
   tension: TensionRef
   blob_type: BlobType
   pushedFlag: DateTime
+  archivedFlag: DateTime
   node: NodeFragmentRef
   md: String
 }
@@ -284,6 +290,7 @@ input BlobRef {
   tension: TensionRef
   blob_type: BlobType
   pushedFlag: DateTime
+  archivedFlag: DateTime
   node: NodeFragmentRef
   md: String
 }
@@ -663,6 +670,7 @@ type Node {
   stats: NodeStats
   isRoot: Boolean!
   isPrivate: Boolean!
+  isArchived: Boolean!
   charac(filter: NodeCharacFilter): NodeCharac!
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
@@ -672,28 +680,28 @@ type Node {
 
 type NodeCharac {
   id: ID!
-  userCanJoin: Boolean!
   mode: NodeMode!
+  userCanJoin: Boolean!
 }
 
 input NodeCharacFilter {
   id: [ID!]
-  userCanJoin: Boolean
   mode: NodeMode_hash
+  userCanJoin: Boolean
   and: NodeCharacFilter
   or: NodeCharacFilter
   not: NodeCharacFilter
 }
 
 input NodeCharacPatch {
-  userCanJoin: Boolean
   mode: NodeMode
+  userCanJoin: Boolean
 }
 
 input NodeCharacRef {
   id: ID
-  userCanJoin: Boolean
   mode: NodeMode
+  userCanJoin: Boolean
 }
 
 input NodeFilter {
@@ -706,6 +714,7 @@ input NodeFilter {
   about: StringFullTextFilter
   isRoot: Boolean
   isPrivate: Boolean
+  isArchived: Boolean
   skills: StringTermFilter
   role_type: RoleType_hash
   and: NodeFilter
@@ -827,6 +836,7 @@ input NodePatch {
   stats: NodeStatsRef
   isRoot: Boolean
   isPrivate: Boolean
+  isArchived: Boolean
   charac: NodeCharacRef
   first_link: UserRef
   second_link: UserRef
@@ -856,6 +866,7 @@ input NodeRef {
   stats: NodeStatsRef
   isRoot: Boolean
   isPrivate: Boolean
+  isArchived: Boolean
   charac: NodeCharacRef
   first_link: UserRef
   second_link: UserRef
@@ -1039,6 +1050,9 @@ enum TensionAction {
   EditRole
   EditCircle
   EditMd
+  ArchivedRole
+  ArchivedCircle
+  ArchivedMd
 }
 
 enum TensionEvent {
@@ -1052,6 +1066,8 @@ enum TensionEvent {
   BlobCreated
   BlobCommitted
   BlobPushed
+  BlobArchived
+  BlobUnarchived
 }
 
 input TensionEvent_hash {
