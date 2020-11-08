@@ -3,8 +3,9 @@
 
 type Node  {
   id: ID!
-  createdAt: DateTime! @search
   createdBy: User!
+  createdAt: DateTime! @search
+  updatedAt: DateTime
   name: String! @search(by: [term])
   nameid: String! @id @search(by: [hash, regexp])
   rootnameid: String! @search(by: [hash, regexp])
@@ -22,6 +23,7 @@ type Node  {
   n_children: Int 
   stats: NodeStats 
   isRoot: Boolean! @search
+  isPersonal: Boolean @search
   isPrivate: Boolean! @search
   isArchived: Boolean! @search
   charac: NodeCharac!
@@ -62,9 +64,9 @@ type NodeStats {
 
 interface Post {
   id: ID!
+  createdBy: User!
   createdAt: DateTime! @search
   updatedAt: DateTime
-  createdBy: User!
   message: String @search(by: [fulltext])
 }
 
@@ -156,6 +158,8 @@ enum RoleType {
   Member
 
   Guest
+
+  Owner
 
 
 }

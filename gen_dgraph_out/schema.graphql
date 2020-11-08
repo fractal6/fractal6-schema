@@ -1,6 +1,6 @@
-directive @remote on OBJECT | INTERFACE
+directive @id on FIELD_DEFINITION
 
-directive @cascade on FIELD
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
@@ -10,16 +10,16 @@ directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFI
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @id on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
-
 directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
+directive @remote on OBJECT | INTERFACE
+
+directive @cascade on FIELD
+
 input AddBlobInput {
+  createdBy: UserRef!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy: UserRef!
   message: String
   tension: TensionRef!
   blob_type: BlobType!
@@ -35,9 +35,9 @@ type AddBlobPayload {
 }
 
 input AddCommentInput {
+  createdBy: UserRef!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy: UserRef!
   message: String
   _VOID: String
 }
@@ -48,9 +48,9 @@ type AddCommentPayload {
 }
 
 input AddEventInput {
+  createdBy: UserRef!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy: UserRef!
   message: String
   event_type: TensionEvent!
   old: String
@@ -115,8 +115,9 @@ type AddNodeFragmentPayload {
 }
 
 input AddNodeInput {
-  createdAt: DateTime!
   createdBy: UserRef!
+  createdAt: DateTime!
+  updatedAt: DateTime
   name: String!
   nameid: String!
   rootnameid: String!
@@ -134,6 +135,7 @@ input AddNodeInput {
   n_children: Int
   stats: NodeStatsRef
   isRoot: Boolean!
+  isPersonal: Boolean
   isPrivate: Boolean!
   isArchived: Boolean!
   charac: NodeCharacRef!
@@ -161,9 +163,9 @@ type AddNodeStatsPayload {
 }
 
 input AddTensionInput {
+  createdBy: UserRef!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy: UserRef!
   message: String
   nth: String
   title: String!
@@ -229,9 +231,9 @@ input AuthRule {
 
 type Blob implements Post {
   id: ID!
+  createdBy(filter: UserFilter): User!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy(filter: UserFilter): User!
   message: String
   tension(filter: TensionFilter): Tension!
   blob_type: BlobType!
@@ -269,9 +271,9 @@ enum BlobOrderable {
 }
 
 input BlobPatch {
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   tension: TensionRef
   blob_type: BlobType
@@ -283,9 +285,9 @@ input BlobPatch {
 
 input BlobRef {
   id: ID
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   tension: TensionRef
   blob_type: BlobType
@@ -309,9 +311,9 @@ input BlobType_hash {
 
 type Comment implements Post {
   id: ID!
+  createdBy(filter: UserFilter): User!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy(filter: UserFilter): User!
   message: String
   _VOID: String
 }
@@ -339,18 +341,18 @@ enum CommentOrderable {
 }
 
 input CommentPatch {
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   _VOID: String
 }
 
 input CommentRef {
   id: ID
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   _VOID: String
 }
@@ -449,9 +451,9 @@ enum DgraphIndex {
 
 type Event implements Post {
   id: ID!
+  createdBy(filter: UserFilter): User!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy(filter: UserFilter): User!
   message: String
   event_type: TensionEvent!
   old: String
@@ -483,9 +485,9 @@ enum EventOrderable {
 }
 
 input EventPatch {
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   event_type: TensionEvent
   old: String
@@ -494,9 +496,9 @@ input EventPatch {
 
 input EventRef {
   id: ID
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   event_type: TensionEvent
   old: String
@@ -650,8 +652,9 @@ type Mutation {
 
 type Node {
   id: ID!
-  createdAt: DateTime!
   createdBy(filter: UserFilter): User!
+  createdAt: DateTime!
+  updatedAt: DateTime
   name: String!
   nameid: String!
   rootnameid: String!
@@ -669,6 +672,7 @@ type Node {
   n_children: Int
   stats: NodeStats
   isRoot: Boolean!
+  isPersonal: Boolean
   isPrivate: Boolean!
   isArchived: Boolean!
   charac(filter: NodeCharacFilter): NodeCharac!
@@ -713,6 +717,7 @@ input NodeFilter {
   type_: NodeType_hash
   about: StringFullTextFilter
   isRoot: Boolean
+  isPersonal: Boolean
   isPrivate: Boolean
   isArchived: Boolean
   skills: StringTermFilter
@@ -806,6 +811,7 @@ input NodeOrder {
 
 enum NodeOrderable {
   createdAt
+  updatedAt
   name
   nameid
   rootnameid
@@ -817,8 +823,9 @@ enum NodeOrderable {
 }
 
 input NodePatch {
-  createdAt: DateTime
   createdBy: UserRef
+  createdAt: DateTime
+  updatedAt: DateTime
   name: String
   rootnameid: String
   parent: NodeRef
@@ -835,6 +842,7 @@ input NodePatch {
   n_children: Int
   stats: NodeStatsRef
   isRoot: Boolean
+  isPersonal: Boolean
   isPrivate: Boolean
   isArchived: Boolean
   charac: NodeCharacRef
@@ -846,8 +854,9 @@ input NodePatch {
 
 input NodeRef {
   id: ID
-  createdAt: DateTime
   createdBy: UserRef
+  createdAt: DateTime
+  updatedAt: DateTime
   name: String
   nameid: String
   rootnameid: String
@@ -865,6 +874,7 @@ input NodeRef {
   n_children: Int
   stats: NodeStatsRef
   isRoot: Boolean
+  isPersonal: Boolean
   isPrivate: Boolean
   isArchived: Boolean
   charac: NodeCharacRef
@@ -912,9 +922,9 @@ input NodeType_hash {
 
 interface Post {
   id: ID!
+  createdBy(filter: UserFilter): User!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy(filter: UserFilter): User!
   message: String
 }
 
@@ -940,9 +950,9 @@ enum PostOrderable {
 }
 
 input PostPatch {
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
 }
 
@@ -982,6 +992,7 @@ enum RoleType {
   Peer
   Member
   Guest
+  Owner
 }
 
 input RoleType_hash {
@@ -1021,9 +1032,9 @@ input StringTermFilter {
 
 type Tension implements Post {
   id: ID!
+  createdBy(filter: UserFilter): User!
   createdAt: DateTime!
   updatedAt: DateTime
-  createdBy(filter: UserFilter): User!
   message: String
   nth: String
   title: String!
@@ -1108,9 +1119,9 @@ enum TensionOrderable {
 }
 
 input TensionPatch {
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   nth: String
   title: String
@@ -1132,9 +1143,9 @@ input TensionPatch {
 
 input TensionRef {
   id: ID
+  createdBy: UserRef
   createdAt: DateTime
   updatedAt: DateTime
-  createdBy: UserRef
   message: String
   nth: String
   title: String

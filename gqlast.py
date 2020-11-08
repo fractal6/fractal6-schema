@@ -258,6 +258,8 @@ class SemanticFilter:
         return
 
     def copy_hook_directives(self, data_types_in, name_out, data_type_out):
+        ''' Copy Special directive as pre and post hook that start by add_*, update_*, delete_* etc
+            in mutation corresponding types. '''
 
         for data_type in data_types_in:
             data_in = getattr(self, data_type)
@@ -395,25 +397,22 @@ class GqlgenSemantics(GraphqlSemantics):
 
         type_name = None
         if name.endswith('Patch'):
-            # This match the input field for the "Updates" and "Remove" mutations
+            # This match the input field for the "Update" and "Remove" mutations
             type_name = re.match(r"(\w*)Patch", name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'],
-                                        name, 'inputs',
-                                        r'^patch_')
+                                        name, 'inputs', r'^patch_')
         elif name.startswith('Add') and name.endswith('Input'):
-            # This match the input field for the "Adds" mutations
+            # This match the input field for the "Add" mutations
             type_name = re.match(r"Add(\w*)Input", name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'],
-                                        name, 'inputs',
-                                        r'^add_')
+                                        name, 'inputs', r'^add_')
 
         # Move all global directive (alter_*)
         if type_name:
             self.sf.copy_directives(type_name, ['types', 'interfaces'],
-                                    name, 'inputs',
-                                    r'^alter_')
+                                    name, 'inputs', r'^alter_')
         return ast
 
     def enum_type_definition(self, ast):

@@ -54,11 +54,12 @@ directive @hidePrivate on OBJECT | FIELD_DEFINITION
 # Ensure that the user making the request is authenticated.
 directive @isAuth on OBJECT | FIELD_DEFINITION 
 
-# Authorize mutations if the user has at least:
+# Authorize mutations if the user is one of:
 # * the given role(r) with the given node(n)
-# * the owner/ship against user(u) (if given)
-directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
-directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String) on INPUT_FIELD_DEFINITION
+# * the authenticated user against user(u) (if given)
+# * the authenticated user against the assignees
+directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String, a: Int) on INPUT_FIELD_DEFINITION
+directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String, a: Int) on INPUT_FIELD_DEFINITION
  
 # Authorize mutation if user has the same root node than at least 
 # one of the given node(n) (i.e. is in the same organisation)
