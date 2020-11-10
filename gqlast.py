@@ -304,11 +304,11 @@ class SemanticFilter:
 
 
 class GraphqlSemantics:
+
+    ''' Base GQL semantic'''
+
     def __init__(self):
         self.sf = SemanticFilter()
-    #
-    # Util semantic
-    #
 
     def _default(self, ast):
         if isinstance(ast, AST):
@@ -582,7 +582,7 @@ class SDL:
                         continue
 
                     # type/rule_name filtering
-                    if _type in "comment":
+                    if _type in ("comment", "doc"):
                         # ignore comments
                         continue
                     elif _type == "args":

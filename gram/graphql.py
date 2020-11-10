@@ -91,11 +91,11 @@ class GRAPHQLParser(Parser):
     def _definition_(self):  # noqa
         with self._choice():
             with self._option():
+                self._COMMENTS_()
+            with self._option():
                 self._executable_definition_()
             with self._option():
                 self._type_system_definition_()
-            with self._option():
-                self._LINE_COMMENT_()
             self._error('no available options')
 
     @tatsumasu()
@@ -290,9 +290,9 @@ class GRAPHQLParser(Parser):
     def _string_value_(self):  # noqa
         with self._choice():
             with self._option():
-                self._STRING_()
-            with self._option():
                 self._BLOCK_STRING_()
+            with self._option():
+                self._STRING_()
             self._error('no available options')
 
     @tatsumasu()
@@ -609,7 +609,7 @@ class GRAPHQLParser(Parser):
                     self._directives_()
                     self.name_last_node('_directives')
             with self._option():
-                self._LINE_COMMENT_()
+                self._COMMENTS_()
             self._error('no available options')
         self.ast._define(
             ['_cst', '_directives', '_name', '_type', 'args'],
@@ -798,7 +798,7 @@ class GRAPHQLParser(Parser):
                 with self._optional():
                     self._directives_()
             with self._option():
-                self._LINE_COMMENT_()
+                self._COMMENTS_()
             self._error('no available options')
 
     @tatsumasu()
@@ -963,6 +963,38 @@ class GRAPHQLParser(Parser):
         self._pattern('[_A-Za-z][_0-9A-Za-z]*')
 
     @tatsumasu()
+    def _COMMENTS_(self):  # noqa
+        with self._choice():
+            with self._option():
+                self._DOC_()
+            with self._option():
+                self._LINE_COMMENT_()
+            self._error('no available options')
+
+    @tatsumasu()
+    def _LINE_COMMENT_(self):  # noqa
+        self.__LINE_COMMENT_()
+        self.name_last_node('comment')
+        self.ast._define(
+            ['comment'],
+            []
+        )
+
+    @tatsumasu()
+    def __LINE_COMMENT_(self):  # noqa
+        self._token('#')
+        self._pattern('[^\\r\\n]*')
+
+    @tatsumasu()
+    def _DOC_(self):  # noqa
+        self._BLOCK_STRING_()
+        self.name_last_node('doc')
+        self.ast._define(
+            ['doc'],
+            []
+        )
+
+    @tatsumasu()
     def _CHARACTER_(self):  # noqa
 
         def block1():
@@ -989,13 +1021,15 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _BLOCK_STRING_(self):  # noqa
         self._token('"""')
-        with self._optional():
-            self._pattern('\\w+|\\S+')
-        self._token('"""')
 
-    @tatsumasu()
-    def _id_(self):  # noqa
-        self._STRING_()
+        def sep0():
+            with self._group():
+                self._pattern('[\\r\\n]|"[^"]|""[^"]')
+
+        def block0():
+            self._pattern('[^\\r\\n(?!")]*')
+        self._join(block0, sep0)
+        self._token('"""')
 
     @tatsumasu()
     def _ESC_(self):  # noqa
@@ -1105,20 +1139,6 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _ws_(self):  # noqa
         self._pattern('[ \\t\\n\\r]+')
-
-    @tatsumasu()
-    def _LINE_COMMENT_(self):  # noqa
-        self.__LINE_COMMENT_()
-        self.name_last_node('comment')
-        self.ast._define(
-            ['comment'],
-            []
-        )
-
-    @tatsumasu()
-    def __LINE_COMMENT_(self):  # noqa
-        self._token('#')
-        self._pattern('[^\\r\\n]*')
 
     @tatsumasu()
     def _unicode_bom_(self):  # noqa
@@ -1356,6 +1376,18 @@ class GRAPHQLSemantics(object):
     def _name(self, ast):  # noqa
         return ast
 
+    def COMMENTS(self, ast):  # noqa
+        return ast
+
+    def LINE_COMMENT(self, ast):  # noqa
+        return ast
+
+    def _LINE_COMMENT(self, ast):  # noqa
+        return ast
+
+    def DOC(self, ast):  # noqa
+        return ast
+
     def CHARACTER(self, ast):  # noqa
         return ast
 
@@ -1363,9 +1395,6 @@ class GRAPHQLSemantics(object):
         return ast
 
     def BLOCK_STRING(self, ast):  # noqa
-        return ast
-
-    def id(self, ast):  # noqa
         return ast
 
     def ESC(self, ast):  # noqa
@@ -1408,12 +1437,6 @@ class GRAPHQLSemantics(object):
         return ast
 
     def ws(self, ast):  # noqa
-        return ast
-
-    def LINE_COMMENT(self, ast):  # noqa
-        return ast
-
-    def _LINE_COMMENT(self, ast):  # noqa
         return ast
 
     def unicode_bom(self, ast):  # noqa

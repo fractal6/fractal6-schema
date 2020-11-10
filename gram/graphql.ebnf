@@ -15,7 +15,7 @@ document
 
 definition
     =
-    executable_definition | type_system_definition  | LINE_COMMENT
+    COMMENTS | executable_definition | type_system_definition
     ;
 
 
@@ -138,7 +138,7 @@ boolean_value
 
 string_value
     =
-    STRING | BLOCK_STRING
+    BLOCK_STRING | STRING
     ;
 
 
@@ -336,7 +336,7 @@ field_definition
     [args:arguments_definition] 
     _cst:':' 
     _type:type [_directives:directives]
-    | LINE_COMMENT
+    | COMMENTS
     ;
 
 
@@ -427,7 +427,7 @@ _enum_value_definition = field:enum_value_definition;
 enum_value_definition
     =
     [description] enum_value [directives]
-    | LINE_COMMENT
+    | COMMENTS
     ;
 
 
@@ -521,6 +521,26 @@ _name
     ;
 
 
+COMMENTS
+    =
+    DOC | LINE_COMMENT
+    ;
+
+LINE_COMMENT
+    =
+    comment:_LINE_COMMENT
+    ;
+
+_LINE_COMMENT
+    =
+    '#' /[^\r\n]*/
+    ;
+
+DOC
+    =
+    doc:BLOCK_STRING
+    ;
+
 
 CHARACTER
     =
@@ -536,14 +556,10 @@ STRING
 
 BLOCK_STRING
     =
-    '"""' [/\w+|\S+/] '"""'
+    '"""' (/[\r\n]|"[^"]|""[^"]/)%{/[^\r\n(?!")]*/} '"""'
     ;
 
 
-id
-    =
-    STRING
-    ;
 
 
 ESC
@@ -630,18 +646,6 @@ ws
     =
     /[ \t\n\r]+/
     ;
-
-
-LINE_COMMENT
-    =
-    comment:_LINE_COMMENT
-    ;
-
-_LINE_COMMENT
-    =
-    '#' /[^\r\n]*/
-    ;
-
 
 unicode_bom
     =

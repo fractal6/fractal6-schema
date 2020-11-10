@@ -303,23 +303,25 @@ enum BlobType {
 
 }
 
-directive @id on FIELD_DEFINITION
-
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
-
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
-
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 directive @remote on OBJECT|INTERFACE
 
 directive @cascade on FIELD
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @id on FIELD_DEFINITION
+
+directive @withSubscription on OBJECT|INTERFACE
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -639,6 +641,7 @@ input CustomHTTP {
   mode: Mode
   forwardHeaders: [String!]
   secretHeaders: [String!]
+  introspectionHeaders: [String!]
   skipIntrospection: Boolean
 }
 
@@ -653,56 +656,67 @@ input DateTimeFilter {
 }
 
 type DeleteBlobPayload {
+  blob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
   msg: String
   numUids: Int
 }
 
 type DeleteCommentPayload {
+  comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
   msg: String
   numUids: Int
 }
 
 type DeleteEventPayload {
+  event(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   msg: String
   numUids: Int
 }
 
 type DeleteLabelPayload {
+  label(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
   msg: String
   numUids: Int
 }
 
 type DeleteMandatePayload {
+  mandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   msg: String
   numUids: Int
 }
 
 type DeleteNodeCharacPayload {
+  nodeCharac(filter: NodeCharacFilter, first: Int, offset: Int): [NodeCharac]
   msg: String
   numUids: Int
 }
 
 type DeleteNodeFragmentPayload {
+  nodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
   msg: String
   numUids: Int
 }
 
 type DeleteNodePayload {
+  node(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
   msg: String
   numUids: Int
 }
 
 type DeletePostPayload {
+  post(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   msg: String
   numUids: Int
 }
 
 type DeleteTensionPayload {
+  tension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
   msg: String
   numUids: Int
 }
 
 type DeleteUserPayload {
+  user(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   msg: String
   numUids: Int
 }
@@ -955,7 +969,6 @@ enum NodeFragmentOrderable {
   about
   first_link
   second_link
-  skills
 }
 
 input NodeFragmentPatch {
@@ -1009,7 +1022,6 @@ enum NodeOrderable {
   n_tensions_out
   n_tensions_in
   n_children
-  skills
 }
 
 input NodePatch {
