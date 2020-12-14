@@ -16,8 +16,8 @@ type Node  {
   tensions_in: [Tension!] @hasInverse(field: receiver)
   about: String @search(by: [fulltext])
   mandate: Mandate
-  docs: [Tension]
-  source: Tension
+  docs: [Blob]
+  source: Blob
   n_tensions_out: Int 
   n_tensions_in: Int 
   n_children: Int 
@@ -51,8 +51,8 @@ type NodeFragment {
 
 type NodeCharac {
   id: ID!
-  mode: NodeMode! @search
   userCanJoin: Boolean! @search
+  mode: NodeMode! @search
 }
 
 type NodeStats {
@@ -70,7 +70,7 @@ interface Post {
   message: String @search(by: [fulltext])
 }
 
-type Tension implements Post {
+type Tension implements Post  {
   nth: String @search
   title: String! @search(by: [fulltext])
   type_: TensionType! @search
@@ -81,8 +81,8 @@ type Tension implements Post {
   status: TensionStatus! @search
   labels: [Label!]
   assignees: [User!]
-  action: TensionAction
   comments: [Comment!]
+  action: TensionAction
   blobs: [Blob!] @hasInverse(field: tension)
   history: [Event!]!
   n_comments: Int 
@@ -125,6 +125,7 @@ type Mandate {
 type User {
   id: ID!
   createdAt: DateTime!
+  lastAck: DateTime!
   username: String! @id
   name: String
   password: String! 
@@ -143,6 +144,7 @@ type User {
 type UserRights {
   canLogin: Boolean!
   canCreateRoot: Boolean!
+  maxPublicOrga: Int!
 }
 
 enum NodeType {
@@ -152,21 +154,29 @@ enum NodeType {
 
 enum RoleType {
 
-  Coordinator
-  Peer
+
+  Owner
 
   Member
 
   Guest
 
-  Owner
+  Retired
 
+
+  Coordinator
+
+  Peer
+
+  Bot
 
 }
 
 enum NodeMode {
-  Chaos
   Coordinated
+
+  Agile
+
 }
 
 enum TensionStatus {
@@ -175,9 +185,8 @@ enum TensionStatus {
 }
 
 enum TensionType {
-  Governance
   Operational
-  Personal
+  Governance
   Help
 
 
@@ -218,9 +227,12 @@ enum TensionEvent {
 
   BlobCreated
   BlobCommitted
+
   BlobPushed
   BlobArchived
   BlobUnarchived
+  UserJoin
+  UserLeft
 }
 
 enum BlobType {

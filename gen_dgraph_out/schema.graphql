@@ -1,5 +1,9 @@
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
+directive @withSubscription on OBJECT | INTERFACE
+
+directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
+
 directive @cascade on FIELD
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
@@ -8,11 +12,7 @@ directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
-directive @withSubscription on OBJECT | INTERFACE
-
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
-
-directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
 directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
@@ -87,8 +87,8 @@ type AddMandatePayload {
 }
 
 input AddNodeCharacInput {
-  mode: NodeMode!
   userCanJoin: Boolean!
+  mode: NodeMode!
 }
 
 type AddNodeCharacPayload {
@@ -130,8 +130,8 @@ input AddNodeInput {
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
-  docs: [TensionRef]
-  source: TensionRef
+  docs: [BlobRef]
+  source: BlobRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -179,8 +179,8 @@ input AddTensionInput {
   status: TensionStatus!
   labels: [LabelRef!]
   assignees: [UserRef!]
-  action: TensionAction
   comments: [CommentRef!]
+  action: TensionAction
   blobs: [BlobRef!]
   history: [EventRef!]!
   n_comments: Int
@@ -194,6 +194,7 @@ type AddTensionPayload {
 
 input AddUserInput {
   createdAt: DateTime!
+  lastAck: DateTime!
   username: String!
   name: String
   password: String!
@@ -217,10 +218,11 @@ type AddUserPayload {
 input AddUserRightsInput {
   canLogin: Boolean!
   canCreateRoot: Boolean!
+  maxPublicOrga: Int!
 }
 
 type AddUserRightsPayload {
-  userRights(first: Int, offset: Int): [UserRights]
+  userRights(order: UserRightsOrder, first: Int, offset: Int): [UserRights]
   numUids: Int
 }
 
@@ -684,8 +686,8 @@ type Node {
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   about: String
   mandate(filter: MandateFilter): Mandate
-  docs(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
-  source(filter: TensionFilter): Tension
+  docs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  source(filter: BlobFilter): Blob
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -703,28 +705,28 @@ type Node {
 
 type NodeCharac {
   id: ID!
-  mode: NodeMode!
   userCanJoin: Boolean!
+  mode: NodeMode!
 }
 
 input NodeCharacFilter {
   id: [ID!]
-  mode: NodeMode_hash
   userCanJoin: Boolean
+  mode: NodeMode_hash
   and: NodeCharacFilter
   or: NodeCharacFilter
   not: NodeCharacFilter
 }
 
 input NodeCharacPatch {
-  mode: NodeMode
   userCanJoin: Boolean
+  mode: NodeMode
 }
 
 input NodeCharacRef {
   id: ID
-  mode: NodeMode
   userCanJoin: Boolean
+  mode: NodeMode
 }
 
 input NodeFilter {
@@ -813,8 +815,8 @@ input NodeFragmentRef {
 }
 
 enum NodeMode {
-  Chaos
   Coordinated
+  Agile
 }
 
 input NodeMode_hash {
@@ -852,8 +854,8 @@ input NodePatch {
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
-  docs: [TensionRef]
-  source: TensionRef
+  docs: [BlobRef]
+  source: BlobRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -884,8 +886,8 @@ input NodeRef {
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
-  docs: [TensionRef]
-  source: TensionRef
+  docs: [BlobRef]
+  source: BlobRef
   n_tensions_out: Int
   n_tensions_in: Int
   n_children: Int
@@ -1001,15 +1003,17 @@ type Query {
   queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
-  queryUserRights(first: Int, offset: Int): [UserRights]
+  queryUserRights(order: UserRightsOrder, first: Int, offset: Int): [UserRights]
 }
 
 enum RoleType {
-  Coordinator
-  Peer
+  Owner
   Member
   Guest
-  Owner
+  Retired
+  Coordinator
+  Peer
+  Bot
 }
 
 input RoleType_hash {
@@ -1063,8 +1067,8 @@ type Tension implements Post {
   status: TensionStatus!
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   assignees(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
-  action: TensionAction
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
+  action: TensionAction
   blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!]
   history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]!
   n_comments: Int
@@ -1096,6 +1100,8 @@ enum TensionEvent {
   BlobPushed
   BlobArchived
   BlobUnarchived
+  UserJoin
+  UserLeft
 }
 
 input TensionEvent_hash {
@@ -1150,8 +1156,8 @@ input TensionPatch {
   status: TensionStatus
   labels: [LabelRef!]
   assignees: [UserRef!]
-  action: TensionAction
   comments: [CommentRef!]
+  action: TensionAction
   blobs: [BlobRef!]
   history: [EventRef!]
   n_comments: Int
@@ -1174,8 +1180,8 @@ input TensionRef {
   status: TensionStatus
   labels: [LabelRef!]
   assignees: [UserRef!]
-  action: TensionAction
   comments: [CommentRef!]
+  action: TensionAction
   blobs: [BlobRef!]
   history: [EventRef!]
   n_comments: Int
@@ -1192,9 +1198,8 @@ input TensionStatus_hash {
 }
 
 enum TensionType {
-  Governance
   Operational
-  Personal
+  Governance
   Help
 }
 
@@ -1326,6 +1331,7 @@ type UpdateUserPayload {
 type User {
   id: ID!
   createdAt: DateTime!
+  lastAck: DateTime!
   username: String!
   name: String
   password: String!
@@ -1358,6 +1364,7 @@ input UserOrder {
 
 enum UserOrderable {
   createdAt
+  lastAck
   username
   name
   password
@@ -1369,6 +1376,7 @@ enum UserOrderable {
 
 input UserPatch {
   createdAt: DateTime
+  lastAck: DateTime
   name: String
   password: String
   email: String
@@ -1386,6 +1394,7 @@ input UserPatch {
 input UserRef {
   id: ID
   createdAt: DateTime
+  lastAck: DateTime
   username: String
   name: String
   password: String
@@ -1404,10 +1413,22 @@ input UserRef {
 type UserRights {
   canLogin: Boolean!
   canCreateRoot: Boolean!
+  maxPublicOrga: Int!
+}
+
+input UserRightsOrder {
+  asc: UserRightsOrderable
+  desc: UserRightsOrderable
+  then: UserRightsOrder
+}
+
+enum UserRightsOrderable {
+  maxPublicOrga
 }
 
 input UserRightsRef {
   canLogin: Boolean
   canCreateRoot: Boolean
+  maxPublicOrga: Int
 }
 

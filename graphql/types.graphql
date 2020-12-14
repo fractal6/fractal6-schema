@@ -18,7 +18,7 @@
 # Node Interface (Role and Circle)
 #
 
-type Node @hidePrivate @hook_add @hook_update {
+type Node @hidePrivate {
   id: ID!
   createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
   createdAt: DateTime!  @patch_RO @search 
@@ -41,8 +41,8 @@ type Node @hidePrivate @hook_add @hook_update {
   # Documents, data, etc.
   about: String     @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [fulltext])
   mandate: Mandate  @patch_hasRole(n:["parent"], r:Coordinator)
-  docs: [Tension]   @patch_RO
-  source: Tension   @patch_RO
+  docs: [Blob]      @patch_RO
+  source: Blob      @patch_RO
 
   # --method--
   n_tensions_out: Int  @count(f: tensions_out)
@@ -56,9 +56,9 @@ type Node @hidePrivate @hook_add @hook_update {
 
   # Circle... is a Supernode/HyperEdge
   isRoot: Boolean!      @patch_RO @search 
-  isPersonal: Boolean  @patch_RO @search # Organisation has an owner (ends with @{username}
+  isPersonal: Boolean   @patch_RO @search # (Not public) nameid ends with @{username}
   isPrivate: Boolean!   @patch_RO @search # Invitation required for an R/W access
-  isArchived: Boolean!  @patch_RO @search # Hidden
+  isArchived: Boolean!  @patch_RO @search # (Hidden) Blob source is archived
   charac: NodeCharac!   @patch_hasRole(n:["parent"], r:Coordinator) # Root... inherits attributes
   #network: [Network] @hasInverse(field: nodes)
 
@@ -96,8 +96,8 @@ type NodeFragment {
 type NodeCharac {
   id: ID!
   # define the governance process
-  mode: NodeMode!        @search
   userCanJoin: Boolean!  @search
+  mode: NodeMode!        @search
 }
 
 type NodeStats {
@@ -119,7 +119,7 @@ interface Post {
   message: String       @patch_isOwner(u:"createdBy") @search(by: [fulltext])
 }
 
-type Tension implements Post @hook_add @hook_update {
+type Tension implements Post @hidePrivate @hook_add @hook_update {
   createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
 
   nth: String  @search # @id...Upsert in BLL
@@ -130,12 +130,12 @@ type Tension implements Post @hook_add @hook_update {
   receiverid: String!      @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy", a:1) @search(by: [hash, regexp]) 
   receiver: Node!          @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy", a:1)
   status: TensionStatus!   @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy", a:1) @search
-  labels: [Label!]         @alter_hasRole(n:["emitter","receiver"], r:Coordinator, a:1)
+  labels: [Label!]         @patch_hasRole(n:["emitter","receiver"], r:Coordinator, a:1)
   assignees: [User!]       @alter_hasRole(n:["emitter","receiver"], r:Coordinator, a:1)
-  action: TensionAction  @alter_hasRoot(n:["emitter","receiver"])
   comments: [Comment!]   @alter_hasRoot(n:["emitter","receiver"])
+  action: TensionAction  @alter_hasRoot(n:["emitter","receiver"])
   blobs: [Blob!]         @alter_hasRoot(n:["emitter","receiver"]) @hasInverse(field: tension)
-  history: [Event!]!     @alter_hasRoot(n:["emitter","receiver"])
+  history: [Event!]!     # entry point
 
   # --method--
   n_comments: Int  @count(f: comments)
@@ -165,7 +165,7 @@ type Blob implements Post {
 
 type Event implements Post {
   event_type: TensionEvent! @search
-  old: String # Store blodid for Commit and Pushed event
+  old: String # Store blobid for Commit and Pushed event
   new: String #
 }
 
@@ -185,20 +185,21 @@ type Mandate {
 
 type User {
   id: ID!
-  createdAt: DateTime!   @patch_RO
+  createdAt: DateTime! @alter_RO
+  lastAck: DateTime!   @alter_RO
   username: String!  @id @patch_RO  @alter_toLower(f:"username")
   name: String       @patch_isOwner @alter_toLower(f:"name")
   password: String!  @patch_isOwner @hidden 
   # @DEBUG: several @id currentlynot allowed !
   # Q: how to enfore uniqueness ?
   email: String!     @patch_isOwner @search(by: [hash]) @hidden # Only one @id allowing in dgraph.
-  emailHash: String        @patch_RO @hidden 
-  emailValidated: Boolean! @patch_RO @hidden 
+  emailHash: String        @alter_RO @hidden 
+  emailValidated: Boolean! @alter_RO @hidden 
   # User Rights
-  rights: UserRights! @patch_RO
+  rights: UserRights! @alter_RO
   # User Roles
-  roles: [Node!]        @hasInverse(field: first_link)  @patch_RO @alter_assertType(f:"roles", t:Role)
-  backed_roles: [Node!] @hasInverse(field: second_link) @patch_RO @alter_assertType(f:"backed_roles", t:Role)
+  roles: [Node!]        @hasInverse(field: first_link)  @alter_RO @alter_assertType(f:"roles", t:Role)
+  backed_roles: [Node!] @hasInverse(field: second_link) @alter_RO @alter_assertType(f:"backed_roles", t:Role)
   # User Tensions
   tensions_created: [Tension!] @hasInverse(field: createdBy)
   tensions_assigned: [Tension!] @hasInverse(field: assignees)
@@ -213,7 +214,8 @@ type UserRights {
   # Managed in auth handler functions
   canLogin: Boolean!
   # Managed by directives
-  canCreateRoot: Boolean! # Bypass input Node authorizatino/limitation.
+  canCreateRoot: Boolean! # Bypass input Node authorization/limitation.
+  maxPublicOrga: Int! # maximum of private organisation
 }
 
 #
@@ -228,17 +230,20 @@ enum NodeType {
 }
 
 enum RoleType { # LeafType
-  Coordinator
-  Peer # Regular Role
+  # Member Type
+  Owner # Root member
   Member # member with roles
   Guest # member with no roles
-  Owner # Root member
-  #Retired
+  Retired # Retired member
+  # Role
+  Coordinator # Local admin Role
+  Peer # Regular Role
+  Bot # Aggregator, Bridge etc
 }
 
 enum NodeMode {
-  Chaos
-  Coordinated
+  Coordinated # Coordinator centered
+  Agile # Role centered
 }
 
 ### Tension
@@ -249,9 +254,8 @@ enum TensionStatus {
 }
 
 enum TensionType {
-  Governance
   Operational
-  Personal
+  Governance
   Help
   # Alert # BotAlert. Circle can emit tension ?
   # Poll ?
@@ -292,9 +296,12 @@ enum TensionEvent {
   # Blob action
   BlobCreated
   BlobCommitted
+  # --- Trigger Event ---
   BlobPushed
   BlobArchived
   BlobUnarchived
+  UserJoin
+  UserLeft
 }
 
 enum BlobType {
