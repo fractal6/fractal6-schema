@@ -22,22 +22,30 @@ directive @hook_updateTension on ARGUMENT_DEFINITION
 directive @hook_updateTensionPost on FIELD_DEFINITION
 directive @hook_updateComment on ARGUMENT_DEFINITION
 directive @hook_updateCommentPost on FIELD_DEFINITION
+directive @hook_addLabel on ARGUMENT_DEFINITION
+directive @hook_addLabelPost on FIELD_DEFINITION
+directive @hook_updateLabel on ARGUMENT_DEFINITION
+directive @hook_updateLabelPost on FIELD_DEFINITION
 
-# @DEBUG: Track this to remove the need of the field string value mentionned on input
-# https://github.com/99designs/gqlgen/issues/1084
+# @DEBUG/follow -- Dgraph features: 
+# Track this to remove the need of the field string value mentionned on input https://github.com/99designs/gqlgen/issues/1084
+# @unique features (should replace alter_unique)
 
+# transform input
 directive @alter_toLower(f: String!) on INPUT_FIELD_DEFINITION
 
-# Limit the max size of the string given in input
+# Limit the size of the string given in input
+directive @alter_minLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
-# Ensure the `type_` of a the given (list) Node/Object .See @Debug(#3a99e49)
-directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
+# Check input
+#directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION # See @Debug(#3a99e49)
+directive @alter_unique(f: String!, s: String) on INPUT_FIELD_DEFINITION
 
 #
 # Global object query directive
 #
-directive @hidePrivate on OBJECT | FIELD_DEFINITION
+directive @hidePrivate on OBJECT | FIELD_DEFINITION
 
 ###########################################################
 # Auth (UserCtx)
@@ -54,12 +62,12 @@ directive @hidePrivate on OBJECT | FIELD_DEFINITION
 # Ensure that the user making the request is authenticated.
 directive @isAuth on OBJECT | FIELD_DEFINITION 
 
-# Authorize mutations if the user is one of:
-# * the given role(r) with the given node(n)
-# * the authenticated user against user(u) (if given)
-# * the authenticated user against the assignees
-directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String, a: Int) on INPUT_FIELD_DEFINITION
-directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String, a: Int) on INPUT_FIELD_DEFINITION
+# Authorize mutations if the user:
+# * has rights on node(n)
+# * is the same user as user(u) (optionnal)
+# * is present in assignees(a)
+directive @patch_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINITION
+directive @alter_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINITION
  
 # Authorize mutation if user has the same root node than at least 
 # one of the given node(n) (i.e. is in the same organisation)

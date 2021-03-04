@@ -27,19 +27,29 @@ directive @hook_updateComment on ARGUMENT_DEFINITION
 
 directive @hook_updateCommentPost on FIELD_DEFINITION
 
+directive @hook_addLabel on ARGUMENT_DEFINITION
+
+directive @hook_addLabelPost on FIELD_DEFINITION
+
+directive @hook_updateLabel on ARGUMENT_DEFINITION
+
+directive @hook_updateLabelPost on FIELD_DEFINITION
+
 directive @alter_toLower(f: String!) on INPUT_FIELD_DEFINITION
+
+directive @alter_minLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
 directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 
-directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION
+directive @alter_unique(f: String!, s: String) on INPUT_FIELD_DEFINITION
 
 directive @hidePrivate on OBJECT|FIELD_DEFINITION
 
 directive @isAuth on OBJECT|FIELD_DEFINITION
 
-directive @patch_hasRole(n: [String!]!, r: RoleType!, u: String, a: Int) on INPUT_FIELD_DEFINITION
+directive @patch_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINITION
 
-directive @alter_hasRole(n: [String!]!, r: RoleType!, u: String, a: Int) on INPUT_FIELD_DEFINITION
+directive @alter_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINITION
 
 directive @alter_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
 
@@ -57,7 +67,7 @@ type Node @hidePrivate {
   createdAt: DateTime! @search
   updatedAt: DateTime
   name: String! @search(by: [term])
-  nameid: String! @id @search(by: [hash, regexp])
+  nameid: String! @search(by: [hash, regexp]) @id
   rootnameid: String! @search(by: [hash, regexp])
   parent(filter: NodeFilter): Node
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
@@ -77,10 +87,18 @@ type Node @hidePrivate {
   isPrivate: Boolean! @search
   isArchived: Boolean! @search
   charac(filter: NodeCharacFilter): NodeCharac!
+  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
   skills: [String!] @search(by: [term])
   role_type: RoleType @search
+  shared: SharedNode
+}
+
+type SharedNode {
+  n_labels: Int
+  n_tensions: Int
+  n_closed_tensions: Int
 }
 
 type NodeFragment {
@@ -146,8 +164,14 @@ type Tension @hidePrivate {
 
 type Label {
   id: ID!
-  name: String! @id
+  rootnameid: String! @search(by: [hash])
+  name: String! @search(by: [hash, term])
+  description: String
   color: String
+  tensions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: labels)
+  nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: labels)
+  n_nodes: Int @count(f: nodes)
+  n_tensions: Int @count(f: tensions)
 }
 
 type Comment {
@@ -289,8 +313,8 @@ enum TensionEvent {
   CommentPushed
   AssigneeAdded
   AssigneeRemoved
-
-
+  LabelAdded
+  LabelRemoved
 
 
 
@@ -315,25 +339,25 @@ enum BlobType {
 
 }
 
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @withSubscription on OBJECT|INTERFACE
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @cascade on FIELD
+directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @id on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
-directive @custom(http: CustomHTTP) on FIELD_DEFINITION
-
 directive @remote on OBJECT|INTERFACE
+
+directive @cascade on FIELD
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -382,8 +406,14 @@ type AddEventPayload {
 }
 
 input AddLabelInput {
-  name: String!
+  rootnameid: String!
+  name: String! @alter_toLower(f:"name") @alter_unique(f:"name", s:"rootnameid") @alter_minLength(f:"name", n:1)
+  description: String @alter_maxLength(f:"description", n:280)
   color: String
+  tensions: [TensionRef!] @alter_RO
+  nodes: [NodeRef!]
+  n_nodes: Int
+  n_tensions: Int
 }
 
 type AddLabelPayload {
@@ -414,7 +444,7 @@ type AddNodeCharacPayload {
 }
 
 input AddNodeFragmentInput {
-  name: String
+  name: String @alter_minLength(f:"name", n:1)
   nameid: String @alter_toLower(f:"nameid")
   type_: NodeType
   isPrivate: Boolean
@@ -434,7 +464,7 @@ type AddNodeFragmentPayload {
 }
 
 input AddNodeInput {
-  createdBy: UserRef! @add_isOwner(u:"createdBy")
+  createdBy: UserRef!
   createdAt: DateTime!
   updatedAt: DateTime @alter_RO
   name: String!
@@ -458,10 +488,12 @@ input AddNodeInput {
   isPrivate: Boolean!
   isArchived: Boolean!
   charac: NodeCharacRef!
+  labels: [LabelRef!]
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  shared: SharedNodeRef @alter_RO
 }
 
 type AddNodePayload {
@@ -481,21 +513,32 @@ type AddNodeStatsPayload {
   numUids: Int
 }
 
+input AddSharedNodeInput {
+  n_labels: Int
+  n_tensions: Int
+  n_closed_tensions: Int
+}
+
+type AddSharedNodePayload {
+  sharedNode(order: SharedNodeOrder, first: Int, offset: Int): [SharedNode]
+  numUids: Int
+}
+
 input AddTensionInput {
   createdBy: UserRef! @add_isOwner(u:"createdBy")
   createdAt: DateTime!
   updatedAt: DateTime
   message: String
   nth: String
-  title: String! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  type_: TensionType! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  emitterid: String! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  emitter: NodeRef! @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  receiverid: String! @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy", a:1)
-  receiver: NodeRef! @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy", a:1)
-  status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy", a:1)
+  title: String! @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @alter_minLength(f:"title", n:1)
+  type_: TensionType! @alter_hasRole(n:["emitter"], u:"createdBy", a:1)
+  emitterid: String! @alter_hasRole(n:["emitter"], u:"createdBy", a:1)
+  emitter: NodeRef! @alter_hasRole(n:["emitter"], u:"createdBy", a:1)
+  receiverid: String! @alter_hasRole(n:["receiver"], u:"createdBy", a:1)
+  receiver: NodeRef! @alter_hasRole(n:["receiver"], u:"createdBy", a:1)
+  status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1)
   labels: [LabelRef!]
-  assignees: [UserRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, a:1)
+  assignees: [UserRef!] @alter_hasRole(n:["emitter","receiver"], a:1)
   comments: [CommentRef!] @alter_hasRoot(n:["emitter","receiver"])
   action: TensionAction @alter_hasRoot(n:["emitter","receiver"])
   blobs: [BlobRef!] @alter_hasRoot(n:["emitter","receiver"])
@@ -513,14 +556,14 @@ input AddUserInput {
   createdAt: DateTime! @alter_RO
   lastAck: DateTime! @alter_RO
   username: String! @alter_toLower(f:"username")
-  name: String @alter_toLower(f:"name")
+  name: String
   password: String!
   email: String!
   emailHash: String @alter_RO
   emailValidated: Boolean! @alter_RO
   rights: UserRightsRef! @alter_RO
-  roles: [NodeRef!] @alter_RO @alter_assertType(f:"roles", t: Role)
-  backed_roles: [NodeRef!] @alter_RO @alter_assertType(f:"backed_roles", t: Role)
+  roles: [NodeRef!] @alter_RO
+  backed_roles: [NodeRef!] @alter_RO
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
   bio: String
@@ -822,7 +865,8 @@ input IntFilter {
 
 input LabelFilter {
   id: [ID!]
-  name: StringHashFilter
+  rootnameid: StringHashFilter
+  name: StringHashFilter_StringTermFilter
   and: LabelFilter
   or: LabelFilter
   not: LabelFilter
@@ -835,18 +879,35 @@ input LabelOrder {
 }
 
 enum LabelOrderable {
+  rootnameid
   name
+  description
   color
+  n_nodes
+  n_tensions
 }
 
 input LabelPatch {
+  rootnameid: String @patch_RO
+  name: String @alter_toLower(f:"name") @alter_unique(f:"name", s:"rootnameid") @alter_minLength(f:"name", n:1)
+  description: String @alter_maxLength(f:"description", n:280)
   color: String
+  tensions: [TensionRef!] @alter_RO
+  nodes: [NodeRef!]
+  n_nodes: Int
+  n_tensions: Int
 }
 
 input LabelRef {
   id: ID
+  rootnameid: String
   name: String
+  description: String
   color: String
+  tensions: [TensionRef!]
+  nodes: [NodeRef!]
+  n_nodes: Int
+  n_tensions: Int
 }
 
 input MandateFilter {
@@ -892,8 +953,9 @@ enum Mode {
 
 type Mutation {
   addNode(input: [AddNodeInput!]!): AddNodePayload
-  updateNode(input: UpdateNodeInput!): UpdateNodePayload
+  updateNode(input: UpdateNodeInput! @hook_updateNode): UpdateNodePayload @hook_updateNodePost
   deleteNode(filter: NodeFilter!): DeleteNodePayload
+  addSharedNode(input: [AddSharedNodeInput!]!): AddSharedNodePayload
   addNodeFragment(input: [AddNodeFragmentInput!]!): AddNodeFragmentPayload
   updateNodeFragment(input: UpdateNodeFragmentInput!): UpdateNodeFragmentPayload
   deleteNodeFragment(filter: NodeFragmentFilter!): DeleteNodeFragmentPayload
@@ -906,8 +968,8 @@ type Mutation {
   addTension(input: [AddTensionInput!]! @hook_addTension): AddTensionPayload @hook_addTensionPost
   updateTension(input: UpdateTensionInput! @hook_updateTension): UpdateTensionPayload @hook_updateTensionPost
   deleteTension(filter: TensionFilter!): DeleteTensionPayload
-  addLabel(input: [AddLabelInput!]!): AddLabelPayload
-  updateLabel(input: UpdateLabelInput!): UpdateLabelPayload
+  addLabel(input: [AddLabelInput!]! @hook_addLabel): AddLabelPayload @hook_addLabelPost
+  updateLabel(input: UpdateLabelInput! @hook_updateLabel): UpdateLabelPayload @hook_updateLabelPost
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
   addComment(input: [AddCommentInput!]!): AddCommentPayload
   updateComment(input: UpdateCommentInput! @hook_updateComment): UpdateCommentPayload @hook_updateCommentPost
@@ -986,7 +1048,7 @@ enum NodeFragmentOrderable {
 }
 
 input NodeFragmentPatch {
-  name: String
+  name: String @alter_minLength(f:"name", n:1)
   nameid: String @alter_toLower(f:"nameid")
   type_: NodeType
   isPrivate: Boolean
@@ -1042,15 +1104,15 @@ input NodePatch {
   createdBy: UserRef @patch_RO
   createdAt: DateTime @patch_RO
   updatedAt: DateTime @alter_RO
-  name: String @patch_hasRole(n:["parent"], r: Coordinator)
+  name: String @patch_RO
   rootnameid: String @patch_RO
   parent: NodeRef @patch_RO
   children: [NodeRef!] @patch_RO
   type_: NodeType @patch_RO
   tensions_out: [TensionRef!] @patch_RO
-  tensions_in: [TensionRef!] @patch_hasRole(n:["parent"], r: Coordinator)
-  about: String @patch_hasRole(n:["parent"], r: Coordinator)
-  mandate: MandateRef @patch_hasRole(n:["parent"], r: Coordinator)
+  tensions_in: [TensionRef!] @patch_RO
+  about: String @patch_RO
+  mandate: MandateRef @patch_RO
   docs: [BlobRef] @patch_RO
   source: BlobRef @patch_RO
   n_tensions_out: Int
@@ -1061,11 +1123,13 @@ input NodePatch {
   isPersonal: Boolean @patch_RO
   isPrivate: Boolean @patch_RO
   isArchived: Boolean @patch_RO
-  charac: NodeCharacRef @patch_hasRole(n:["parent"], r: Coordinator)
-  first_link: UserRef @patch_hasRole(n:["parent"], r: Coordinator)
-  second_link: UserRef @patch_hasRole(n:["parent"], r: Coordinator)
-  skills: [String!] @patch_hasRole(n:["parent"], r: Coordinator)
-  role_type: RoleType @patch_hasRole(n:["parent"], r: Coordinator)
+  charac: NodeCharacRef @patch_RO
+  labels: [LabelRef!] @patch_RO
+  first_link: UserRef @patch_RO
+  second_link: UserRef @patch_RO
+  skills: [String!] @patch_RO
+  role_type: RoleType @patch_RO
+  shared: SharedNodeRef @alter_RO
 }
 
 input NodeRef {
@@ -1094,10 +1158,12 @@ input NodeRef {
   isPrivate: Boolean
   isArchived: Boolean
   charac: NodeCharacRef
+  labels: [LabelRef!]
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  shared: SharedNodeRef
 }
 
 input NodeStatsOrder {
@@ -1159,6 +1225,7 @@ input PostRef {
 type Query {
   getNode(id: ID, nameid: String): Node
   queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  querySharedNode(order: SharedNodeOrder, first: Int, offset: Int): [SharedNode]
   getNodeFragment(id: ID!): NodeFragment
   queryNodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
   getNodeCharac(id: ID!): NodeCharac
@@ -1168,7 +1235,7 @@ type Query {
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   getTension(id: ID!): Tension
   queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
-  getLabel(id: ID, name: String): Label
+  getLabel(id: ID!): Label
   queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
   getComment(id: ID!): Comment
   queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
@@ -1185,6 +1252,24 @@ type Query {
 
 input RoleType_hash {
   eq: RoleType
+}
+
+input SharedNodeOrder {
+  asc: SharedNodeOrderable
+  desc: SharedNodeOrderable
+  then: SharedNodeOrder
+}
+
+enum SharedNodeOrderable {
+  n_labels
+  n_tensions
+  n_closed_tensions
+}
+
+input SharedNodeRef {
+  n_labels: Int
+  n_tensions: Int
+  n_closed_tensions: Int
 }
 
 input StringExactFilter {
@@ -1207,6 +1292,12 @@ input StringHashFilter {
 input StringHashFilter_StringRegExpFilter {
   eq: String
   regexp: String
+}
+
+input StringHashFilter_StringTermFilter {
+  eq: String
+  allofterms: String
+  anyofterms: String
 }
 
 input StringRegExpFilter {
@@ -1261,15 +1352,15 @@ input TensionPatch {
   updatedAt: DateTime
   message: String
   nth: String
-  title: String @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  type_: TensionType @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  emitterid: String @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  emitter: NodeRef @alter_hasRole(n:["emitter"], r: Coordinator, u:"createdBy", a:1)
-  receiverid: String @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy", a:1)
-  receiver: NodeRef @alter_hasRole(n:["receiver"], r: Coordinator, u:"createdBy", a:1)
-  status: TensionStatus @alter_hasRole(n:["emitter","receiver"], r: Coordinator, u:"createdBy", a:1)
-  labels: [LabelRef!] @patch_hasRole(n:["emitter","receiver"], r: Coordinator, a:1)
-  assignees: [UserRef!] @alter_hasRole(n:["emitter","receiver"], r: Coordinator, a:1)
+  title: String @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @alter_minLength(f:"title", n:1)
+  type_: TensionType @alter_hasRole(n:["emitter"], u:"createdBy", a:1)
+  emitterid: String @alter_hasRole(n:["emitter"], u:"createdBy", a:1)
+  emitter: NodeRef @alter_hasRole(n:["emitter"], u:"createdBy", a:1)
+  receiverid: String @alter_hasRole(n:["receiver"], u:"createdBy", a:1)
+  receiver: NodeRef @alter_hasRole(n:["receiver"], u:"createdBy", a:1)
+  status: TensionStatus @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1)
+  labels: [LabelRef!] @patch_hasRole(n:["emitter","receiver"], u:"createdBy", a:1)
+  assignees: [UserRef!] @alter_hasRole(n:["emitter","receiver"], a:1)
   comments: [CommentRef!] @alter_hasRoot(n:["emitter","receiver"])
   action: TensionAction @alter_hasRoot(n:["emitter","receiver"])
   blobs: [BlobRef!] @alter_hasRoot(n:["emitter","receiver"])
@@ -1461,14 +1552,14 @@ enum UserOrderable {
 input UserPatch {
   createdAt: DateTime @alter_RO
   lastAck: DateTime @alter_RO
-  name: String @patch_isOwner @alter_toLower(f:"name")
+  name: String @patch_isOwner
   password: String @patch_isOwner
   email: String @patch_isOwner
   emailHash: String @alter_RO
   emailValidated: Boolean @alter_RO
   rights: UserRightsRef @alter_RO
-  roles: [NodeRef!] @alter_RO @alter_assertType(f:"roles", t: Role)
-  backed_roles: [NodeRef!] @alter_RO @alter_assertType(f:"backed_roles", t: Role)
+  roles: [NodeRef!] @alter_RO
+  backed_roles: [NodeRef!] @alter_RO
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
   bio: String @patch_isOwner

@@ -7,7 +7,7 @@ type Node  {
   createdAt: DateTime! @search
   updatedAt: DateTime
   name: String! @search(by: [term])
-  nameid: String! @id @search(by: [hash, regexp])
+  nameid: String! @search(by: [hash, regexp]) @id
   rootnameid: String! @search(by: [hash, regexp])
   parent: Node
   children: [Node!] @hasInverse(field: parent)
@@ -27,10 +27,18 @@ type Node  {
   isPrivate: Boolean! @search
   isArchived: Boolean! @search
   charac: NodeCharac!
+  labels: [Label!]
   first_link: User
   second_link: User
   skills: [String!] @search(by: [term])
   role_type: RoleType @search
+  shared: SharedNode
+}
+
+type SharedNode {
+  n_labels: Int
+  n_tensions: Int
+  n_closed_tensions: Int
 }
 
 type NodeFragment {
@@ -91,8 +99,14 @@ type Tension implements Post  {
 
 type Label {
   id: ID!
-  name: String! @id
+  rootnameid: String! @search(by: [hash])
+  name: String! @search(by: [hash, term])
+  description: String
   color: String
+  tensions: [Tension!] @hasInverse(field: labels)
+  nodes: [Node!] @hasInverse(field: labels)
+  n_nodes: Int 
+  n_tensions: Int 
 }
 
 type Comment implements Post{
@@ -220,8 +234,8 @@ enum TensionEvent {
   CommentPushed
   AssigneeAdded
   AssigneeRemoved
-
-
+  LabelAdded
+  LabelRemoved
 
 
 

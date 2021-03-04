@@ -18,15 +18,15 @@
 # Node Interface (Role and Circle)
 #
 
-type Node @hidePrivate {
+type Node @hidePrivate @hook_update {
   id: ID!
-  createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
+  createdBy: User!      @patch_RO
   createdAt: DateTime!  @patch_RO @search 
   updatedAt: DateTime   @alter_RO
 
   # Node naming/ID
-  name: String!        @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term])
-  nameid: String!  @id @patch_RO @search(by: [hash, regexp])
+  name: String!        @patch_RO @search(by: [term])
+  nameid: String!      @patch_RO @search(by: [hash, regexp]) @id 
   rootnameid: String!  @patch_RO @search(by: [hash, regexp]) # to recursively access children
 
   # Node linking
@@ -35,12 +35,12 @@ type Node @hidePrivate {
   type_: NodeType!   @patch_RO @search 
 
   # Edges
-  tensions_out: [Tension!]  @hasInverse(field: emitter)  @patch_RO
-  tensions_in: [Tension!]   @hasInverse(field: receiver) @patch_hasRole(n:["parent"], r:Coordinator)
+  tensions_out: [Tension!]  @patch_RO @hasInverse(field: emitter) 
+  tensions_in: [Tension!]   @patch_RO @hasInverse(field: receiver)
 
   # Documents, data, etc.
-  about: String     @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [fulltext])
-  mandate: Mandate  @patch_hasRole(n:["parent"], r:Coordinator)
+  about: String     @patch_RO @search(by: [fulltext])
+  mandate: Mandate  @patch_RO
   docs: [Blob]      @patch_RO
   source: Blob      @patch_RO
 
@@ -48,31 +48,51 @@ type Node @hidePrivate {
   n_tensions_out: Int  @count(f: tensions_out)
   n_tensions_in: Int   @count(f: tensions_in)
   n_children: Int      @count(f: children)
-  stats: NodeStats  @meta_getNodeStats
+  stats: NodeStats     @meta_getNodeStats
 
   # @Debug(#3a99e49): when **union** will be available in Dgraph,
   # Consider using a union `union Node = Role | Circle` with a common SuperNode interface.
   # Furthermore, required field (role_type, charac, can have no semantics depending if tis on Role or Circle
-
-  # Circle... is a Supernode/HyperEdge
+  
+  # Node Properties
   isRoot: Boolean!      @patch_RO @search 
   isPersonal: Boolean   @patch_RO @search # (Not public) nameid ends with @{username}
   isPrivate: Boolean!   @patch_RO @search # Invitation required for an R/W access
   isArchived: Boolean!  @patch_RO @search # (Hidden) Blob source is archived
-  charac: NodeCharac!   @patch_hasRole(n:["parent"], r:Coordinator) # Root... inherits attributes
-  #network: [Network] @hasInverse(field: nodes)
+  charac: NodeCharac!   @patch_RO # Root... inherits attributes
+  labels: [Label!]      @patch_RO  #@alter_hasRole(n:["__self__"])
 
   # Role... is a Leaf
-  first_link: User      @patch_hasRole(n:["parent"], r:Coordinator)
-  second_link: User     @patch_hasRole(n:["parent"], r:Coordinator)
-  skills: [String!]     @patch_hasRole(n:["parent"], r:Coordinator) @search(by: [term]) 
-  role_type: RoleType   @patch_hasRole(n:["parent"], r:Coordinator) @search
+  first_link: User      @patch_RO
+  second_link: User     @patch_RO
+  skills: [String!]     @patch_RO @search(by: [term]) 
+  role_type: RoleType   @patch_RO @search
 
+  # Root node only
+  shared: SharedNode @alter_RO
+  #network: [Network] @hasInverse(field: nodes)
+
+}
+
+type SharedNode {
+  # This could be utsful to avoid compute count again and again
+  # store count and incremets
+  # * number of guest
+  # * number of members
+  # * number of role
+  # * number of labels
+  # * number of tensions
+  # * number of comments
+  # * number of circle
+  # * number of project
+  n_labels: Int
+  n_tensions: Int # open and closed
+  n_closed_tensions: Int #Closed
 }
 
 type NodeFragment {
   id: ID!
-  name: String
+  name: String    @alter_minLength(f:"name", n:1)
   nameid: String  @alter_toLower(f:"nameid")
 
   type_: NodeType
@@ -90,7 +110,6 @@ type NodeFragment {
   second_link: String
   skills: [String!]
   role_type: RoleType
-
 }
 
 type NodeCharac {
@@ -101,8 +120,8 @@ type NodeCharac {
 }
 
 type NodeStats {
-  n_member: Int   # count Guest role (root)
-  n_guest: Int    # count member role (root)
+  n_member: Int  # count Guest role (root)
+  n_guest: Int   # count member role (root)
   n_circle: Int  # recursively count sub circle
   n_role: Int    # recursively count Peer role
 }
@@ -123,15 +142,15 @@ type Tension implements Post @hidePrivate @hook_add @hook_update {
   createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
 
   nth: String  @search # @id...Upsert in BLL
-  title: String!           @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy", a:1) @search(by: [fulltext])
-  type_: TensionType!      @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy", a:1) @search 
-  emitterid: String!       @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy", a:1) @search(by: [hash, regexp]) 
-  emitter: Node!           @alter_hasRole(n:["emitter"], r:Coordinator, u:"createdBy", a:1)  
-  receiverid: String!      @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy", a:1) @search(by: [hash, regexp]) 
-  receiver: Node!          @alter_hasRole(n:["receiver"], r:Coordinator, u:"createdBy", a:1)
-  status: TensionStatus!   @alter_hasRole(n:["emitter","receiver"], r:Coordinator, u:"createdBy", a:1) @search
-  labels: [Label!]         @patch_hasRole(n:["emitter","receiver"], r:Coordinator, a:1)
-  assignees: [User!]       @alter_hasRole(n:["emitter","receiver"], r:Coordinator, a:1)
+  title: String!           @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @search(by: [fulltext]) @alter_minLength(f:"title", n:1)
+  type_: TensionType!      @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @search 
+  emitterid: String!       @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @search(by: [hash, regexp]) 
+  emitter: Node!           @alter_hasRole(n:["emitter"], u:"createdBy", a:1)  
+  receiverid: String!      @alter_hasRole(n:["receiver"], u:"createdBy", a:1) @search(by: [hash, regexp]) 
+  receiver: Node!          @alter_hasRole(n:["receiver"], u:"createdBy", a:1)
+  status: TensionStatus!   @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search
+  labels: [Label!]       @patch_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) 
+  assignees: [User!]       @alter_hasRole(n:["emitter","receiver"], a:1)
   comments: [Comment!]   @alter_hasRoot(n:["emitter","receiver"])
   action: TensionAction  @alter_hasRoot(n:["emitter","receiver"])
   blobs: [Blob!]         @alter_hasRoot(n:["emitter","receiver"]) @hasInverse(field: tension)
@@ -142,10 +161,18 @@ type Tension implements Post @hidePrivate @hook_add @hook_update {
   n_blobs: Int  @count(f: blobs)
 }
 
-type Label {
+type Label @hook_add @hook_update {
   id: ID!
-  name: String! @id 
+  rootnameid: String!  @search(by: [hash]) @patch_RO
+  name: String!        @search(by: [hash, term]) @alter_toLower(f:"name")  @alter_unique(f:"name", s:"rootnameid") @alter_minLength(f:"name", n:1)
+  description: String  @alter_maxLength(f:"description", n:280)
   color: String
+  tensions: [Tension!] @hasInverse(field: labels) @alter_RO
+  nodes: [Node!] @hasInverse(field: labels)
+
+  # --method--
+  n_nodes: Int     @count(f: nodes)
+  n_tensions: Int  @count(f: tensions)
 }
 
 type Comment implements Post @hook_update {
@@ -188,7 +215,7 @@ type User {
   createdAt: DateTime! @alter_RO
   lastAck: DateTime!   @alter_RO
   username: String!  @id @patch_RO  @alter_toLower(f:"username")
-  name: String       @patch_isOwner @alter_toLower(f:"name")
+  name: String       @patch_isOwner 
   password: String!  @patch_isOwner @hidden 
   # @DEBUG: several @id currentlynot allowed !
   # Q: how to enfore uniqueness ?
@@ -198,8 +225,8 @@ type User {
   # User Rights
   rights: UserRights! @alter_RO
   # User Roles
-  roles: [Node!]        @hasInverse(field: first_link)  @alter_RO @alter_assertType(f:"roles", t:Role)
-  backed_roles: [Node!] @hasInverse(field: second_link) @alter_RO @alter_assertType(f:"backed_roles", t:Role)
+  roles: [Node!]        @hasInverse(field: first_link)  @alter_RO
+  backed_roles: [Node!] @hasInverse(field: second_link) @alter_RO
   # User Tensions
   tensions_created: [Tension!] @hasInverse(field: createdBy)
   tensions_assigned: [Tension!] @hasInverse(field: assignees)
@@ -289,8 +316,8 @@ enum TensionEvent {
   CommentPushed
   AssigneeAdded
   AssigneeRemoved
-  # LabelAdded
-  # LabelRemoved
+  LabelAdded
+  LabelRemoved
   # EmitterUpdated
   # ReceiverUpdated
   # Blob action
