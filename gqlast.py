@@ -265,7 +265,11 @@ class SemanticFilter:
             data_in = getattr(self, data_type)
             data_out = getattr(self, data_type_out)
             for f in data_out[name_out]:
-                groups = re.match(r"(add|update|delete|query|get)(\w*)", f['name']).groups()
+                m = re.match(r"(add|update|delete|query|get)(\w*)", f['name'])
+                if not m:
+                    # unnkow query
+                    continue
+                groups = m.groups()
                 op = groups[0]
                 type_ = groups[1]
                 if type_ in data_in:

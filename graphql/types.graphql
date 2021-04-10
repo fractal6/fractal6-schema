@@ -139,7 +139,7 @@ interface Post {
 }
 
 type Tension implements Post @hidePrivate @hook_add @hook_update {
-  createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
+  #createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
 
   nth: String  @search # @id...Upsert in BLL
   title: String!           @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @search(by: [fulltext]) @alter_minLength(f:"title", n:1)
