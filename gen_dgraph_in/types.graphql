@@ -32,6 +32,7 @@ type Node  {
   second_link: User
   skills: [String!] @search(by: [term])
   role_type: RoleType @search
+  contracts: [Vote!] @hasInverse(field: node)
   shared: SharedNode
 }
 
@@ -57,6 +58,14 @@ type NodeFragment {
   role_type: RoleType
 }
 
+type Mandate {
+  id: ID!
+  purpose: String! @search(by: [fulltext])
+  responsabilities: String
+  domains: String
+  policies: String
+}
+
 type NodeCharac {
   id: ID!
   userCanJoin: Boolean! @search
@@ -79,20 +88,21 @@ interface Post {
 }
 
 type Tension implements Post  {
-  nth: String @search
-  title: String! @search(by: [fulltext])
-  type_: TensionType! @search
   emitterid: String! @search(by: [hash, regexp])
   emitter: Node!
   receiverid: String! @search(by: [hash, regexp])
   receiver: Node!
+  nth: String @search
+  title: String! @search(by: [fulltext])
+  type_: TensionType! @search
   status: TensionStatus! @search
   labels: [Label!]
   assignees: [User!]
   comments: [Comment!]
   action: TensionAction
   blobs: [Blob!] @hasInverse(field: tension)
-  history: [Event!]!
+  contracts: [Contract!] @hasInverse(field: tension)
+  history: [Event!]! @hasInverse(field: tension)
   n_comments: Int 
   n_blobs: Int 
 }
@@ -123,17 +133,34 @@ type Blob implements Post {
 }
 
 type Event implements Post {
+  tension: Tension!
   event_type: TensionEvent! @search
   old: String
   new: String
 }
 
-type Mandate {
+type EventFragment {
+  event_type: TensionEvent! @search
+  old: String
+  new: String
+}
+
+type Contract implements Post  {
+  event: EventFragment!
+  closedAt: DateTime @search
+  tension: Tension!
+  status: ContractStatus! @search
+  contract_type: ContractType! @search
+  candidates: [User!] @hasInverse(field: contracts)
+  participants: [Vote!] @hasInverse(field: contract)
+  comments: [Comment!]
+}
+
+type Vote {
   id: ID!
-  purpose: String! @search(by: [fulltext])
-  responsabilities: String
-  domains: String
-  policies: String
+  contract: Contract!
+  node: Node!
+  data: [Int!]
 }
 
 type User {
@@ -151,6 +178,7 @@ type User {
   backed_roles: [Node!] @hasInverse(field: second_link)
   tensions_created: [Tension!] @hasInverse(field: createdBy)
   tensions_assigned: [Tension!] @hasInverse(field: assignees)
+  contracts: [Contract!] @hasInverse(field: candidates)
   bio: String
   utc: String
 }
@@ -176,6 +204,8 @@ enum RoleType {
   Guest
 
   Retired
+
+  Pending
 
 
   Coordinator
@@ -236,9 +266,6 @@ enum TensionEvent {
   AssigneeRemoved
   LabelAdded
   LabelRemoved
-
-
-
   BlobCreated
   BlobCommitted
 
@@ -247,6 +274,7 @@ enum TensionEvent {
   BlobUnarchived
   UserJoin
   UserLeft
+  Moved
 }
 
 enum BlobType {
@@ -258,4 +286,18 @@ enum BlobType {
 
   OnDoc
 
+}
+
+enum ContractStatus {
+  Open
+  Closed
+  Canceled
+}
+
+enum ContractType {
+  AnyCoordoDual
+  AnyParticipants
+
+  AnyCoordoSource
+  AnyCoordoTarget
 }

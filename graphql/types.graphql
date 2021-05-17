@@ -67,6 +67,7 @@ type Node @hidePrivate @hook_update {
   second_link: User     @patch_RO
   skills: [String!]     @patch_RO @search(by: [term]) 
   role_type: RoleType   @patch_RO @search
+  contracts: [Vote!] @hasInverse(field: node)
 
   # Root node only
   shared: SharedNode @alter_RO
@@ -112,6 +113,17 @@ type NodeFragment {
   role_type: RoleType
 }
 
+type Mandate {
+  id: ID!
+  purpose: String!  @search(by: [fulltext]) @patch_RO 
+  responsabilities: String  @patch_RO
+  domains: String           @patch_RO
+  policies: String          @patch_RO
+  # period of validity ? @future
+  # validatedBy  ? @future (vote process...)
+}
+
+
 type NodeCharac {
   id: ID!
   # define the governance process
@@ -140,21 +152,24 @@ interface Post {
 
 type Tension implements Post @hidePrivate @hook_add @hook_update {
   #createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
+  emitterid: String!     @patch_RO @search(by: [hash, regexp]) 
+  emitter: Node!         @patch_RO  
+  receiverid: String!    @patch_RO @search(by: [hash, regexp]) 
+  receiver: Node!        @patch_RO
 
-  nth: String  @search # @id...Upsert in BLL
-  title: String!           @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @search(by: [fulltext]) @alter_minLength(f:"title", n:1)
-  type_: TensionType!      @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @search 
-  emitterid: String!       @alter_hasRole(n:["emitter"], u:"createdBy", a:1) @search(by: [hash, regexp]) 
-  emitter: Node!           @alter_hasRole(n:["emitter"], u:"createdBy", a:1)  
-  receiverid: String!      @alter_hasRole(n:["receiver"], u:"createdBy", a:1) @search(by: [hash, regexp]) 
-  receiver: Node!          @alter_hasRole(n:["receiver"], u:"createdBy", a:1)
-  status: TensionStatus!   @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search
+  nth: String            @search #...Upsert in BLL
+  title: String!         @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search(by: [fulltext]) @alter_minLength(f:"title", n:1)
+  type_: TensionType!    @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search 
+  status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search
+
   labels: [Label!]       @patch_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) 
-  assignees: [User!]       @alter_hasRole(n:["emitter","receiver"], a:1)
+  assignees: [User!]     @alter_hasRole(n:["receiver"], a:1)
+
   comments: [Comment!]   @alter_hasRoot(n:["emitter","receiver"])
   action: TensionAction  @alter_hasRoot(n:["emitter","receiver"])
   blobs: [Blob!]         @alter_hasRoot(n:["emitter","receiver"]) @hasInverse(field: tension)
-  history: [Event!]!     # entry point
+  contracts: [Contract!] @alter_hasRole(n:["receiver"], a:1)      @hasInverse(field: tension)
+  history: [Event!]!     @alter_hasRoot(n:["emitter","receiver"]) @hasInverse(field: tension) # entry point
 
   # --method--
   n_comments: Int  @count(f: comments)
@@ -191,19 +206,35 @@ type Blob implements Post {
 }
 
 type Event implements Post {
+  tension: Tension!
   event_type: TensionEvent! @search
   old: String # Store blobid for Commit and Pushed event
-  new: String #
+  new: String # updated value
 }
 
-type Mandate {
+type EventFragment {
+  event_type: TensionEvent! @search
+  old: String # Store blobid for Commit and Pushed event
+  new: String # updated value
+}
+
+type Contract implements Post @hidePrivate @hook_add @hook_update {
+  event: EventFragment!                @patch_RO
+  closedAt: DateTime          @search @patch_RO # FIX: user right
+  tension: Tension!                    @patch_RO
+  status: ContractStatus!      @search @patch_RO
+  contract_type: ContractType! @search @patch_RO
+  candidates: [User!]    @hasInverse(field: contracts)  @patch_RO 
+  participants: [Vote!]  @hasInverse(field: contract) # only user node (@...)                  
+  comments: [Comment!] 
+}
+
+type Vote {
+  # @debug: a vote should trigger a notification but ist not a contract (contract updated ?)
   id: ID!
-  purpose: String!  @search(by: [fulltext]) @patch_RO 
-  responsabilities: String  @patch_RO
-  domains: String           @patch_RO
-  policies: String          @patch_RO
-  # period of validity ? @future
-  # validatedBy  ? @future (vote process...)
+  contract: Contract!
+  node: Node! # Named Role (@...)
+  data: [Int!] # Vote results. Maximum len equal len of candidates.
 }
 
 #
@@ -228,8 +259,9 @@ type User {
   roles: [Node!]        @hasInverse(field: first_link)  @alter_RO
   backed_roles: [Node!] @hasInverse(field: second_link) @alter_RO
   # User Tensions
-  tensions_created: [Tension!] @hasInverse(field: createdBy)
-  tensions_assigned: [Tension!] @hasInverse(field: assignees)
+  tensions_created: [Tension!] @hasInverse(field: createdBy) @alter_RO
+  tensions_assigned: [Tension!] @hasInverse(field: assignees) @alter_RO
+  contracts: [Contract!] @hasInverse(field: candidates) @alter_RO
   # Profile
   bio: String @patch_isOwner
   utc: String @patch_isOwner
@@ -262,6 +294,7 @@ enum RoleType { # LeafType
   Member # member with roles
   Guest # member with no roles
   Retired # Retired member
+  Pending # Invited member @todo
   # Role
   Coordinator # Local admin Role
   Peer # Regular Role
@@ -318,9 +351,6 @@ enum TensionEvent {
   AssigneeRemoved
   LabelAdded
   LabelRemoved
-  # EmitterUpdated
-  # ReceiverUpdated
-  # Blob action
   BlobCreated
   BlobCommitted
   # --- Trigger Event ---
@@ -329,6 +359,7 @@ enum TensionEvent {
   BlobUnarchived
   UserJoin
   UserLeft
+  Moved
 }
 
 enum BlobType {
@@ -342,3 +373,18 @@ enum BlobType {
   #OnDocTitle ?
 }
 
+### Contract
+
+enum ContractStatus {
+  Open
+  Closed 
+  Canceled
+}
+
+enum ContractType {
+  AnyCoordoDual
+  AnyParticipants
+  # -- self contract
+  AnyCoordoSource
+  AnyCoordoTarget
+}

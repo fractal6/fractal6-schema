@@ -1,22 +1,22 @@
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @withSubscription on OBJECT | INTERFACE
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
-directive @cascade on FIELD
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+directive @remote on OBJECT | INTERFACE
 
 directive @id on FIELD_DEFINITION
+
+directive @withSubscription on OBJECT | INTERFACE
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
 directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
-directive @remote on OBJECT | INTERFACE
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @cascade on FIELD
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -49,11 +49,43 @@ type AddCommentPayload {
   numUids: Int
 }
 
+input AddContractInput {
+  createdBy: UserRef!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  message: String
+  event: EventFragmentRef!
+  closedAt: DateTime
+  tension: TensionRef!
+  status: ContractStatus!
+  contract_type: ContractType!
+  candidates: [UserRef!]
+  participants: [VoteRef!]
+  comments: [CommentRef!]
+}
+
+type AddContractPayload {
+  contract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
+  numUids: Int
+}
+
+input AddEventFragmentInput {
+  event_type: TensionEvent!
+  old: String
+  new: String
+}
+
+type AddEventFragmentPayload {
+  eventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
+  numUids: Int
+}
+
 input AddEventInput {
   createdBy: UserRef!
   createdAt: DateTime!
   updatedAt: DateTime
   message: String
+  tension: TensionRef!
   event_type: TensionEvent!
   old: String
   new: String
@@ -152,6 +184,7 @@ input AddNodeInput {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  contracts: [VoteRef!]
   shared: SharedNodeRef
 }
 
@@ -188,19 +221,20 @@ input AddTensionInput {
   createdAt: DateTime!
   updatedAt: DateTime
   message: String
-  nth: String
-  title: String!
-  type_: TensionType!
   emitterid: String!
   emitter: NodeRef!
   receiverid: String!
   receiver: NodeRef!
+  nth: String
+  title: String!
+  type_: TensionType!
   status: TensionStatus!
   labels: [LabelRef!]
   assignees: [UserRef!]
   comments: [CommentRef!]
   action: TensionAction
   blobs: [BlobRef!]
+  contracts: [ContractRef!]
   history: [EventRef!]!
   n_comments: Int
   n_blobs: Int
@@ -225,6 +259,7 @@ input AddUserInput {
   backed_roles: [NodeRef!]
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
+  contracts: [ContractRef!]
   bio: String
   utc: String
 }
@@ -242,6 +277,17 @@ input AddUserRightsInput {
 
 type AddUserRightsPayload {
   userRights(order: UserRightsOrder, first: Int, offset: Int): [UserRights]
+  numUids: Int
+}
+
+input AddVoteInput {
+  contract: ContractRef!
+  node: NodeRef!
+  data: [Int!]
+}
+
+type AddVotePayload {
+  vote(filter: VoteFilter, first: Int, offset: Int): [Vote]
   numUids: Int
 }
 
@@ -380,6 +426,99 @@ input CommentRef {
   _VOID: String
 }
 
+type Contract implements Post {
+  id: ID!
+  createdBy(filter: UserFilter): User!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  message: String
+  event(filter: EventFragmentFilter): EventFragment!
+  closedAt: DateTime
+  tension(filter: TensionFilter): Tension!
+  status: ContractStatus!
+  contract_type: ContractType!
+  candidates(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
+  participants(filter: VoteFilter, first: Int, offset: Int): [Vote!]
+  comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
+}
+
+input ContractFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  message: StringFullTextFilter
+  closedAt: DateTimeFilter
+  status: ContractStatus_hash
+  contract_type: ContractType_hash
+  and: ContractFilter
+  or: ContractFilter
+  not: ContractFilter
+}
+
+input ContractOrder {
+  asc: ContractOrderable
+  desc: ContractOrderable
+  then: ContractOrder
+}
+
+enum ContractOrderable {
+  createdAt
+  updatedAt
+  message
+  closedAt
+}
+
+input ContractPatch {
+  createdBy: UserRef
+  createdAt: DateTime
+  updatedAt: DateTime
+  message: String
+  event: EventFragmentRef
+  closedAt: DateTime
+  tension: TensionRef
+  status: ContractStatus
+  contract_type: ContractType
+  candidates: [UserRef!]
+  participants: [VoteRef!]
+  comments: [CommentRef!]
+}
+
+input ContractRef {
+  id: ID
+  createdBy: UserRef
+  createdAt: DateTime
+  updatedAt: DateTime
+  message: String
+  event: EventFragmentRef
+  closedAt: DateTime
+  tension: TensionRef
+  status: ContractStatus
+  contract_type: ContractType
+  candidates: [UserRef!]
+  participants: [VoteRef!]
+  comments: [CommentRef!]
+}
+
+enum ContractStatus {
+  Open
+  Closed
+  Canceled
+}
+
+input ContractStatus_hash {
+  eq: ContractStatus!
+}
+
+enum ContractType {
+  AnyCoordoDual
+  AnyParticipants
+  AnyCoordoSource
+  AnyCoordoTarget
+}
+
+input ContractType_hash {
+  eq: ContractType!
+}
+
 input CustomHTTP {
   url: String!
   method: HTTPMethod!
@@ -415,6 +554,18 @@ type DeleteBlobPayload {
 
 type DeleteCommentPayload {
   comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  msg: String
+  numUids: Int
+}
+
+type DeleteContractPayload {
+  contract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
+  msg: String
+  numUids: Int
+}
+
+type DeleteEventFragmentPayload {
+  eventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
   msg: String
   numUids: Int
 }
@@ -473,6 +624,12 @@ type DeleteUserPayload {
   numUids: Int
 }
 
+type DeleteVotePayload {
+  vote(filter: VoteFilter, first: Int, offset: Int): [Vote]
+  msg: String
+  numUids: Int
+}
+
 enum DgraphIndex {
   int
   float
@@ -495,6 +652,7 @@ type Event implements Post {
   createdAt: DateTime!
   updatedAt: DateTime
   message: String
+  tension(filter: TensionFilter): Tension!
   event_type: TensionEvent!
   old: String
   new: String
@@ -508,6 +666,42 @@ input EventFilter {
   and: EventFilter
   or: EventFilter
   not: EventFilter
+}
+
+type EventFragment {
+  event_type: TensionEvent!
+  old: String
+  new: String
+}
+
+input EventFragmentFilter {
+  event_type: TensionEvent_hash
+  and: EventFragmentFilter
+  or: EventFragmentFilter
+  not: EventFragmentFilter
+}
+
+input EventFragmentOrder {
+  asc: EventFragmentOrderable
+  desc: EventFragmentOrderable
+  then: EventFragmentOrder
+}
+
+enum EventFragmentOrderable {
+  old
+  new
+}
+
+input EventFragmentPatch {
+  event_type: TensionEvent
+  old: String
+  new: String
+}
+
+input EventFragmentRef {
+  event_type: TensionEvent
+  old: String
+  new: String
 }
 
 input EventOrder {
@@ -529,6 +723,7 @@ input EventPatch {
   createdAt: DateTime
   updatedAt: DateTime
   message: String
+  tension: TensionRef
   event_type: TensionEvent
   old: String
   new: String
@@ -540,6 +735,7 @@ input EventRef {
   createdAt: DateTime
   updatedAt: DateTime
   message: String
+  tension: TensionRef
   event_type: TensionEvent
   old: String
   new: String
@@ -685,6 +881,9 @@ type Mutation {
   addNodeFragment(input: [AddNodeFragmentInput!]!): AddNodeFragmentPayload
   updateNodeFragment(input: UpdateNodeFragmentInput!): UpdateNodeFragmentPayload
   deleteNodeFragment(filter: NodeFragmentFilter!): DeleteNodeFragmentPayload
+  addMandate(input: [AddMandateInput!]!): AddMandatePayload
+  updateMandate(input: UpdateMandateInput!): UpdateMandatePayload
+  deleteMandate(filter: MandateFilter!): DeleteMandatePayload
   addNodeCharac(input: [AddNodeCharacInput!]!): AddNodeCharacPayload
   updateNodeCharac(input: UpdateNodeCharacInput!): UpdateNodeCharacPayload
   deleteNodeCharac(filter: NodeCharacFilter!): DeleteNodeCharacPayload
@@ -706,9 +905,15 @@ type Mutation {
   addEvent(input: [AddEventInput!]!): AddEventPayload
   updateEvent(input: UpdateEventInput!): UpdateEventPayload
   deleteEvent(filter: EventFilter!): DeleteEventPayload
-  addMandate(input: [AddMandateInput!]!): AddMandatePayload
-  updateMandate(input: UpdateMandateInput!): UpdateMandatePayload
-  deleteMandate(filter: MandateFilter!): DeleteMandatePayload
+  addEventFragment(input: [AddEventFragmentInput!]!): AddEventFragmentPayload
+  updateEventFragment(input: UpdateEventFragmentInput!): UpdateEventFragmentPayload
+  deleteEventFragment(filter: EventFragmentFilter!): DeleteEventFragmentPayload
+  addContract(input: [AddContractInput!]!): AddContractPayload
+  updateContract(input: UpdateContractInput!): UpdateContractPayload
+  deleteContract(filter: ContractFilter!): DeleteContractPayload
+  addVote(input: [AddVoteInput!]!): AddVotePayload
+  updateVote(input: UpdateVoteInput!): UpdateVotePayload
+  deleteVote(filter: VoteFilter!): DeleteVotePayload
   addUser(input: [AddUserInput!]!): AddUserPayload
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
@@ -746,6 +951,7 @@ type Node {
   second_link(filter: UserFilter): User
   skills: [String!]
   role_type: RoleType
+  contracts(filter: VoteFilter, first: Int, offset: Int): [Vote!]
   shared: SharedNode
 }
 
@@ -916,6 +1122,7 @@ input NodePatch {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  contracts: [VoteRef!]
   shared: SharedNodeRef
 }
 
@@ -950,6 +1157,7 @@ input NodeRef {
   second_link: UserRef
   skills: [String!]
   role_type: RoleType
+  contracts: [VoteRef!]
   shared: SharedNodeRef
 }
 
@@ -1035,6 +1243,8 @@ type Query {
   querySharedNode(order: SharedNodeOrder, first: Int, offset: Int): [SharedNode]
   getNodeFragment(id: ID!): NodeFragment
   queryNodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
+  getMandate(id: ID!): Mandate
+  queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   getNodeCharac(id: ID!): NodeCharac
   queryNodeCharac(filter: NodeCharacFilter, first: Int, offset: Int): [NodeCharac]
   queryNodeStats(order: NodeStatsOrder, first: Int, offset: Int): [NodeStats]
@@ -1050,8 +1260,11 @@ type Query {
   queryBlob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
   getEvent(id: ID!): Event
   queryEvent(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
-  getMandate(id: ID!): Mandate
-  queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
+  queryEventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
+  getContract(id: ID!): Contract
+  queryContract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
+  getVote(id: ID!): Vote
+  queryVote(filter: VoteFilter, first: Int, offset: Int): [Vote]
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   queryUserRights(order: UserRightsOrder, first: Int, offset: Int): [UserRights]
@@ -1062,6 +1275,7 @@ enum RoleType {
   Member
   Guest
   Retired
+  Pending
   Coordinator
   Peer
   Bot
@@ -1138,19 +1352,20 @@ type Tension implements Post {
   createdAt: DateTime!
   updatedAt: DateTime
   message: String
-  nth: String
-  title: String!
-  type_: TensionType!
   emitterid: String!
   emitter(filter: NodeFilter): Node!
   receiverid: String!
   receiver(filter: NodeFilter): Node!
+  nth: String
+  title: String!
+  type_: TensionType!
   status: TensionStatus!
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   assignees(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   action: TensionAction
   blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!]
+  contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
   history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]!
   n_comments: Int
   n_blobs: Int
@@ -1185,6 +1400,7 @@ enum TensionEvent {
   BlobUnarchived
   UserJoin
   UserLeft
+  Moved
 }
 
 input TensionEvent_hash {
@@ -1195,11 +1411,11 @@ input TensionFilter {
   id: [ID!]
   createdAt: DateTimeFilter
   message: StringFullTextFilter
+  emitterid: StringHashFilter_StringRegExpFilter
+  receiverid: StringHashFilter_StringRegExpFilter
   nth: StringTermFilter
   title: StringFullTextFilter
   type_: TensionType_hash
-  emitterid: StringHashFilter_StringRegExpFilter
-  receiverid: StringHashFilter_StringRegExpFilter
   status: TensionStatus_hash
   and: TensionFilter
   or: TensionFilter
@@ -1216,10 +1432,10 @@ enum TensionOrderable {
   createdAt
   updatedAt
   message
-  nth
-  title
   emitterid
   receiverid
+  nth
+  title
   n_comments
   n_blobs
 }
@@ -1229,19 +1445,20 @@ input TensionPatch {
   createdAt: DateTime
   updatedAt: DateTime
   message: String
-  nth: String
-  title: String
-  type_: TensionType
   emitterid: String
   emitter: NodeRef
   receiverid: String
   receiver: NodeRef
+  nth: String
+  title: String
+  type_: TensionType
   status: TensionStatus
   labels: [LabelRef!]
   assignees: [UserRef!]
   comments: [CommentRef!]
   action: TensionAction
   blobs: [BlobRef!]
+  contracts: [ContractRef!]
   history: [EventRef!]
   n_comments: Int
   n_blobs: Int
@@ -1253,19 +1470,20 @@ input TensionRef {
   createdAt: DateTime
   updatedAt: DateTime
   message: String
-  nth: String
-  title: String
-  type_: TensionType
   emitterid: String
   emitter: NodeRef
   receiverid: String
   receiver: NodeRef
+  nth: String
+  title: String
+  type_: TensionType
   status: TensionStatus
   labels: [LabelRef!]
   assignees: [UserRef!]
   comments: [CommentRef!]
   action: TensionAction
   blobs: [BlobRef!]
+  contracts: [ContractRef!]
   history: [EventRef!]
   n_comments: Int
   n_blobs: Int
@@ -1309,6 +1527,28 @@ input UpdateCommentInput {
 
 type UpdateCommentPayload {
   comment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  numUids: Int
+}
+
+input UpdateContractInput {
+  filter: ContractFilter!
+  set: ContractPatch
+  remove: ContractPatch
+}
+
+type UpdateContractPayload {
+  contract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
+  numUids: Int
+}
+
+input UpdateEventFragmentInput {
+  filter: EventFragmentFilter!
+  set: EventFragmentPatch
+  remove: EventFragmentPatch
+}
+
+type UpdateEventFragmentPayload {
+  eventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
   numUids: Int
 }
 
@@ -1411,6 +1651,17 @@ type UpdateUserPayload {
   numUids: Int
 }
 
+input UpdateVoteInput {
+  filter: VoteFilter!
+  set: VotePatch
+  remove: VotePatch
+}
+
+type UpdateVotePayload {
+  vote(filter: VoteFilter, first: Int, offset: Int): [Vote]
+  numUids: Int
+}
+
 type User {
   id: ID!
   createdAt: DateTime!
@@ -1426,6 +1677,7 @@ type User {
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   tensions_created(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_assigned(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
   bio: String
   utc: String
 }
@@ -1470,6 +1722,7 @@ input UserPatch {
   backed_roles: [NodeRef!]
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
+  contracts: [ContractRef!]
   bio: String
   utc: String
 }
@@ -1489,6 +1742,7 @@ input UserRef {
   backed_roles: [NodeRef!]
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
+  contracts: [ContractRef!]
   bio: String
   utc: String
 }
@@ -1513,5 +1767,30 @@ input UserRightsRef {
   canLogin: Boolean
   canCreateRoot: Boolean
   maxPublicOrga: Int
+}
+
+type Vote {
+  id: ID!
+  contract(filter: ContractFilter): Contract!
+  node(filter: NodeFilter): Node!
+  data: [Int!]
+}
+
+input VoteFilter {
+  id: [ID!]
+  not: VoteFilter
+}
+
+input VotePatch {
+  contract: ContractRef
+  node: NodeRef
+  data: [Int!]
+}
+
+input VoteRef {
+  id: ID
+  contract: ContractRef
+  node: NodeRef
+  data: [Int!]
 }
 
