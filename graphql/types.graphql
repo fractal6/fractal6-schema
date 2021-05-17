@@ -18,7 +18,7 @@
 # Node Interface (Role and Circle)
 #
 
-type Node @hidePrivate @hook_update {
+type Node @hidePrivate @hook_ {
   id: ID!
   createdBy: User!      @patch_RO
   createdAt: DateTime!  @patch_RO @search 
@@ -150,7 +150,7 @@ interface Post {
   message: String       @patch_isOwner(u:"createdBy") @search(by: [fulltext])
 }
 
-type Tension implements Post @hidePrivate @hook_add @hook_update {
+type Tension implements Post @hidePrivate @hook_ {
   #createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
   emitterid: String!     @patch_RO @search(by: [hash, regexp]) 
   emitter: Node!         @patch_RO  
@@ -176,7 +176,7 @@ type Tension implements Post @hidePrivate @hook_add @hook_update {
   n_blobs: Int  @count(f: blobs)
 }
 
-type Label @hook_add @hook_update {
+type Label @hook_ {
   id: ID!
   rootnameid: String!  @search(by: [hash]) @patch_RO
   name: String!        @search(by: [hash, term]) @alter_toLower(f:"name")  @alter_unique(f:"name", s:"rootnameid") @alter_minLength(f:"name", n:1)
@@ -190,7 +190,7 @@ type Label @hook_add @hook_update {
   n_tensions: Int  @count(f: tensions)
 }
 
-type Comment implements Post @hook_update {
+type Comment implements Post @hook_ {
   message: String!  @patch_isOwner(u:"createdBy") @search(by: [fulltext]) 
 }
 
@@ -218,9 +218,9 @@ type EventFragment {
   new: String # updated value
 }
 
-type Contract implements Post @hidePrivate @hook_add @hook_update {
+type Contract implements Post @hidePrivate @hook_ {
   event: EventFragment!                @patch_RO
-  closedAt: DateTime          @search @patch_RO # FIX: user right
+  closedAt: DateTime           @search @patch_RO # FIX: user right
   tension: Tension!                    @patch_RO
   status: ContractStatus!      @search @patch_RO
   contract_type: ContractType! @search @patch_RO

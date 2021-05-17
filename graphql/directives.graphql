@@ -1,4 +1,3 @@
-
 #  Make the field unable to read
 directive @hidden on FIELD_DEFINITION
 
@@ -8,24 +7,6 @@ directive @count(f: String!) on FIELD_DEFINITION
 
 # special methogds
 directive @meta_getNodeStats on FIELD_DEFINITION
-
-# Hook directive for mutation
-# Gqlast automatically append hook in Dgraph Type, as:
-#   addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload @hook_addNodePost
-directive @hook_addNode on ARGUMENT_DEFINITION
-directive @hook_addNodePost on FIELD_DEFINITION
-directive @hook_updateNode on ARGUMENT_DEFINITION
-directive @hook_updateNodePost on FIELD_DEFINITION
-directive @hook_addTension on ARGUMENT_DEFINITION
-directive @hook_addTensionPost on FIELD_DEFINITION
-directive @hook_updateTension on ARGUMENT_DEFINITION
-directive @hook_updateTensionPost on FIELD_DEFINITION
-directive @hook_updateComment on ARGUMENT_DEFINITION
-directive @hook_updateCommentPost on FIELD_DEFINITION
-directive @hook_addLabel on ARGUMENT_DEFINITION
-directive @hook_addLabelPost on FIELD_DEFINITION
-directive @hook_updateLabel on ARGUMENT_DEFINITION
-directive @hook_updateLabelPost on FIELD_DEFINITION
 
 # @DEBUG/follow -- Dgraph features: 
 # Track this to remove the need of the field string value mentionned on input https://github.com/99designs/gqlgen/issues/1084
@@ -42,9 +23,7 @@ directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 #directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION # See @Debug(#3a99e49)
 directive @alter_unique(f: String!, s: String) on INPUT_FIELD_DEFINITION
 
-#
-# Global object query directive
-#
+# Protect private data
 directive @hidePrivate on OBJECT | FIELD_DEFINITION
 
 ###########################################################
@@ -54,13 +33,6 @@ directive @hidePrivate on OBJECT | FIELD_DEFINITION
 # patch_* => apply on Update mutation
 # alter_* => apply on all mutation input (add and update)
 ###########################################################
-
-#
-# Add and update/patch mutation
-#
-
-# Ensure that the user making the request is authenticated.
-directive @isAuth on OBJECT | FIELD_DEFINITION 
 
 # Authorize mutations if the user:
 # * has rights on node(n)
@@ -73,18 +45,54 @@ directive @alter_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINI
 # one of the given node(n) (i.e. is in the same organisation)
 directive @alter_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
 
-# @TODO/@DEBUG: if node or user fieldid is not given by the selection set
-# do a grpc request to get it !
-
-#
-# Auth for update/patch mutation
-#
-
 # Authorize update only if the field's value match the user(u) credential.
 # If user(u) field is empty, assume a user object.
 directive @add_isOwner(u: String) on INPUT_FIELD_DEFINITION
 directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
 
-directive @patch_RO on INPUT_FIELD_DEFINITION # for field defined at creation, Non Patchable
-directive @alter_RO on INPUT_FIELD_DEFINITION # for field defined at creation, Non Patchable
+# Read-only directive
+directive @patch_RO on INPUT_FIELD_DEFINITION # for field defined at creation
+directive @alter_RO on INPUT_FIELD_DEFINITION 
 
+#######################################################
+# @TODO: automate their generation in gqlast.py
+
+# Hook directive for mutation
+# Gqlast automatically append hook in Dgraph Type, as:
+#   addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload @hook_addNodePost
+
+# Node Hook
+directive @hook_getNode on ARGUMENT_DEFINITION
+directive @hook_queryNode on ARGUMENT_DEFINITION
+directive @hook_addNode on ARGUMENT_DEFINITION
+directive @hook_addNodePost on FIELD_DEFINITION
+directive @hook_updateNode on ARGUMENT_DEFINITION
+directive @hook_updateNodePost on FIELD_DEFINITION
+# Tension Hook
+directive @hook_getTension on ARGUMENT_DEFINITION
+directive @hook_queryTension on ARGUMENT_DEFINITION
+directive @hook_addTension on ARGUMENT_DEFINITION
+directive @hook_addTensionPost on FIELD_DEFINITION
+directive @hook_updateTension on ARGUMENT_DEFINITION
+directive @hook_updateTensionPost on FIELD_DEFINITION
+# Comment Hook
+directive @hook_getComment on ARGUMENT_DEFINITION
+directive @hook_queryComment on ARGUMENT_DEFINITION
+directive @hook_addComment on ARGUMENT_DEFINITION
+directive @hook_addCommentPost on FIELD_DEFINITION
+directive @hook_updateComment on ARGUMENT_DEFINITION
+directive @hook_updateCommentPost on FIELD_DEFINITION
+# Label Hook
+directive @hook_getLabel on ARGUMENT_DEFINITION
+directive @hook_queryLabel on ARGUMENT_DEFINITION
+directive @hook_addLabel on ARGUMENT_DEFINITION
+directive @hook_addLabelPost on FIELD_DEFINITION
+directive @hook_updateLabel on ARGUMENT_DEFINITION
+directive @hook_updateLabelPost on FIELD_DEFINITION
+# Contract Hook
+directive @hook_getContract on ARGUMENT_DEFINITION
+directive @hook_queryContract on ARGUMENT_DEFINITION
+directive @hook_addContract on ARGUMENT_DEFINITION
+directive @hook_addContractPost on FIELD_DEFINITION
+directive @hook_updateContract on ARGUMENT_DEFINITION
+directive @hook_updateContractPost on FIELD_DEFINITION

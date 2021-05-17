@@ -7,34 +7,6 @@ directive @count(f: String!) on FIELD_DEFINITION
 
 directive @meta_getNodeStats on FIELD_DEFINITION
 
-directive @hook_addNode on ARGUMENT_DEFINITION
-
-directive @hook_addNodePost on FIELD_DEFINITION
-
-directive @hook_updateNode on ARGUMENT_DEFINITION
-
-directive @hook_updateNodePost on FIELD_DEFINITION
-
-directive @hook_addTension on ARGUMENT_DEFINITION
-
-directive @hook_addTensionPost on FIELD_DEFINITION
-
-directive @hook_updateTension on ARGUMENT_DEFINITION
-
-directive @hook_updateTensionPost on FIELD_DEFINITION
-
-directive @hook_updateComment on ARGUMENT_DEFINITION
-
-directive @hook_updateCommentPost on FIELD_DEFINITION
-
-directive @hook_addLabel on ARGUMENT_DEFINITION
-
-directive @hook_addLabelPost on FIELD_DEFINITION
-
-directive @hook_updateLabel on ARGUMENT_DEFINITION
-
-directive @hook_updateLabelPost on FIELD_DEFINITION
-
 directive @alter_toLower(f: String!) on INPUT_FIELD_DEFINITION
 
 directive @alter_minLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
@@ -44,8 +16,6 @@ directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
 directive @alter_unique(f: String!, s: String) on INPUT_FIELD_DEFINITION
 
 directive @hidePrivate on OBJECT|FIELD_DEFINITION
-
-directive @isAuth on OBJECT|FIELD_DEFINITION
 
 directive @patch_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINITION
 
@@ -60,6 +30,66 @@ directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
 directive @patch_RO on INPUT_FIELD_DEFINITION
 
 directive @alter_RO on INPUT_FIELD_DEFINITION
+
+directive @hook_getNode on ARGUMENT_DEFINITION
+
+directive @hook_queryNode on ARGUMENT_DEFINITION
+
+directive @hook_addNode on ARGUMENT_DEFINITION
+
+directive @hook_addNodePost on FIELD_DEFINITION
+
+directive @hook_updateNode on ARGUMENT_DEFINITION
+
+directive @hook_updateNodePost on FIELD_DEFINITION
+
+directive @hook_getTension on ARGUMENT_DEFINITION
+
+directive @hook_queryTension on ARGUMENT_DEFINITION
+
+directive @hook_addTension on ARGUMENT_DEFINITION
+
+directive @hook_addTensionPost on FIELD_DEFINITION
+
+directive @hook_updateTension on ARGUMENT_DEFINITION
+
+directive @hook_updateTensionPost on FIELD_DEFINITION
+
+directive @hook_getComment on ARGUMENT_DEFINITION
+
+directive @hook_queryComment on ARGUMENT_DEFINITION
+
+directive @hook_addComment on ARGUMENT_DEFINITION
+
+directive @hook_addCommentPost on FIELD_DEFINITION
+
+directive @hook_updateComment on ARGUMENT_DEFINITION
+
+directive @hook_updateCommentPost on FIELD_DEFINITION
+
+directive @hook_getLabel on ARGUMENT_DEFINITION
+
+directive @hook_queryLabel on ARGUMENT_DEFINITION
+
+directive @hook_addLabel on ARGUMENT_DEFINITION
+
+directive @hook_addLabelPost on FIELD_DEFINITION
+
+directive @hook_updateLabel on ARGUMENT_DEFINITION
+
+directive @hook_updateLabelPost on FIELD_DEFINITION
+
+directive @hook_getContract on ARGUMENT_DEFINITION
+
+directive @hook_queryContract on ARGUMENT_DEFINITION
+
+directive @hook_addContract on ARGUMENT_DEFINITION
+
+directive @hook_addContractPost on FIELD_DEFINITION
+
+directive @hook_updateContract on ARGUMENT_DEFINITION
+
+directive @hook_updateContractPost on FIELD_DEFINITION
 
 type Node @hidePrivate {
   id: ID!
@@ -386,25 +416,25 @@ enum ContractType {
   AnyCoordoTarget
 }
 
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
 directive @auth(query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT
 
 directive @remote on OBJECT|INTERFACE
 
-directive @id on FIELD_DEFINITION
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @withSubscription on OBJECT|INTERFACE
 
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
 directive @custom(http: CustomHTTP) on FIELD_DEFINITION
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
 directive @cascade on FIELD
+
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+
+directive @id on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -1159,7 +1189,7 @@ enum Mode {
 }
 
 type Mutation {
-  addNode(input: [AddNodeInput!]!): AddNodePayload
+  addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload @hook_addNodePost
   updateNode(input: UpdateNodeInput! @hook_updateNode): UpdateNodePayload @hook_updateNodePost
   deleteNode(filter: NodeFilter!): DeleteNodePayload
   addSharedNode(input: [AddSharedNodeInput!]!): AddSharedNodePayload
@@ -1181,7 +1211,7 @@ type Mutation {
   addLabel(input: [AddLabelInput!]! @hook_addLabel): AddLabelPayload @hook_addLabelPost
   updateLabel(input: UpdateLabelInput! @hook_updateLabel): UpdateLabelPayload @hook_updateLabelPost
   deleteLabel(filter: LabelFilter!): DeleteLabelPayload
-  addComment(input: [AddCommentInput!]!): AddCommentPayload
+  addComment(input: [AddCommentInput!]! @hook_addComment): AddCommentPayload @hook_addCommentPost
   updateComment(input: UpdateCommentInput! @hook_updateComment): UpdateCommentPayload @hook_updateCommentPost
   deleteComment(filter: CommentFilter!): DeleteCommentPayload
   addBlob(input: [AddBlobInput!]!): AddBlobPayload
@@ -1193,8 +1223,8 @@ type Mutation {
   addEventFragment(input: [AddEventFragmentInput!]!): AddEventFragmentPayload
   updateEventFragment(input: UpdateEventFragmentInput!): UpdateEventFragmentPayload
   deleteEventFragment(filter: EventFragmentFilter!): DeleteEventFragmentPayload
-  addContract(input: [AddContractInput!]!): AddContractPayload
-  updateContract(input: UpdateContractInput!): UpdateContractPayload
+  addContract(input: [AddContractInput!]! @hook_addContract): AddContractPayload @hook_addContractPost
+  updateContract(input: UpdateContractInput! @hook_updateContract): UpdateContractPayload @hook_updateContractPost
   deleteContract(filter: ContractFilter!): DeleteContractPayload
   addVote(input: [AddVoteInput!]!): AddVotePayload
   updateVote(input: UpdateVoteInput!): UpdateVotePayload
@@ -1441,8 +1471,8 @@ input PostRef {
 }
 
 type Query {
-  getNode(id: ID, nameid: String): Node
-  queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  getNode(id: ID, nameid: String @hook_getNode): Node
+  queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int @hook_queryNode): [Node]
   querySharedNode(order: SharedNodeOrder, first: Int, offset: Int): [SharedNode]
   getNodeFragment(id: ID!): NodeFragment
   queryNodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
@@ -1453,19 +1483,19 @@ type Query {
   queryNodeStats(order: NodeStatsOrder, first: Int, offset: Int): [NodeStats]
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
-  getTension(id: ID!): Tension
-  queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
-  getLabel(id: ID!): Label
-  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
-  getComment(id: ID!): Comment
-  queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  getTension(id: ID! @hook_getTension): Tension
+  queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int @hook_queryTension): [Tension]
+  getLabel(id: ID! @hook_getLabel): Label
+  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int @hook_queryLabel): [Label]
+  getComment(id: ID! @hook_getComment): Comment
+  queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int @hook_queryComment): [Comment]
   getBlob(id: ID!): Blob
   queryBlob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
   getEvent(id: ID!): Event
   queryEvent(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event]
   queryEventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
-  getContract(id: ID!): Contract
-  queryContract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
+  getContract(id: ID! @hook_getContract): Contract
+  queryContract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int @hook_queryContract): [Contract]
   getVote(id: ID!): Vote
   queryVote(filter: VoteFilter, first: Int, offset: Int): [Vote]
   getUser(id: ID, username: String): User

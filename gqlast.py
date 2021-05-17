@@ -131,7 +131,7 @@ class SemanticFilter:
             to_remove = []
             for i, d in enumerate(ast._directives):
                 data[name+"__directives"].append(d)
-                if d._name.name.startswith('hook_'):
+                if d._name.name == 'hook_':
                     to_remove.append(i)
 
             for i in to_remove[::-1]:
@@ -265,7 +265,8 @@ class SemanticFilter:
             data_in = getattr(self, data_type)
             data_out = getattr(self, data_type_out)
             for f in data_out[name_out]:
-                m = re.match(r"(add|update|delete|query|get)(\w*)", f['name'])
+                #m = re.match(r"(add|update|delete|query|get)(\w*)", f['name'])
+                m = re.match(r"(add|update|query|get)(\w*)", f['name'])
                 if not m:
                     # unnkow query
                     continue
@@ -274,18 +275,20 @@ class SemanticFilter:
                 type_ = groups[1]
                 if type_ in data_in:
                     for directive_ in data_in[type_ + '__directives']:
-                        directive_group = directive_._name.name.split("_")
-                        if len(directive_group) > 1 and op == directive_group[1]:
-                            pre_directive = directive_
-                            post_directive = directive_.copy()
+                        if directive_._name.name != 'hook_':
+                            continue
+                        pre_directive = directive_.copy()
+                        post_directive = directive_.copy()
 
-                            # Add Pre Hook
-                            pre_directive["cst"] = type_
-                            args = self.get_args(f['ast'].field)
-                            args.insert(len(args)-1, pre_directive)
+                        # Add Pre Hook
+                        pre_directive["cst"] = op + type_
+                        args = self.get_args(f['ast'].field)
+                        args.insert(len(args)-1, pre_directive)
 
+                        # Only add Post Hook for the mutation
+                        if op in ("add", "update"):
                             # Add Post Hook
-                            post_directive["cst"] = type_.title() + "Post"
+                            post_directive["cst"] = op +  type_.title() + "Post"
                             post_directives = self.get_directives(f['ast'].field)
                             post_directives.insert(len(post_directives)-1, post_directive)
 
