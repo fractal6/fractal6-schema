@@ -1,4 +1,4 @@
-# <!> Code depencies:
+# <!> Code depencies <!>
 # * fractal6.go/web/auth/model: reference to typeName
 # * fractal6.go/web/auth/dgraph: when typeName is invoked
 # * fractal6-ui.elm: case on enumeration object (NodeType, TensionType ,etc)
@@ -18,7 +18,20 @@
 # Node Interface (Role and Circle)
 #
 
-type Node @hidePrivate @hook_ {
+type Node @auth(
+  query: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize public data
+    { rule: """query {
+        queryNode(filter: {isPrivate: false}) { id }
+    }""" },
+    # Authorize member 
+    { rule: """query ($ROOTIDS: [String!]) {
+        queryNode(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }""" }
+  ]}
+) @hook_ {
   id: ID!
   createdBy: User!      @patch_RO
   createdAt: DateTime!  @patch_RO @search 
@@ -60,14 +73,15 @@ type Node @hidePrivate @hook_ {
   isPrivate: Boolean!   @patch_RO @search # Invitation required for an R/W access
   isArchived: Boolean!  @patch_RO @search # (Hidden) Blob source is archived
   charac: NodeCharac!   @patch_RO # Root... inherits attributes
-  labels: [Label!]      @patch_RO  #@alter_hasRole(n:["__self__"])
+  rights: Int!          @alter_RO # Only used for Bot (v0.5). The right value is a binary AND between all event authorized it the same order they appear in the schema.
+  labels: [Label!]      @patch_RO  
 
   # Role... is a Leaf
   first_link: User      @patch_RO
   second_link: User     @patch_RO
   skills: [String!]     @patch_RO @search(by: [term]) 
   role_type: RoleType   @patch_RO @search
-  contracts: [Vote!] @hasInverse(field: node)
+  contracts: [Vote!]    @hasInverse(field: node)
 
   # Root node only
   shared: SharedNode @alter_RO
@@ -93,14 +107,14 @@ type SharedNode {
 
 type NodeFragment {
   id: ID!
-  name: String    @alter_minLength(f:"name", n:1)
-  nameid: String  @alter_toLower(f:"nameid")
+  name: String    @alter_minLength(n:1)
+  nameid: String  @alter_toLower
 
   type_: NodeType
   isPrivate: Boolean
   charac: NodeCharac
 
-  about: String   @alter_maxLength(f:"about", n:280)
+  about: String   @alter_maxLength(n:280)
   mandate: Mandate
 
   # For Circles
@@ -115,10 +129,10 @@ type NodeFragment {
 
 type Mandate {
   id: ID!
-  purpose: String!  @search(by: [fulltext]) @patch_RO 
-  responsabilities: String  @patch_RO
-  domains: String           @patch_RO
-  policies: String          @patch_RO
+  purpose: String!  @search(by: [fulltext]) 
+  responsabilities: String                  
+  domains: String                           
+  policies: String                          
   # period of validity ? @future
   # validatedBy  ? @future (vote process...)
 }
@@ -142,67 +156,137 @@ type NodeStats {
 # Post Interface (Tension, Comment, Event, etc)
 #
 
-interface Post {
+interface Post @auth(
+  add: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize author
+    { rule: """query ($USERNAME: String!) {
+      queryPost {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }""" }
+  ]}
+){
   id: ID!
-  createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
+  createdBy: User!      @patch_RO 
   createdAt: DateTime!  @patch_RO @search 
   updatedAt: DateTime   @patch_isOwner(u:"createdBy")
   message: String       @patch_isOwner(u:"createdBy") @search(by: [fulltext])
 }
 
-type Tension implements Post @hidePrivate @hook_ {
-  #createdBy: User!      @patch_RO @add_isOwner(u:"createdBy") 
+type Tension implements Post @auth(
+  query: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize public data
+    { rule: """query {
+        queryTension {
+          receiver(filter: {isPrivate: false}) { id }
+        }
+    }""" },
+    # Authorize member 
+    { rule: """query ($ROOTIDS: [String!]) {
+        queryTension {
+          receiver(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+        }
+    }""" }
+  ]},
+  add: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize users that own the emitter role
+    { rule: """query ($USERNAME: String!) {
+        queryTension {
+          emitter {
+            first_link(filter: {username: {eq: $USERNAME}}) { username }
+          }
+        }
+    }""" },
+    # Authorize Bot emitter
+    { rule: """query {
+        queryTension {
+          emitter(filter: {role_type: {eq: Bot}}) { id }
+        }
+    }""" }
+  ]}
+) @hook_ {
   emitterid: String!     @patch_RO @search(by: [hash, regexp]) 
   emitter: Node!         @patch_RO  
   receiverid: String!    @patch_RO @search(by: [hash, regexp]) 
   receiver: Node!        @patch_RO
 
   nth: String            @search #...Upsert in BLL
-  title: String!         @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search(by: [fulltext]) @alter_minLength(f:"title", n:1)
-  type_: TensionType!    @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search 
-  status: TensionStatus! @alter_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) @search
+  title: String!         @search(by: [fulltext]) @alter_minLength(n:1)
+  type_: TensionType!    @search 
+  status: TensionStatus! @search
 
-  labels: [Label!]       @patch_hasRole(n:["emitter","receiver"], u:"createdBy", a:1) 
-  assignees: [User!]     @alter_hasRole(n:["receiver"], a:1)
-
-  comments: [Comment!]   @alter_hasRoot(n:["emitter","receiver"])
-  action: TensionAction  @alter_hasRoot(n:["emitter","receiver"])
-  blobs: [Blob!]         @alter_hasRoot(n:["emitter","receiver"]) @hasInverse(field: tension)
-  contracts: [Contract!] @alter_hasRole(n:["receiver"], a:1)      @hasInverse(field: tension)
-  history: [Event!]!     @alter_hasRoot(n:["emitter","receiver"]) @hasInverse(field: tension) # entry point
+  assignees: [User!]     
+  labels: [Label!]       
+  comments: [Comment!]   @alter_oneByOne  
+  action: TensionAction  
+  blobs: [Blob!]         @hasInverse(field: tension) @alter_oneByOne
+  contracts: [Contract!] @hasInverse(field: tension)
+  history: [Event!]!     @hasInverse(field: tension) # entry point
 
   # --method--
   n_comments: Int  @count(f: comments)
   n_blobs: Int  @count(f: blobs)
 }
 
-type Label @hook_ {
+type Label @auth(
+  query: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize public data
+    { rule: """query {
+        queryLabel { 
+          nodes(filter: {isPrivate: false}) { id }
+        }
+    }""" },
+    # Authorize member 
+    { rule: """query ($ROOTIDS: [String!]) {
+        queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }""" }
+  ]}
+) @hook_ {
   id: ID!
-  rootnameid: String!  @search(by: [hash]) @patch_RO
-  name: String!        @search(by: [hash, term]) @alter_toLower(f:"name")  @alter_unique(f:"name", s:"rootnameid") @alter_minLength(f:"name", n:1)
-  description: String  @alter_maxLength(f:"description", n:280)
+  rootnameid: String!  @patch_RO @search(by: [hash])
+  name: String!        @search(by: [hash, term]) @alter_unique(on:"rootnameid") @alter_toLower @alter_minLength(n:1)
+  description: String  @alter_maxLength(n:280)
   color: String
-  tensions: [Tension!] @hasInverse(field: labels) @alter_RO
-  nodes: [Node!] @hasInverse(field: labels)
+  tensions: [Tension!] @alter_RO @hasInverse(field: labels)
+  nodes: [Node!] @hasInverse(field: labels) @alter_oneByOne
 
   # --method--
   n_nodes: Int     @count(f: nodes)
   n_tensions: Int  @count(f: tensions)
 }
 
-type Comment implements Post @hook_ {
-  message: String!  @patch_isOwner(u:"createdBy") @search(by: [fulltext]) 
+type Comment implements Post @auth(
+  update: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize author
+    { rule: """query ($USERNAME: String!) {
+      queryComment {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }""" }
+  ]}
+) @hook_ {
+  message: String!  @search(by: [fulltext]) 
 }
 
 type Blob implements Post {
   tension: Tension!
-  blob_type: BlobType! @patch_RO @search
-  pushedFlag: DateTime @alter_RO @search
-  archivedFlag: DateTime @alter_RO @search
+  blob_type: BlobType!    @patch_RO @search
+  pushedFlag: DateTime    @alter_RO @search
+  archivedFlag: DateTime  @alter_RO @search
 
   # data
   node: NodeFragment @patch_RO
-  md: String @patch_RO
+  md: String         @patch_RO
 }
 
 type Event implements Post {
@@ -218,14 +302,31 @@ type EventFragment {
   new: String # updated value
 }
 
-type Contract implements Post @hidePrivate @hook_ {
-  event: EventFragment!                @patch_RO
-  closedAt: DateTime           @search @patch_RO # FIX: user right
+type Contract implements Post @auth(
+  query: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize public data
+    { rule: """query {
+        queryContract {
+          tension { receiver(filter: {isPrivate: false}) { id } }
+        }
+    }""" },
+    # Authorize member 
+    { rule: """query ($ROOTIDS: [String!]) {
+        queryContract {
+          tension { receiver(filter: {rootnameid: {in: $ROOTIDS}}) { id } }
+        }
+    }""" }
+  ]}
+) @hook_ {
   tension: Tension!                    @patch_RO
   status: ContractStatus!      @search @patch_RO
   contract_type: ContractType! @search @patch_RO
-  candidates: [User!]    @hasInverse(field: contracts)  @patch_RO 
-  participants: [Vote!]  @hasInverse(field: contract) # only user node (@...)                  
+  closedAt: DateTime           @search @patch_RO 
+  event: EventFragment!                @patch_RO
+  candidates: [User!]    @hasInverse(field: contracts) @patch_RO 
+  participants: [Vote!]  @hasInverse(field: contract)  @patch_RO # only user node (@...)                  
   comments: [Comment!] 
 }
 
@@ -245,7 +346,7 @@ type User {
   id: ID!
   createdAt: DateTime! @alter_RO
   lastAck: DateTime!   @alter_RO
-  username: String!  @id @patch_RO  @alter_toLower(f:"username")
+  username: String!  @id @patch_RO @alter_toLower
   name: String       @patch_isOwner 
   password: String!  @patch_isOwner @hidden 
   # @DEBUG: several @id currentlynot allowed !
@@ -275,6 +376,7 @@ type UserRights {
   # Managed by directives
   canCreateRoot: Boolean! # Bypass input Node authorization/limitation.
   maxPublicOrga: Int! # maximum of private organisation
+  type_: UserType!
 }
 
 #
@@ -353,11 +455,11 @@ enum TensionEvent {
   LabelRemoved
   BlobCreated
   BlobCommitted
-  # --- Trigger Event ---
+  # --- Trigger Action ---
   BlobPushed
   BlobArchived
   BlobUnarchived
-  UserJoin
+  UserJoined
   UserLeft
   Moved
 }
@@ -381,10 +483,20 @@ enum ContractStatus {
   Canceled
 }
 
-enum ContractType {
+enum ContractType { # Validation type
   AnyCoordoDual
   AnyParticipants
   # -- self contract
   AnyCoordoSource
   AnyCoordoTarget
 }
+
+### User
+
+enum UserType {
+  Regular
+  Root
+}
+
+
+# Dgraph.Authorization {"VerificationKey":"checkJwkToken_or_pubkey","Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"HS256"}

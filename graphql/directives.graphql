@@ -8,49 +8,33 @@ directive @count(f: String!) on FIELD_DEFINITION
 # special methogds
 directive @meta_getNodeStats on FIELD_DEFINITION
 
-# @DEBUG/follow -- Dgraph features: 
-# Track this to remove the need of the field string value mentionned on input https://github.com/99designs/gqlgen/issues/1084
-# @unique features (should replace alter_unique)
-
-# transform input
-directive @alter_toLower(f: String!) on INPUT_FIELD_DEFINITION
-
-# Limit the size of the string given in input
-directive @alter_minLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
-directive @alter_maxLength(f: String!, n: Int!) on INPUT_FIELD_DEFINITION
-
-# Check input
-#directive @alter_assertType(f: String!, t: NodeType!) on INPUT_FIELD_DEFINITION # See @Debug(#3a99e49)
-directive @alter_unique(f: String!, s: String) on INPUT_FIELD_DEFINITION
-
-# Protect private data
-directive @hidePrivate on OBJECT | FIELD_DEFINITION
-
 ###########################################################
-# Auth (UserCtx)
-# Directive code:
+# Directive code for input type:
 # add_* => apply on Add mutation
 # patch_* => apply on Update mutation
 # alter_* => apply on all mutation input (add and update)
 ###########################################################
 
-# Authorize mutations if the user:
-# * has rights on node(n)
-# * is the same user as user(u) (optionnal)
-# * is present in assignees(a)
-directive @patch_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINITION
-directive @alter_hasRole(n: [String!]!, u: String, a: Int) on INPUT_FIELD_DEFINITION
- 
-# Authorize mutation if user has the same root node than at least 
-# one of the given node(n) (i.e. is in the same organisation)
-directive @alter_hasRoot(n: [String!]!) on INPUT_FIELD_DEFINITION
+# Lower the field value.
+directive @alter_toLower on INPUT_FIELD_DEFINITION
 
-# Authorize update only if the field's value match the user(u) credential.
+# Control the field value length (string).
+directive @alter_minLength(n: Int!) on INPUT_FIELD_DEFINITION
+directive @alter_maxLength(n: Int!) on INPUT_FIELD_DEFINITION
+
+# Ensure the field value (list) as only one element.
+directive @alter_oneByOne on INPUT_FIELD_DEFINITION
+
+# Ensure the field value is unique. 
+# If on is given, it check the uniqueness on a subset of the parent type.
+directive @alter_unique(on: String) on INPUT_FIELD_DEFINITION
+ 
+# Authorize only if the field's value match the user(u) credential.
 # If user(u) field is empty, assume a user object.
 directive @add_isOwner(u: String) on INPUT_FIELD_DEFINITION
 directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
 
-# Read-only directive
+# Read-only directives
 directive @patch_RO on INPUT_FIELD_DEFINITION # for field defined at creation
 directive @alter_RO on INPUT_FIELD_DEFINITION 
 
@@ -62,37 +46,47 @@ directive @alter_RO on INPUT_FIELD_DEFINITION
 #   addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload @hook_addNodePost
 
 # Node Hook
-directive @hook_getNode on ARGUMENT_DEFINITION
-directive @hook_queryNode on ARGUMENT_DEFINITION
-directive @hook_addNode on ARGUMENT_DEFINITION
-directive @hook_addNodePost on FIELD_DEFINITION
-directive @hook_updateNode on ARGUMENT_DEFINITION
-directive @hook_updateNodePost on FIELD_DEFINITION
+directive @hook_getNodeInput on ARGUMENT_DEFINITION
+directive @hook_queryNodeInput on ARGUMENT_DEFINITION
+directive @hook_addNodeInput on ARGUMENT_DEFINITION
+directive @hook_updateNodeInput on ARGUMENT_DEFINITION
+directive @hook_deleteNodeInput on ARGUMENT_DEFINITION
+directive @hook_addNode on FIELD_DEFINITION
+directive @hook_updateNode on FIELD_DEFINITION
+directive @hook_deleteNode on FIELD_DEFINITION
 # Tension Hook
-directive @hook_getTension on ARGUMENT_DEFINITION
-directive @hook_queryTension on ARGUMENT_DEFINITION
-directive @hook_addTension on ARGUMENT_DEFINITION
-directive @hook_addTensionPost on FIELD_DEFINITION
-directive @hook_updateTension on ARGUMENT_DEFINITION
-directive @hook_updateTensionPost on FIELD_DEFINITION
+directive @hook_getTensionInput on ARGUMENT_DEFINITION
+directive @hook_queryTensionInput on ARGUMENT_DEFINITION
+directive @hook_addTensionInput on ARGUMENT_DEFINITION
+directive @hook_updateTensionInput on ARGUMENT_DEFINITION
+directive @hook_deleteTensionInput on ARGUMENT_DEFINITION
+directive @hook_addTension on FIELD_DEFINITION
+directive @hook_updateTension on FIELD_DEFINITION
+directive @hook_deleteTension on FIELD_DEFINITION
 # Comment Hook
-directive @hook_getComment on ARGUMENT_DEFINITION
-directive @hook_queryComment on ARGUMENT_DEFINITION
-directive @hook_addComment on ARGUMENT_DEFINITION
-directive @hook_addCommentPost on FIELD_DEFINITION
-directive @hook_updateComment on ARGUMENT_DEFINITION
-directive @hook_updateCommentPost on FIELD_DEFINITION
+directive @hook_getCommentInput on ARGUMENT_DEFINITION
+directive @hook_queryCommentInput on ARGUMENT_DEFINITION
+directive @hook_addCommentInput on ARGUMENT_DEFINITION
+directive @hook_updateCommentInput on ARGUMENT_DEFINITION
+directive @hook_deleteCommentInput on ARGUMENT_DEFINITION
+directive @hook_addComment on FIELD_DEFINITION
+directive @hook_updateComment on FIELD_DEFINITION
+directive @hook_deleteComment on FIELD_DEFINITION
 # Label Hook
-directive @hook_getLabel on ARGUMENT_DEFINITION
-directive @hook_queryLabel on ARGUMENT_DEFINITION
-directive @hook_addLabel on ARGUMENT_DEFINITION
-directive @hook_addLabelPost on FIELD_DEFINITION
-directive @hook_updateLabel on ARGUMENT_DEFINITION
-directive @hook_updateLabelPost on FIELD_DEFINITION
+directive @hook_getLabelInput on ARGUMENT_DEFINITION
+directive @hook_queryLabelInput on ARGUMENT_DEFINITION
+directive @hook_addLabelInput on ARGUMENT_DEFINITION
+directive @hook_updateLabelInput on ARGUMENT_DEFINITION
+directive @hook_deleteLabelInput on ARGUMENT_DEFINITION
+directive @hook_addLabel on FIELD_DEFINITION
+directive @hook_updateLabel on FIELD_DEFINITION
+directive @hook_deleteLabel on FIELD_DEFINITION
 # Contract Hook
-directive @hook_getContract on ARGUMENT_DEFINITION
-directive @hook_queryContract on ARGUMENT_DEFINITION
-directive @hook_addContract on ARGUMENT_DEFINITION
-directive @hook_addContractPost on FIELD_DEFINITION
-directive @hook_updateContract on ARGUMENT_DEFINITION
-directive @hook_updateContractPost on FIELD_DEFINITION
+directive @hook_getContractInput on ARGUMENT_DEFINITION
+directive @hook_queryContractInput on ARGUMENT_DEFINITION
+directive @hook_addContractInput on ARGUMENT_DEFINITION
+directive @hook_updateContractInput on ARGUMENT_DEFINITION
+directive @hook_deleteContractInput on ARGUMENT_DEFINITION
+directive @hook_addContract on FIELD_DEFINITION
+directive @hook_updateContract on FIELD_DEFINITION
+directive @hook_deleteContract on FIELD_DEFINITION

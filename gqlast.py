@@ -51,14 +51,16 @@ class SemanticFilter:
 
     @staticmethod
     def get_name(ast):
-        return ast._name.name
+        if not ast:
+            return ""
+        else:
+            return ast._name.name
 
     @staticmethod
     def get_fields(ast):
         ''' Returns the fields of a object.
             * remove comments
         '''
-        # Assumes non empty type
         assert(len(ast._fields) == 3)
         fields = ast._fields[1]
         # ===
@@ -130,6 +132,8 @@ class SemanticFilter:
         if ast.get('_directives'):
             to_remove = []
             for i, d in enumerate(ast._directives):
+                if not d:
+                    continue
                 data[name+"__directives"].append(d)
                 if d._name.name == 'hook_':
                     to_remove.append(i)
@@ -158,6 +162,8 @@ class SemanticFilter:
             if field.get("_directives"):
                 to_remove = []
                 for i, d in enumerate(field._directives):
+                    if not d:
+                        continue
                     # build directive lookup
                     dn = self.get_name(d)
                     field_data['directives'].append({
@@ -266,7 +272,7 @@ class SemanticFilter:
             data_out = getattr(self, data_type_out)
             for f in data_out[name_out]:
                 #m = re.match(r"(add|update|delete|query|get)(\w*)", f['name'])
-                m = re.match(r"(add|update|query|get)(\w*)", f['name'])
+                m = re.match(r"(query|get|add|update|delete)(\w*)", f['name'])
                 if not m:
                     # unnkow query
                     continue
@@ -280,15 +286,15 @@ class SemanticFilter:
                         pre_directive = directive_.copy()
                         post_directive = directive_.copy()
 
-                        # Add Pre Hook
-                        pre_directive["cst"] = op + type_
+                        # Add Pre Hook (Input)
+                        pre_directive["cst"] = op + type_ + "Input"
                         args = self.get_args(f['ast'].field)
                         args.insert(len(args)-1, pre_directive)
 
-                        # Only add Post Hook for the mutation
-                        if op in ("add", "update"):
-                            # Add Post Hook
-                            post_directive["cst"] = op +  type_.title() + "Post"
+                        # Only add Post Hook for those queries
+                        if op in ("add", "update", "delete"):
+                            # Add Post Hook (Query or Mutation Field)
+                            post_directive["cst"] = op + type_.title()
                             post_directives = self.get_directives(f['ast'].field)
                             post_directives.insert(len(post_directives)-1, post_directive)
 
@@ -442,12 +448,12 @@ class GqlgenSemantics(GraphqlSemantics):
 class DgraphSemantics(GraphqlSemantics):
 
     '''Dgraph semantic.
-        * The Removal of custom directives are done with sed outside.
     '''
+    _dgraph_directives = ["id", "search", "hasInverse", "remote", "custom", "auth", "lambda", "generate"]
 
     def interface_type_definition(self, ast):
         ''' Interface handle
-            * filter ou doublon
+            * filter or doublon
         '''
         assert(isinstance(ast, AST))
         ast = AST2(ast)
@@ -464,7 +470,7 @@ class DgraphSemantics(GraphqlSemantics):
 
     def object_type_definition(self, ast):
         '''Type handle
-            * filter ou doublon
+            * filter ot doublon
             * add implemented interfaces fields if not already presents
         '''
         assert(isinstance(ast, AST))
@@ -480,6 +486,13 @@ class DgraphSemantics(GraphqlSemantics):
             self.sf.inherit_interface_dgraph(ast)
 
         return ast
+
+    def directive(self, ast):
+        ''' Filter out non-dgraph directive. '''
+        if ast._name.name in self._dgraph_directives:
+            return ast
+        else:
+            return ""
 
 
 class SDL:
@@ -541,6 +554,9 @@ class SDL:
             ast = self.ast
             out = [nl]
 
+        # filter empty things
+        out = [x for x in out if x != ""]
+
         for nth, o in enumerate(ast):
             if isinstance(o, AST):
                 keys = list(o)
@@ -590,12 +606,23 @@ class SDL:
 
                     # type/rule_name filtering
                     if _type in ("comment", "doc"):
-                        # ignore comments
-                        continue
+                        try:
+                            comment = "".join(o.comment)
+                        except:
+                            # bug in non dgraph...@debug
+                            continue
+
+                        if o.comment and comment.startswith("# Dgraph.Authorization"):
+                            # keep comments
+                            out += "\n\n"
+                            pass
+                        else:
+                            # ignore comments
+                            continue
                     elif _type == "args":
                         ignore_nl = True
                     elif _type in ("name"):
-                        # Manage space btween names
+                        # Manage space between names
 
                         if out[-1] == '\n':
                             # field indentation

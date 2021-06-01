@@ -1,7 +1,15 @@
 
 
 
-type Node  {
+type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query {
+        queryNode(filter: {isPrivate: false}) { id }
+    }"""
+},{ rule:"""query ($ROOTIDS: [String!]) {
+        queryNode(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }"""
+}]
+}) {
   id: ID!
   createdBy: User!
   createdAt: DateTime! @search
@@ -18,15 +26,16 @@ type Node  {
   mandate: Mandate
   docs: [Blob]
   source: Blob
-  n_tensions_out: Int 
-  n_tensions_in: Int 
-  n_children: Int 
-  stats: NodeStats 
+  n_tensions_out: Int
+  n_tensions_in: Int
+  n_children: Int
+  stats: NodeStats
   isRoot: Boolean! @search
   isPersonal: Boolean @search
   isPrivate: Boolean! @search
   isArchived: Boolean! @search
   charac: NodeCharac!
+  rights: Int!
   labels: [Label!]
   first_link: User
   second_link: User
@@ -79,7 +88,14 @@ type NodeStats {
   n_role: Int
 }
 
-interface Post {
+interface Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryPost {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }"""
+}]
+}) {
   id: ID!
   createdBy: User!
   createdAt: DateTime! @search
@@ -87,7 +103,19 @@ interface Post {
   message: String @search(by: [fulltext])
 }
 
-type Tension implements Post  {
+type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query {
+        queryTension {
+          receiver(filter: {isPrivate: false}) { id }
+        }
+    }"""
+},{ rule:"""query ($ROOTIDS: [String!]) {
+        queryTension {
+          receiver(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+        }
+    }"""
+}]
+}) {
   emitterid: String! @search(by: [hash, regexp])
   emitter: Node!
   receiverid: String! @search(by: [hash, regexp])
@@ -96,18 +124,28 @@ type Tension implements Post  {
   title: String! @search(by: [fulltext])
   type_: TensionType! @search
   status: TensionStatus! @search
-  labels: [Label!]
   assignees: [User!]
+  labels: [Label!]
   comments: [Comment!]
   action: TensionAction
   blobs: [Blob!] @hasInverse(field: tension)
   contracts: [Contract!] @hasInverse(field: tension)
   history: [Event!]! @hasInverse(field: tension)
-  n_comments: Int 
-  n_blobs: Int 
+  n_comments: Int
+  n_blobs: Int
 }
 
-type Label {
+type Label @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query {
+        queryLabel { 
+          nodes(filter: {isPrivate: false}) { id }
+        }
+    }"""
+},{ rule:"""query ($ROOTIDS: [String!]) {
+        queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }"""
+}]
+}) {
   id: ID!
   rootnameid: String! @search(by: [hash])
   name: String! @search(by: [hash, term])
@@ -115,11 +153,18 @@ type Label {
   color: String
   tensions: [Tension!] @hasInverse(field: labels)
   nodes: [Node!] @hasInverse(field: labels)
-  n_nodes: Int 
-  n_tensions: Int 
+  n_nodes: Int
+  n_tensions: Int
 }
 
-type Comment implements Post{
+type Comment implements Post @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryComment {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }"""
+}]
+}){
 _VOID: String
 }
 
@@ -145,12 +190,24 @@ type EventFragment {
   new: String
 }
 
-type Contract implements Post  {
-  event: EventFragment!
-  closedAt: DateTime @search
+type Contract implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query {
+        queryContract {
+          tension { receiver(filter: {isPrivate: false}) { id } }
+        }
+    }"""
+},{ rule:"""query ($ROOTIDS: [String!]) {
+        queryContract {
+          tension { receiver(filter: {rootnameid: {in: $ROOTIDS}}) { id } }
+        }
+    }"""
+}]
+}) {
   tension: Tension!
   status: ContractStatus! @search
   contract_type: ContractType! @search
+  closedAt: DateTime @search
+  event: EventFragment!
   candidates: [User!] @hasInverse(field: contracts)
   participants: [Vote!] @hasInverse(field: contract)
   comments: [Comment!]
@@ -169,10 +226,10 @@ type User {
   lastAck: DateTime!
   username: String! @id
   name: String
-  password: String! 
-  email: String! @search(by: [hash]) 
-  emailHash: String 
-  emailValidated: Boolean! 
+  password: String!
+  email: String! @search(by: [hash])
+  emailHash: String
+  emailValidated: Boolean!
   rights: UserRights!
   roles: [Node!] @hasInverse(field: first_link)
   backed_roles: [Node!] @hasInverse(field: second_link)
@@ -187,6 +244,7 @@ type UserRights {
   canLogin: Boolean!
   canCreateRoot: Boolean!
   maxPublicOrga: Int!
+  type_: UserType!
 }
 
 enum NodeType {
@@ -272,7 +330,7 @@ enum TensionEvent {
   BlobPushed
   BlobArchived
   BlobUnarchived
-  UserJoin
+  UserJoined
   UserLeft
   Moved
 }
@@ -295,9 +353,17 @@ enum ContractStatus {
 }
 
 enum ContractType {
+
   AnyCoordoDual
   AnyParticipants
 
   AnyCoordoSource
   AnyCoordoTarget
 }
+
+enum UserType {
+  Regular
+  Root
+}
+
+# Dgraph.Authorization {"VerificationKey":"checkJwkToken_or_pubkey","Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"HS256"}

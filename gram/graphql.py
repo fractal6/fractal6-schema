@@ -238,6 +238,12 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _value_(self):  # noqa
+        with self._optional():
+            self._LINE_COMMENT_()
+        self.__value_()
+
+    @tatsumasu()
+    def __value_(self):  # noqa
         with self._choice():
             with self._option():
                 self._variable_()
@@ -306,17 +312,17 @@ class GRAPHQLParser(Parser):
     @tatsumasu()
     def _list_value_(self):  # noqa
         self._token('[')
-        self._pattern('[][]')
+        self._value_()
 
         def block0():
+            self._token(',')
             self._value_()
-        self._positive_closure(block0)
+        self._closure(block0)
         self._token(']')
 
     @tatsumasu()
     def _object_value_(self):  # noqa
         self._token('{')
-        self._pattern('[}{]')
         self._object_field_()
         self._token('}')
 
@@ -1004,6 +1010,8 @@ class GRAPHQLParser(Parser):
                         self._ESC_()
                     with self._option():
                         self._pattern('[^"\\\\]')
+                    with self._option():
+                        self._token('\\"')
                     self._error('no available options')
         self._closure(block1)
         self.name_last_node('_join')
@@ -1027,7 +1035,7 @@ class GRAPHQLParser(Parser):
                 self._pattern('[\\r\\n]|"[^"]|""[^"]')
 
         def block0():
-            self._pattern('[^\\r\\n(?!")]*')
+            self._pattern('[^\\r\\n"]*')
         self._join(block0, sep0)
         self._token('"""')
 
@@ -1203,6 +1211,9 @@ class GRAPHQLSemantics(object):
         return ast
 
     def value(self, ast):  # noqa
+        return ast
+
+    def _value(self, ast):  # noqa
         return ast
 
     def int_value(self, ast):  # noqa

@@ -64,6 +64,7 @@ arguments
 
 argument
     =
+    # allows Dgraph auth directives (| {...})
     name ':' (value | '[' value {',' value} ']' )
     ;
 
@@ -104,7 +105,8 @@ inline_fragment
     ;
 
 
-value
+value = [LINE_COMMENT] _value;
+_value
     =
     | variable
     | int_value
@@ -156,13 +158,13 @@ enum_value
 
 list_value
     =
-    '[' /[][]/ {value}+ ']'
+    '[' value {"," value} ']'
     ;
 
 
 object_value
     =
-    '{' /[}{]/ object_field '}'
+    '{' object_field '}'
     ;
 
 
@@ -304,12 +306,7 @@ scalar_type_extension
 
 object_type_definition
     =
-    [description]
-    _cst:'type'
-    _name:name
-    [_implements:implements_interfaces]
-    [_directives:directives]
-    [_fields:fields_definition]
+    [description] _cst:'type' _name:name [_implements:implements_interfaces] [_directives:directives] [_fields:fields_definition]
     ;
 
 
@@ -331,11 +328,7 @@ _field_definition
 
 field_definition
     =
-    [description]
-    _name:name 
-    [args:arguments_definition] 
-    _cst:':' 
-    _type:type [_directives:directives]
+    [description] _name:name [args:arguments_definition] _cst:':' _type:type [_directives:directives]
     | COMMENTS
     ;
 
@@ -352,26 +345,14 @@ _input_value_definition
 
 input_value_definition
     =
-    [description] 
-    _name:name 
-    _cst:':' 
-    _type:type [_dv:default_value] 
-    [_directives:directives]
-    ;
+    [description] _name:name _cst:':' _type:type [_dv:default_value] [_directives:directives] ;
 
 
 object_type_extension
     =
-        'extend'
-        'type'
-        name
-        [implements_interfaces]
-        [directives]
-        fields_definition
-    |
-        'extend' 'type' name [implements_interfaces] directives
-    |
-        'extend' 'type' name implements_interfaces
+     'extend' 'type' name [implements_interfaces] [directives] fields_definition
+    |'extend' 'type' name [implements_interfaces] directives
+    |'extend' 'type' name implements_interfaces
     ;
 
 
@@ -440,11 +421,7 @@ enum_type_extension
 
 input_object_type_definition
     =
-    [description]
-    _cst:'input'
-    _name:name 
-    [_directives:directives] 
-    [_fields:input_fields_definition]
+    [description] _cst:'input' _name:name [_directives:directives] [_fields:input_fields_definition]
     ;
 
 
@@ -463,13 +440,7 @@ input_object_type_extension
 
 directive_definition
     =
-    [description]
-    _directive__ba:'directive'
-    _cst:'@'
-    _name:name
-    [args:arguments_definition]
-    _cst__bs:'on'
-    _locations:directive_locations
+    [description] _directive__ba:'directive' _cst:'@' _name:name [args:arguments_definition] _cst__bs:'on' _locations:directive_locations
     ;
 
 
@@ -544,7 +515,7 @@ DOC
 
 CHARACTER
     =
-    _join:{ (ESC | /[^"\\]/) }
+    _join:{( ESC | /[^"\\]/ | '\\"' )}
     ;
 
 
@@ -556,7 +527,7 @@ STRING
 
 BLOCK_STRING
     =
-    '"""' (/[\r\n]|"[^"]|""[^"]/)%{/[^\r\n(?!")]*/} '"""'
+    '"""' (/[\r\n]|"[^"]|""[^"]/)%{/[^\r\n"]*/} '"""'
     ;
 
 
