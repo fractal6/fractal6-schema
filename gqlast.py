@@ -141,48 +141,64 @@ class SemanticFilter:
             for i in to_remove[::-1]:
                 ast._directives.pop(i)
 
+        # add interfaces info
+        if ast.get("_implements"):
+            data[name+"__implements"] = ast._implements[1].name
+
         # Populate fields
         fields = self.get_fields(ast)
         for f in fields:
-            field = f.field
+            self._push_field(name, f, data, filter_directives)
 
-            # Add field
-            fn = self.get_name(field)
-            field_data = {'name': fn,
-                          'ast': f,
-                          'ast_copy': f.copy(),
-                          'args': None, # list of AST
-                          'directives': [], # list of structured AST
-                         }
-
-            # Add and filter arguments
-            field_data['args'] = self.get_args(field)
-
-            # Add and filter directives
-            if field.get("_directives"):
-                to_remove = []
-                for i, d in enumerate(field._directives):
-                    if not d:
-                        continue
-                    # build directive lookup
-                    dn = self.get_name(d)
-                    field_data['directives'].append({
-                        'name': dn,
-                        'ast': d,
-                        'ast_copy': d.copy(),
-                    })
-                    if (dn.startswith('alter_')
-                        or dn.startswith('add_')
-                            or dn.startswith('patch_')):
-                        to_remove.append(i)
-
-                # filter directives
-                if filter_directives:
-                    for i in to_remove[::-1]:
-                        field._directives.pop(i)
-
-            data[name].append(field_data)
         return
+    def _push_field(self, name, f, data, filter_directives=False, force=False):
+        field = f.field
+
+        # Add field
+        fn = self.get_name(field)
+        field_data = {'name': fn,
+                      'ast': f,
+                      #'ast_copy': f.copy(),
+                      'args': None, # list of AST
+                      'directives': [], # list of structured AST
+                     }
+
+        # Add and filter arguments
+        field_data['args'] = self.get_args(field)
+
+        # Add and filter directives
+        if field.get("_directives"):
+            to_remove = []
+            for i, d in enumerate(field._directives):
+                if not d:
+                    continue
+                # build directive lookup
+                dn = self.get_name(d)
+                field_data['directives'].append({
+                    'name': dn,
+                    'ast': d,
+                    #'ast_copy': d.copy(),
+                })
+                if (dn.startswith('alter_')
+                    or dn.startswith('add_')
+                        or dn.startswith('patch_')):
+                    to_remove.append(i)
+
+            # filter directives
+            if filter_directives:
+                for i in to_remove[::-1]:
+                    field._directives.pop(i)
+
+        if force:
+            try:
+                data[name][-1]['ast']["extra"] = f
+            except:
+                print(data[name][-1])
+                exit()
+        else:
+            data[name].append(field_data)
+
+        return field_data
 
     def inherit_interface(self, ast):
         '''Inherits implemented interface '''
@@ -191,6 +207,7 @@ class SemanticFilter:
             return
 
         if len(ast._implements) > 2:
+            # @debug: multiple inheritance will break.
             raise NotImplementedError("Review this code for multiple inheritance.")
         else:
             interface_name = ast._implements[1].name
@@ -298,21 +315,40 @@ class SemanticFilter:
                             post_directives = self.get_directives(f['ast'].field)
                             post_directives.insert(len(post_directives)-1, post_directive)
 
-    def update_args(self, data_type, name, ast):
-
+    def update_fields(self, data_type, name, ast):
+        ''' Add new fields if not present on object.
+            Update arguments eventually.
+        '''
         data = getattr(self, data_type)
+        field_names = [x.get('name') for x in data[name]]
+        interface_name = data.get(name+"__implements")
+        if interface_name:
+            field_names += [x.get('name') for x in getattr(self, "interfaces")[interface_name]]
+
         for f in data[name]:
+            # Iterates over the fields of the "duplicated" object <f>
             for _ff in self.get_fields(ast):
-                args = f['args']
                 _field = _ff.field
+                _name = self.get_name(_field)
 
-                if f['name'] != self.get_name(_field):
+                if _name not in field_names and _name not in ['_VOID']:
+                    # Add a new field.
+                    self._push_field(name, _ff, data, force=True)
+                    field_names.append(_name)
+
+                elif f['name'] != _name:
+                    #print(_name, self.get_args(_field))
+                    #print(f['ast'].field)
+                    #print("_-_-_-_-_-_-_")
                     continue
-
-                new_args = self.get_args(_field)
-                if not args and new_args:
-                    pos = list(_field).index('args')
-                    self._ast_set(f['ast'].field, 'args', new_args, pos)
+                else:
+                    # Update args(input/filter); if the arguments don't already exists
+                    # and if the  new field has non empty arguments.
+                    args = f['args']
+                    new_args = self.get_args(_field)
+                    if not args and new_args:
+                        pos = list(_field).index('args')
+                        self._ast_set(f['ast'].field, 'args', new_args, pos)
         return
 
 
@@ -357,7 +393,7 @@ class GqlgenSemantics(GraphqlSemantics):
         name = self.sf.get_name(ast)
         # Watch out duplicate !
         if name in self.sf.interfaces:
-            self.sf.update_args('interfaces', name, ast)
+            self.sf.update_fields('interfaces', name, ast)
             return None
         else:
             self.sf.populate_data('interfaces', name, ast)
@@ -378,7 +414,7 @@ class GqlgenSemantics(GraphqlSemantics):
         name = self.sf.get_name(ast)
         # Watch out duplicate !
         if name in self.sf.types:
-            self.sf.update_args('types', name, ast)
+            self.sf.update_fields('types', name, ast)
             return None
         else:
             self.sf.populate_data('types', name, ast)
@@ -461,7 +497,7 @@ class DgraphSemantics(GraphqlSemantics):
         name = self.sf.get_name(ast)
         # Watch out duplicate !
         if name in self.sf.interfaces:
-            self.sf.update_args('interfaces', name, ast)
+            self.sf.update_fields('interfaces', name, ast)
             return None
         else:
             self.sf.populate_data('interfaces', name, ast)
@@ -479,7 +515,7 @@ class DgraphSemantics(GraphqlSemantics):
         name = self.sf.get_name(ast)
         # Watch out duplicate !
         if name in self.sf.types:
-            self.sf.update_args('types', name, ast)
+            self.sf.update_fields('types', name, ast)
             return None
         else:
             self.sf.populate_data('types', name, ast)
