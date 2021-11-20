@@ -57,12 +57,6 @@ type Node @auth(
   docs: [Blob]      @patch_RO
   source: Blob      @patch_RO
 
-  # --method--
-  n_tensions_out: Int  @count(f: tensions_out)
-  n_tensions_in: Int   @count(f: tensions_in)
-  n_children: Int      @count(f: children)
-  stats: NodeStats     @meta_getNodeStats
-
   # @Debug(#3a99e49): when **union** will be available in Dgraph,
   # Consider using a union `union Node = Role | Circle` with a common SuperNode interface.
   # Furthermore, required field (role_type, charac, can have no semantics depending if tis on Role or Circle
@@ -75,6 +69,8 @@ type Node @auth(
   charac: NodeCharac!   @patch_RO # Root... inherits attributes
   rights: Int!          @alter_RO # Only used for Bot (v0.5). The right value is a binary AND between all event authorized it the same order they appear in the schema.
   labels: [Label!]      @patch_RO  
+  # Root node only
+  #network: [Network] @hasInverse(field: nodes)
 
   # Role... is a Leaf
   first_link: User      @patch_RO
@@ -83,26 +79,8 @@ type Node @auth(
   role_type: RoleType   @patch_RO @search
   contracts: [Vote!]    @hasInverse(field: node)
 
-  # Root node only
-  shared: SharedNode @alter_RO
-  #network: [Network] @hasInverse(field: nodes)
-
-}
-
-type SharedNode {
-  # This could be utsful to avoid compute count again and again
-  # store count and incremets
-  # * number of guest
-  # * number of members
-  # * number of role
-  # * number of labels
-  # * number of tensions
-  # * number of comments
-  # * number of circle
-  # * number of project
-  n_labels: Int
-  n_tensions: Int # open and closed
-  n_closed_tensions: Int #Closed
+  # Aggregator
+  orga_agg: OrgaAgg @meta(f:"getOrgaAgg", k:"nameid")
 }
 
 type NodeFragment {
@@ -145,11 +123,9 @@ type NodeCharac {
   mode: NodeMode!        @search
 }
 
-type NodeStats {
-  n_member: Int  # count Guest role (root)
-  n_guest: Int   # count member role (root)
-  n_circle: Int  # recursively count sub circle
-  n_role: Int    # recursively count Peer role
+type OrgaAgg {
+  n_members: Int  # count Guest role (root)
+  n_guests: Int   # count member role (root)
 }
 
 #
@@ -229,9 +205,11 @@ type Tension implements Post @auth(
   contracts: [Contract!] @hasInverse(field: tension)
   history: [Event!]!     @hasInverse(field: tension) # entry point
 
-  # --method--
-  n_comments: Int  @count(f: comments)
-  n_blobs: Int  @count(f: blobs)
+  # -- @debug : Aggregate count result.
+  # We need thiss field to count things with DQL request since it is not yet
+  # possible to return a Aggregate cout result in the DQL response.
+  n_comments: Int
+  n_open_contracts: Int
 }
 
 type Label @auth(
@@ -258,9 +236,9 @@ type Label @auth(
   tensions: [Tension!] @alter_RO @hasInverse(field: labels)
   nodes: [Node!] @hasInverse(field: labels) @alter_oneByOne
 
-  # --method--
-  n_nodes: Int     @count(f: nodes)
-  n_tensions: Int  @count(f: tensions)
+  # -- @debug : Aggregate count result.
+  n_nodes: Int 
+  n_tensions: Int
 }
 
 type Comment implements Post @auth(
@@ -320,22 +298,39 @@ type Contract implements Post @auth(
     }""" }
   ]}
 ) @hook_ {
+  # {contractid} is used to perform upsert update of vote and prevent for creating several 
+  # auto similar contract. Contractid is set to uid once the contract is closed to prevent blocking
+  # the creation of new contract.
+  contractid: String! @id # {receiverid}#{TensionEvent}#old#new
   tension: Tension!                    @patch_RO
   status: ContractStatus!      @search @patch_RO
   contract_type: ContractType! @search @patch_RO
   closedAt: DateTime           @search @patch_RO 
   event: EventFragment!                @patch_RO
   candidates: [User!]    @hasInverse(field: contracts) @patch_RO 
-  participants: [Vote!]  @hasInverse(field: contract)  @patch_RO # only user node (@...)                  
+  participants: [Vote!]!  @hasInverse(field: contract)  @patch_RO # only user node (@...)                  
   comments: [Comment!] 
+  isValidator: Boolean      @isContractValidator
 }
 
-type Vote {
+type Vote implements Post @auth(
+  add: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize user with role
+    { rule: """query ($USERNAME: String!) {
+      queryVote {
+        node { first_link(filter: {username: {eq: $USERNAME}}) { username } }
+      }
+    }""" }
+  ]}
+) @hook_ {
   # @debug: a vote should trigger a notification but ist not a contract (contract updated ?)
   id: ID!
+  voteid: String!  @id # {contractid}#{nameid}
   contract: Contract!
   node: Node! # Named Role (@...)
-  data: [Int!] # Vote results. Maximum len equal len of candidates.
+  data: [Int!]! # Vote results. Maximum len equal len of candidates.
 }
 
 #
@@ -448,6 +443,7 @@ enum TensionEvent {
   Reopened
   Closed
   TitleUpdated
+  TypeUpdated
   CommentPushed
   AssigneeAdded
   AssigneeRemoved
@@ -484,10 +480,14 @@ enum ContractStatus {
 }
 
 enum ContractType { # Validation type
+  # Both coordinators should validate (both are taken from event.old (==tension.receiver.nameid) and event.new
   AnyCoordoDual
-  AnyParticipants
+  # Validate on given participants
+  AnyCandidates
   # -- self contract
+  # Validate on the tension emitter node
   AnyCoordoSource
+  # Validate on the tension receiver node
   AnyCoordoTarget
 }
 

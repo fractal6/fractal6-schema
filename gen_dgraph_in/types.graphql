@@ -26,10 +26,6 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   mandate: Mandate
   docs: [Blob]
   source: Blob
-  n_tensions_out: Int
-  n_tensions_in: Int
-  n_children: Int
-  stats: NodeStats
   isRoot: Boolean! @search
   isPersonal: Boolean @search
   isPrivate: Boolean! @search
@@ -42,13 +38,7 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   skills: [String!] @search(by: [term])
   role_type: RoleType @search
   contracts: [Vote!] @hasInverse(field: node)
-  shared: SharedNode
-}
-
-type SharedNode {
-  n_labels: Int
-  n_tensions: Int
-  n_closed_tensions: Int
+  orga_agg: OrgaAgg
 }
 
 type NodeFragment {
@@ -81,11 +71,9 @@ type NodeCharac {
   mode: NodeMode! @search
 }
 
-type NodeStats {
-  n_member: Int
-  n_guest: Int
-  n_circle: Int
-  n_role: Int
+type OrgaAgg {
+  n_members: Int
+  n_guests: Int
 }
 
 interface Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
@@ -146,7 +134,7 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
   contracts: [Contract!] @hasInverse(field: tension)
   history: [Event!]! @hasInverse(field: tension)
   n_comments: Int
-  n_blobs: Int
+  n_open_contracts: Int
 }
 
 type Label @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
@@ -217,21 +205,30 @@ type Contract implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root
     }"""
 }]
 }) {
+  contractid: String! @id
   tension: Tension!
   status: ContractStatus! @search
   contract_type: ContractType! @search
   closedAt: DateTime @search
   event: EventFragment!
   candidates: [User!] @hasInverse(field: contracts)
-  participants: [Vote!] @hasInverse(field: contract)
+  participants: [Vote!]! @hasInverse(field: contract)
   comments: [Comment!]
+  isValidator: Boolean
 }
 
-type Vote {
-  id: ID!
+type Vote implements Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryVote {
+        node { first_link(filter: {username: {eq: $USERNAME}}) { username } }
+      }
+    }"""
+}]
+}) {
+  voteid: String! @id
   contract: Contract!
   node: Node!
-  data: [Int!]
+  data: [Int!]!
 }
 
 type User {
@@ -368,10 +365,14 @@ enum ContractStatus {
 
 enum ContractType {
 
+
   AnyCoordoDual
-  AnyParticipants
+
+  AnyCandidates
+
 
   AnyCoordoSource
+
   AnyCoordoTarget
 }
 

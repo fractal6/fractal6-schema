@@ -1,12 +1,15 @@
 #  Make the field unable to read
 directive @hidden on FIELD_DEFINITION
 
-# Count the occurence of the field given in arg (should be list) and add the result in
-# the current field definition.
+# Count the occurence of the field given in arg (should be list).
+# Dgraph use <type>Aggreage instead (much faster).
 directive @count(f: String!) on FIELD_DEFINITION
 
-# special methogds
-directive @meta_getNodeStats on FIELD_DEFINITION
+# Use for DQL requests.
+directive @meta(f: String!, k: String!) on FIELD_DEFINITION
+
+# Return true if the user is a authorized validator for the given contract.
+directive @isContractValidator on FIELD_DEFINITION
 
 ###########################################################
 # Directive code for input type:
@@ -28,7 +31,7 @@ directive @alter_oneByOne on INPUT_FIELD_DEFINITION
 # Ensure the field value is unique. 
 # If on is given, it check the uniqueness on a subset of the parent type.
 directive @alter_unique(on: String) on INPUT_FIELD_DEFINITION
- 
+
 # Authorize only if the field's value match the user(u) credential.
 # If user(u) field is empty, assume a user object.
 directive @add_isOwner(u: String) on INPUT_FIELD_DEFINITION
@@ -90,3 +93,12 @@ directive @hook_deleteContractInput on ARGUMENT_DEFINITION
 directive @hook_addContract on FIELD_DEFINITION
 directive @hook_updateContract on FIELD_DEFINITION
 directive @hook_deleteContract on FIELD_DEFINITION
+# Vote Hook
+directive @hook_getVoteInput on ARGUMENT_DEFINITION
+directive @hook_queryVoteInput on ARGUMENT_DEFINITION
+directive @hook_addVoteInput on ARGUMENT_DEFINITION
+directive @hook_updateVoteInput on ARGUMENT_DEFINITION
+directive @hook_deleteVoteInput on ARGUMENT_DEFINITION
+directive @hook_addVote on FIELD_DEFINITION
+directive @hook_updateVote on FIELD_DEFINITION
+directive @hook_deleteVote on FIELD_DEFINITION
