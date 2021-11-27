@@ -74,10 +74,10 @@ type Node @auth(
 
   # Role... is a Leaf
   first_link: User      @patch_RO
-  second_link: User     @patch_RO
+  second_link: User     @patch_RO # @TODO: User a list of users instead (think this as reserve)
   skills: [String!]     @patch_RO @search(by: [term]) 
   role_type: RoleType   @patch_RO @search
-  contracts: [Vote!]    @hasInverse(field: node)
+  contracts: [Vote!]    @hasInverse(field: node) # only named role (@...)
 
   # Aggregator
   orga_agg: OrgaAgg @meta(f:"getOrgaAgg", k:"nameid")
@@ -307,10 +307,10 @@ type Contract implements Post @auth(
   contract_type: ContractType! @search @patch_RO
   closedAt: DateTime           @search @patch_RO 
   event: EventFragment!                @patch_RO
-  candidates: [User!]    @hasInverse(field: contracts) @patch_RO 
+  candidates: [User!]     @hasInverse(field: contracts) @patch_RO 
   participants: [Vote!]!  @hasInverse(field: contract)  @patch_RO # only user node (@...)                  
   comments: [Comment!] 
-  isValidator: Boolean      @isContractValidator
+  isValidator: Boolean    @isContractValidator
 }
 
 type Vote implements Post @auth(
@@ -325,7 +325,7 @@ type Vote implements Post @auth(
     }""" }
   ]}
 ) @hook_ {
-  # @debug: a vote should trigger a notification but ist not a contract (contract updated ?)
+  # @debug: a vote should trigger a notification but its not evented (contract updated ?)
   id: ID!
   voteid: String!  @id # {contractid}#{nameid}
   contract: Contract!
@@ -457,6 +457,9 @@ enum TensionEvent {
   BlobUnarchived
   UserJoined
   UserLeft
+  MemberLinked
+  MemberUnlinked
+  NodeAuth
   Moved
 }
 
@@ -465,7 +468,6 @@ enum BlobType {
   OnNode
   OnAbout
   OnMandate
-  OnFirstLink
   # Doc (md, spreadsheet, etc)
   OnDoc
   #OnDocTitle ?

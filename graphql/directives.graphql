@@ -46,7 +46,7 @@ directive @alter_RO on INPUT_FIELD_DEFINITION
 
 # Hook directive for mutation
 # Gqlast automatically append hook in Dgraph Type, as:
-#   addNode(input: [AddNodeInput!]! @hook_addNode): AddNodePayload @hook_addNodePost
+#   addNode(input: [AddNodeInput!]! @hook_addNodeInput): AddNodePayload @hook_addNode
 
 # Node Hook
 directive @hook_getNodeInput on ARGUMENT_DEFINITION

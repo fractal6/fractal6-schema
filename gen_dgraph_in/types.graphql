@@ -330,6 +330,7 @@ enum TensionEvent {
   Reopened
   Closed
   TitleUpdated
+  TypeUpdated
   CommentPushed
   AssigneeAdded
   AssigneeRemoved
@@ -343,6 +344,9 @@ enum TensionEvent {
   BlobUnarchived
   UserJoined
   UserLeft
+  MemberLinked
+  MemberUnlinked
+  NodeAuth
   Moved
 }
 
@@ -351,7 +355,6 @@ enum BlobType {
   OnNode
   OnAbout
   OnMandate
-  OnFirstLink
 
   OnDoc
 
