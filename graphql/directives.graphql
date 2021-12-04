@@ -57,6 +57,24 @@ directive @hook_deleteNodeInput on ARGUMENT_DEFINITION
 directive @hook_addNode on FIELD_DEFINITION
 directive @hook_updateNode on FIELD_DEFINITION
 directive @hook_deleteNode on FIELD_DEFINITION
+# RoleExt Hook
+directive @hook_getRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_queryRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_addRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_updateRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_deleteRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_addRoleExt on FIELD_DEFINITION
+directive @hook_updateRoleExt on FIELD_DEFINITION
+directive @hook_deleteRoleExt on FIELD_DEFINITION
+# Label Hook
+directive @hook_getLabelInput on ARGUMENT_DEFINITION
+directive @hook_queryLabelInput on ARGUMENT_DEFINITION
+directive @hook_addLabelInput on ARGUMENT_DEFINITION
+directive @hook_updateLabelInput on ARGUMENT_DEFINITION
+directive @hook_deleteLabelInput on ARGUMENT_DEFINITION
+directive @hook_addLabel on FIELD_DEFINITION
+directive @hook_updateLabel on FIELD_DEFINITION
+directive @hook_deleteLabel on FIELD_DEFINITION
 # Tension Hook
 directive @hook_getTensionInput on ARGUMENT_DEFINITION
 directive @hook_queryTensionInput on ARGUMENT_DEFINITION
@@ -75,15 +93,6 @@ directive @hook_deleteCommentInput on ARGUMENT_DEFINITION
 directive @hook_addComment on FIELD_DEFINITION
 directive @hook_updateComment on FIELD_DEFINITION
 directive @hook_deleteComment on FIELD_DEFINITION
-# Label Hook
-directive @hook_getLabelInput on ARGUMENT_DEFINITION
-directive @hook_queryLabelInput on ARGUMENT_DEFINITION
-directive @hook_addLabelInput on ARGUMENT_DEFINITION
-directive @hook_updateLabelInput on ARGUMENT_DEFINITION
-directive @hook_deleteLabelInput on ARGUMENT_DEFINITION
-directive @hook_addLabel on FIELD_DEFINITION
-directive @hook_updateLabel on FIELD_DEFINITION
-directive @hook_deleteLabel on FIELD_DEFINITION
 # Contract Hook
 directive @hook_getContractInput on ARGUMENT_DEFINITION
 directive @hook_queryContractInput on ARGUMENT_DEFINITION

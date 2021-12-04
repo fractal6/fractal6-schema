@@ -6,12 +6,12 @@
 #
 # Universe (graph of graph)
 #
-# @DEBUG: with Union and circle/leaf
+# @DEBUG: with Union and Node/Leaf (Node = Circle | Role)
 #type Network {
 #  name: String
 #  nameid: String
-#  nodes: [Node] @hasInverse(field: network) # root nodes only
-#  category: String! 
+#  nodes: [Node!] @hasInverse(field: network) # root nodes only
+#  category: [String!]
 #}
 
 #
@@ -24,7 +24,7 @@ type Node @auth(
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize public data
     { rule: """query {
-        queryNode(filter: {isPrivate: false}) { id }
+        queryNode(filter: {visibility: {eq: Public}}) { id }
     }""" },
     # Authorize member 
     { rule: """query ($ROOTIDS: [String!]) {
@@ -56,28 +56,28 @@ type Node @auth(
   mandate: Mandate  @patch_RO
   docs: [Blob]      @patch_RO
   source: Blob      @patch_RO
+  labels: [Label!]  @patch_RO  
 
-  # @Debug(#3a99e49): when **union** will be available in Dgraph,
-  # Consider using a union `union Node = Role | Circle` with a common SuperNode interface.
-  # Furthermore, required field (role_type, charac, can have no semantics depending if tis on Role or Circle
-  
-  # Node Properties
-  isRoot: Boolean!      @patch_RO @search 
-  isPersonal: Boolean   @patch_RO @search # (Not public) nameid ends with @{username}
-  isPrivate: Boolean!   @patch_RO @search # Invitation required for an R/W access
-  isArchived: Boolean!  @patch_RO @search # (Hidden) Blob source is archived
-  charac: NodeCharac!   @patch_RO # Root... inherits attributes
-  rights: Int!          @alter_RO # Only used for Bot (v0.5). The right value is a binary AND between all event authorized it the same order they appear in the schema.
-  labels: [Label!]      @patch_RO  
+  # Node Permission
+  visibility: NodeVisibility!  @patch_RO @search # rules of access (R/W)
+  mode: NodeMode!              @patch_RO @search # Governance mode (Interpratation of role_type)
+  rights: Int!                 @alter_RO # Only used for Bot (v0.5). The right value is a binary AND between all event authorized it the same order they appear in the schema.
+  isArchived: Boolean!         @patch_RO @search # Blob source is archived
   # Root node only
   #network: [Network] @hasInverse(field: nodes)
+  isRoot: Boolean!      @patch_RO @search 
+  isPersonal: Boolean   @patch_RO @search # Help explore "official" orga - nameid ends with @{username}
+  userCanJoin: Boolean  @patch_RO # Rather can ask to join 
 
   # Role... is a Leaf
-  first_link: User      @patch_RO
-  second_link: User     @patch_RO # @TODO: User a list of users instead (think this as reserve)
-  skills: [String!]     @patch_RO @search(by: [term]) 
-  role_type: RoleType   @patch_RO @search
-  contracts: [Vote!]    @hasInverse(field: node) # only named role (@...)
+  first_link: User        @patch_RO
+  second_link: User       @patch_RO # @TODO: User a list of users instead (think this as reserve)
+  skills: [String!]       @patch_RO @search(by: [term]) 
+  role_type: RoleType     @patch_RO @search # @DEBUG: Waiting Nested filter in Dgragh
+  role_ext: RoleExt       @patch_RO
+
+  # Interaction
+  contracts: [Vote!]      @hasInverse(field: node) # only for Member role -- named role (@...)
 
   # Aggregator
   orga_agg: OrgaAgg @meta(f:"getOrgaAgg", k:"nameid")
@@ -89,11 +89,16 @@ type NodeFragment {
   nameid: String  @alter_toLower
 
   type_: NodeType
-  isPrivate: Boolean
-  charac: NodeCharac
-
   about: String   @alter_maxLength(n:280)
   mandate: Mandate
+
+  # All the literal below are took into account
+  # only when adding a circle.
+  # For updates, one need to use the tension Event to update the circle.
+
+  # Charac
+  visibility: NodeVisibility
+  mode: NodeMode
 
   # For Circles
   children: [NodeFragment!] # Role only for sub-cirles
@@ -111,17 +116,68 @@ type Mandate {
   responsabilities: String                  
   domains: String                           
   policies: String                          
+}
+
+type Label @auth(
+  query: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize public data
+    { rule: """query {
+        queryLabel { 
+          nodes(filter: {visibility: {eq: Public}}) { id }
+        }
+    }""" },
+    # Authorize member 
+    { rule: """query ($ROOTIDS: [String!]) {
+        queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }""" }
+  ]}
+) @hook_ {
+  id: ID!
+  rootnameid: String!  @patch_RO @search(by: [hash])
+  name: String!        @search(by: [hash, term]) @alter_unique(on:"rootnameid") @alter_toLower @alter_minLength(n:1)
+  description: String  @alter_maxLength(n:280)
+  color: String
+  tensions: [Tension!] @alter_RO @hasInverse(field: labels)
+  nodes: [Node!]       @hasInverse(field: labels) @alter_oneByOne
+
+  # -- @debug : Aggregate count result.
+  n_nodes: Int 
+  n_tensions: Int
+}
+
+type RoleExt @auth(
+  query: { or: [
+    # Authorize root 
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize public data
+    { rule: """query {
+        queryRoleExt { 
+          nodes(filter: {visibility: {eq: Public}}) { id }
+        }
+    }""" },
+    # Authorize member 
+    { rule: """query ($ROOTIDS: [String!]) {
+        queryRoleExt(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }""" }
+  ]}
+) @hook_ {
+  id: ID!
+  rootnameid: String!  @patch_RO @search(by: [hash])
+  name: String!        @search(by: [hash, term]) @alter_unique(on:"rootnameid") @alter_toLower @alter_minLength(n:1)
+  about: String        @alter_maxLength(n:280)
+  role_type: RoleType!
+  color: String
+  mandate: Mandate
+  nodes: [Node!]       @hasInverse(field: role_ext) @alter_oneByOne
+
+  # -- @debug : Aggregate count result.
+  n_nodes: Int 
   # period of validity ? @future
   # validatedBy  ? @future (vote process...)
 }
 
-
-type NodeCharac {
-  id: ID!
-  # define the governance process
-  userCanJoin: Boolean!  @search
-  mode: NodeMode!        @search
-}
 
 type OrgaAgg {
   n_members: Int  # count Guest role (root)
@@ -158,7 +214,7 @@ type Tension implements Post @auth(
     # Authorize public data
     { rule: """query {
         queryTension {
-          receiver(filter: {isPrivate: false}) { id }
+          receiver(filter: {visibility: {eq: Public}}) { id }
         }
     }""" },
     # Authorize member 
@@ -187,9 +243,9 @@ type Tension implements Post @auth(
     }""" }
   ]}
 ) @hook_ {
-  emitterid: String!     @patch_RO @search(by: [hash, regexp]) 
+  emitterid: String!     @patch_RO @search(by: [hash, regexp]) # @DEBUG: Waiting Nested filter in Dgragh
   emitter: Node!         @patch_RO  
-  receiverid: String!    @patch_RO @search(by: [hash, regexp]) 
+  receiverid: String!    @patch_RO @search(by: [hash, regexp]) # @DEBUG: Waiting Nested filter in Dgragh
   receiver: Node!        @patch_RO
 
   nth: String            @search #...Upsert in BLL
@@ -210,35 +266,6 @@ type Tension implements Post @auth(
   # possible to return a Aggregate cout result in the DQL response.
   n_comments: Int
   n_open_contracts: Int
-}
-
-type Label @auth(
-  query: { or: [
-    # Authorize root 
-    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
-    # Authorize public data
-    { rule: """query {
-        queryLabel { 
-          nodes(filter: {isPrivate: false}) { id }
-        }
-    }""" },
-    # Authorize member 
-    { rule: """query ($ROOTIDS: [String!]) {
-        queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
-    }""" }
-  ]}
-) @hook_ {
-  id: ID!
-  rootnameid: String!  @patch_RO @search(by: [hash])
-  name: String!        @search(by: [hash, term]) @alter_unique(on:"rootnameid") @alter_toLower @alter_minLength(n:1)
-  description: String  @alter_maxLength(n:280)
-  color: String
-  tensions: [Tension!] @alter_RO @hasInverse(field: labels)
-  nodes: [Node!] @hasInverse(field: labels) @alter_oneByOne
-
-  # -- @debug : Aggregate count result.
-  n_nodes: Int 
-  n_tensions: Int
 }
 
 type Comment implements Post @auth(
@@ -287,7 +314,7 @@ type Contract implements Post @auth(
     # Authorize public data
     { rule: """query {
         queryContract {
-          tension { receiver(filter: {isPrivate: false}) { id } }
+          tension { receiver(filter: {visibility: {eq: Public}}) { id } }
         }
     }""" },
     # Authorize member 
@@ -398,6 +425,12 @@ enum RoleType { # LeafType
   Bot # Aggregator, Bridge etc
 }
 
+enum NodeVisibility {
+  Public # The entire world
+  Private # Only the Organisation members
+  Secret # Only the authorized Roles
+}
+
 enum NodeMode {
   Coordinated # Coordinator centered
   Agile # Role centered
@@ -459,7 +492,8 @@ enum TensionEvent {
   UserLeft
   MemberLinked
   MemberUnlinked
-  NodeAuth
+  Authority
+  Visibility
   Moved
 }
 
@@ -497,7 +531,7 @@ enum ContractType { # Validation type
 
 enum UserType {
   Regular
-  Root
+  Root  # Sytem only
 }
 
 

@@ -311,7 +311,7 @@ class SemanticFilter:
                         # Only add Post Hook for those queries
                         if op in ("add", "update", "delete"):
                             # Add Post Hook (Query or Mutation Field)
-                            post_directive["cst"] = op + type_.title()
+                            post_directive["cst"] = op + type_
                             post_directives = self.get_directives(f['ast'].field)
                             post_directives.insert(len(post_directives)-1, post_directive)
 

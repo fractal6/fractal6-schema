@@ -3,7 +3,7 @@
 
 type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query {
-        queryNode(filter: {isPrivate: false}) { id }
+        queryNode(filter: {visibility: {eq: Public}}) { id }
     }"""
 },{ rule:"""query ($ROOTIDS: [String!]) {
         queryNode(filter: {rootnameid: {in: $ROOTIDS}}) { id }
@@ -26,17 +26,19 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   mandate: Mandate
   docs: [Blob]
   source: Blob
+  labels: [Label!]
+  visibility: NodeVisibility! @search
+  mode: NodeMode! @search
+  rights: Int!
+  isArchived: Boolean! @search
   isRoot: Boolean! @search
   isPersonal: Boolean @search
-  isPrivate: Boolean! @search
-  isArchived: Boolean! @search
-  charac: NodeCharac!
-  rights: Int!
-  labels: [Label!]
+  userCanJoin: Boolean
   first_link: User
   second_link: User
   skills: [String!] @search(by: [term])
   role_type: RoleType @search
+  role_ext: RoleExt
   contracts: [Vote!] @hasInverse(field: node)
   orga_agg: OrgaAgg
 }
@@ -46,10 +48,10 @@ type NodeFragment {
   name: String
   nameid: String
   type_: NodeType
-  isPrivate: Boolean
-  charac: NodeCharac
   about: String
   mandate: Mandate
+  visibility: NodeVisibility
+  mode: NodeMode
   children: [NodeFragment!]
   first_link: String
   second_link: String
@@ -65,10 +67,48 @@ type Mandate {
   policies: String
 }
 
-type NodeCharac {
+type Label @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query {
+        queryLabel { 
+          nodes(filter: {visibility: {eq: Public}}) { id }
+        }
+    }"""
+},{ rule:"""query ($ROOTIDS: [String!]) {
+        queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }"""
+}]
+}) {
   id: ID!
-  userCanJoin: Boolean! @search
-  mode: NodeMode! @search
+  rootnameid: String! @search(by: [hash])
+  name: String! @search(by: [hash, term])
+  description: String
+  color: String
+  tensions: [Tension!] @hasInverse(field: labels)
+  nodes: [Node!] @hasInverse(field: labels)
+  n_nodes: Int
+  n_tensions: Int
+}
+
+type RoleExt @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query {
+        queryRoleExt { 
+          nodes(filter: {visibility: {eq: Public}}) { id }
+        }
+    }"""
+},{ rule:"""query ($ROOTIDS: [String!]) {
+        queryRoleExt(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }"""
+}]
+}) {
+  id: ID!
+  rootnameid: String! @search(by: [hash])
+  name: String! @search(by: [hash, term])
+  about: String
+  role_type: RoleType!
+  color: String
+  mandate: Mandate
+  nodes: [Node!] @hasInverse(field: role_ext)
+  n_nodes: Int
 }
 
 type OrgaAgg {
@@ -94,7 +134,7 @@ interface Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query {
         queryTension {
-          receiver(filter: {isPrivate: false}) { id }
+          receiver(filter: {visibility: {eq: Public}}) { id }
         }
     }"""
 },{ rule:"""query ($ROOTIDS: [String!]) {
@@ -137,28 +177,6 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
   n_open_contracts: Int
 }
 
-type Label @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query {
-        queryLabel { 
-          nodes(filter: {isPrivate: false}) { id }
-        }
-    }"""
-},{ rule:"""query ($ROOTIDS: [String!]) {
-        queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
-    }"""
-}]
-}) {
-  id: ID!
-  rootnameid: String! @search(by: [hash])
-  name: String! @search(by: [hash, term])
-  description: String
-  color: String
-  tensions: [Tension!] @hasInverse(field: labels)
-  nodes: [Node!] @hasInverse(field: labels)
-  n_nodes: Int
-  n_tensions: Int
-}
-
 type Comment implements Post @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query ($USERNAME: String!) {
       queryComment {
@@ -195,7 +213,7 @@ type EventFragment {
 type Contract implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query {
         queryContract {
-          tension { receiver(filter: {isPrivate: false}) { id } }
+          tension { receiver(filter: {visibility: {eq: Public}}) { id } }
         }
     }"""
 },{ rule:"""query ($ROOTIDS: [String!]) {
@@ -285,6 +303,15 @@ enum RoleType {
 
 }
 
+enum NodeVisibility {
+  Public
+
+  Private
+
+  Secret
+
+}
+
 enum NodeMode {
   Coordinated
 
@@ -346,7 +373,8 @@ enum TensionEvent {
   UserLeft
   MemberLinked
   MemberUnlinked
-  NodeAuth
+  Authority
+  Visibility
   Moved
 }
 
@@ -382,6 +410,7 @@ enum ContractType {
 enum UserType {
   Regular
   Root
+
 }
 
 # Dgraph.Authorization {"VerificationKey":"checkJwkToken_or_pubkey","Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"HS256"}
