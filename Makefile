@@ -14,7 +14,7 @@ dgraph: gen_dgraph_in/types.graphql
 		make update && \
 		make fetch_schema && \
 		cd - && \
-		cp ../database/graph/schema_out.graphql gen_dgraph_out/schema.graphql
+		cp ../database/schema/schema_out.graphql gen_dgraph_out/schema.graphql
 
 gqlgen_in:
 	# Generate Gqlgen compatible GraphQL files with dgraph generated Query and Mutation.

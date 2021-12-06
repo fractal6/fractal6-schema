@@ -1,18 +1,19 @@
 # <!> Code depencies <!>
-# * fractal6.go/web/auth/model: reference to typeName
-# * fractal6.go/web/auth/dgraph: when typeName is invoked
-# * fractal6-ui.elm: case on enumeration object (NodeType, TensionType ,etc)
+# * fractal6.go/web/auth/model: hardocded struct
+# * fractal6.go/dp/api: hardocded query
+# * fractal6-ui.elm: query and case on enum object 
 
-#
+
 # Universe (graph of graph)
-#
 # @DEBUG: with Union and Node/Leaf (Node = Circle | Role)
+#
 #type Network {
 #  name: String
 #  nameid: String
 #  nodes: [Node!] @hasInverse(field: network) # root nodes only
 #  category: [String!]
 #}
+
 
 #
 # Node Interface (Role and Circle)
@@ -26,9 +27,17 @@ type Node @auth(
     { rule: """query {
         queryNode(filter: {visibility: {eq: Public}}) { id }
     }""" },
-    # Authorize member 
+    # Authorize private data (members only)
     { rule: """query ($ROOTIDS: [String!]) {
-        queryNode(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+        queryNode(filter: {rootnameid: {in: $ROOTIDS}, and: {visibility: {eq: Private}} }) { id }
+    }""" },
+    # Authorize secret data (explicit member only)
+    { rule: """query ($USERNAME: String!) {
+        queryNode(filter: {visibility: {eq: Secret}}) {
+          children {
+              first_link(filter: {username: {eq: $USERNAME}}) { username }
+          }
+        }
     }""" }
   ]}
 ) @hook_ {
@@ -40,7 +49,7 @@ type Node @auth(
   # Node naming/ID
   name: String!        @patch_RO @search(by: [term])
   nameid: String!      @patch_RO @search(by: [hash, regexp]) @id 
-  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) # to recursively access children
+  rootnameid: String!  @patch_RO @search(by: [hash, regexp]) # Convenience to recursively access children
 
   # Node linking
   parent: Node       @patch_RO # If parent is null, Node is a root node
@@ -217,10 +226,20 @@ type Tension implements Post @auth(
           receiver(filter: {visibility: {eq: Public}}) { id }
         }
     }""" },
-    # Authorize member 
+    # Authorize private data (members only)
     { rule: """query ($ROOTIDS: [String!]) {
         queryTension {
-          receiver(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+          receiver(filter: {rootnameid: {in: $ROOTIDS}, and: {visibility: {eq: Private}}}) { id }
+        }
+    }""" },
+    # Authorize secret data (explicit member only)
+    { rule: """query ($USERNAME: String!) {
+        queryTension {
+          receiver(filter: {visibility: {eq: Secret}}) { 
+            children {
+                first_link(filter: {username: {eq: $USERNAME}}) { username }
+            }
+          }
         }
     }""" }
   ]},
@@ -317,10 +336,22 @@ type Contract implements Post @auth(
           tension { receiver(filter: {visibility: {eq: Public}}) { id } }
         }
     }""" },
-    # Authorize member 
+    # Authorize private data (members only)
     { rule: """query ($ROOTIDS: [String!]) {
         queryContract {
-          tension { receiver(filter: {rootnameid: {in: $ROOTIDS}}) { id } }
+          tension { receiver(filter: {rootnameid: {in: $ROOTIDS}, and: {visibility: {eq: Private}}}) { id } }
+        }
+    }""" },
+    # Authorize secret data (explicit member only)
+    { rule: """query ($USERNAME: String!) {
+        queryContract {
+          tension { 
+            receiver(filter: {visibility: {eq: Secret}}) { 
+              children {
+                  first_link(filter: {username: {eq: $USERNAME}}) { username }
+              }
+            }
+          }
         }
     }""" }
   ]}
@@ -373,7 +404,7 @@ type User {
   password: String!  @patch_isOwner @hidden 
   # @DEBUG: several @id currentlynot allowed !
   # Q: how to enfore uniqueness ?
-  email: String!     @patch_isOwner @search(by: [hash]) @hidden # Only one @id allowing in dgraph.
+  email: String!     @patch_isOwner @search(by: [hash]) @hidden
   emailHash: String        @alter_RO @hidden 
   emailValidated: Boolean! @alter_RO @hidden 
   # User Rights
