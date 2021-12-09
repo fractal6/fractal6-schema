@@ -1,3 +1,9 @@
+###########################################################
+#
+# Reader directives -- work the field level.
+#
+###########################################################
+
 #  Make the field unable to read
 directive @hidden on FIELD_DEFINITION
 
@@ -12,34 +18,50 @@ directive @meta(f: String!, k: String!) on FIELD_DEFINITION
 directive @isContractValidator on FIELD_DEFINITION
 
 ###########################################################
-# Directive code for input type:
-# add_* => apply on Add mutation
-# patch_* => apply on Update mutation
-# alter_* => apply on all mutation input (add and update)
+#
+# Writer directives -- work the input field level.
+#
 ###########################################################
 
 # Lower the field value.
-directive @alter_toLower on INPUT_FIELD_DEFINITION
+directive @w_toLower on INPUT_FIELD_DEFINITION
+
+
+###########################################################
+#
+# Authorization directives -- work the input field level.
+# --
+# Those directives are automagically generated on corresponding input types.
+# see the schema/gqlast.py parser for details.
+# --
+# By default, If no directive are given for a field, the @auth_patch_to is automatically generated on input;
+# else-if no arguments are given, the authorization is granted;
+# else the function must pass. 
+#
+###########################################################
 
 # Control the field value length (string).
-directive @alter_minLength(n: Int!) on INPUT_FIELD_DEFINITION
-directive @alter_maxLength(n: Int!) on INPUT_FIELD_DEFINITION
+# minLength / maxLength
 
 # Ensure the field value (list) as only one element.
-directive @alter_oneByOne on INPUT_FIELD_DEFINITION
+# oneByOne
 
 # Ensure the field value is unique. 
 # If on is given, it check the uniqueness on a subset of the parent type.
-directive @alter_unique(on: String) on INPUT_FIELD_DEFINITION
+# unique
 
 # Authorize only if the field's value match the user(u) credential.
 # If user(u) field is empty, assume a user object.
-directive @add_isOwner(u: String) on INPUT_FIELD_DEFINITION
-directive @patch_isOwner(u: String) on INPUT_FIELD_DEFINITION
+# isOwner
 
-# Read-only directives
-directive @patch_RO on INPUT_FIELD_DEFINITION # for field defined at creation
-directive @alter_RO on INPUT_FIELD_DEFINITION 
+# Add rules should be controlled by 1) dgraph @auth rule, 2) schema definition (! field) and 3) @hook_ BLA validation.
+directive @x_set(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be set
+directive @x_remove(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be removed
+directive @x_patch(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be patched (set + remove)
+directive @x_alter(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be altered (added + set + remove)
+directive @x_patch_ro on INPUT_FIELD_DEFINITION # [defaut] prevent a field to be patched.
+directive @x_ro on INPUT_FIELD_DEFINITION # make a field read-only (for exemple a an optional field that is not allowed to be set by a user.)
+
 
 #######################################################
 # @TODO: automate their generation in gqlast.py

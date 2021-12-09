@@ -119,6 +119,8 @@ class SemanticFilter:
             ast[k] = v
 
     def populate_data(self, data_type, name, ast, filter_directives=True):
+        # LOG DEBUG
+        #print("Populate: %s %s" % (data_type, name))
         data = getattr(self, data_type)
         data[name] = []
         self._populate_data(data, name, ast, filter_directives=filter_directives)
@@ -134,6 +136,7 @@ class SemanticFilter:
             for i, d in enumerate(ast._directives):
                 if not d:
                     continue
+
                 data[name+"__directives"].append(d)
                 if d._name.name == 'hook_':
                     to_remove.append(i)
@@ -172,6 +175,7 @@ class SemanticFilter:
             for i, d in enumerate(field._directives):
                 if not d:
                     continue
+
                 # build directive lookup
                 dn = self.get_name(d)
                 field_data['directives'].append({
@@ -179,9 +183,8 @@ class SemanticFilter:
                     'ast': d,
                     #'ast_copy': d.copy(),
                 })
-                if (dn.startswith('alter_')
-                    or dn.startswith('add_')
-                        or dn.startswith('patch_')):
+                if dn.startswith('x_') or dn.startswith('w_'):
+                #if dn.startswith('add_') or dn.startswith('patch_') or dn.startswith('alter_'):
                     to_remove.append(i)
 
             # filter directives
@@ -212,13 +215,35 @@ class SemanticFilter:
         else:
             interface_name = ast._implements[1].name
 
-        # Get ast fields
+        # LOG DEBUG
+        #print("%s Inheriting interface %s : " % (ast._name.name,  interface_name))
+        #pprint(self.interfaces[interface_name])
+
+        # Get ast fields...
         fields = self.get_fields(ast)
         field_names = [self.get_name(f.field) for f in fields]
         for itf_fd in self.interfaces[interface_name]:
             fd = itf_fd['ast']
-            if self.get_name(fd.field) not in field_names:
-                fields.append(fd)
+            name = self.get_name(fd.field)
+            if name in field_names:
+                continue
+
+            # LOG DEBUG
+            #print("%s inherited %s field from %s" % (ast._name.name, name, interface_name))
+
+            # Inherit a  field
+            fields.append(fd)
+
+            # Current field
+            curfd = [x.field for x in fields if name == self.get_name(x.field)][0]
+
+            # Inherit a directive
+            directives = itf_fd["directives"]
+            if not curfd._directives and directives:
+                self._ast_set(curfd, '_directives',[x['ast'] for x in  directives])
+                # LOG DEBUG
+                #print("%s inherited %s directive from %s" % (curfd._name.name, len(directives), interface_name))
+
 
         return
 
@@ -254,12 +279,14 @@ class SemanticFilter:
 
     def copy_directives(self, name_in, data_types_in,
                         name_out, data_type_out,
-                        directive_name):
+                        directive_name, set_default=False):
         _fields = None
         for data_type in data_types_in:
             data_in = getattr(self, data_type)
             if name_in in data_in:
                 _fields = data_in[name_in]
+                # LOG DEBUG
+                #print("Entering input copy %s -> %s " % (name_in, name_out))
                 break
 
         if not _fields:
@@ -278,10 +305,18 @@ class SemanticFilter:
                             self._ast_set(f['ast'].field, '_directives', [])
 
                         f['ast'].field['_directives'].append(d['ast'])
+                        # LOG DEBUG
+                        #print("directives %s  copied in %s" % (d["ast"]._name.name, name_out+"."+self.get_name(f['ast'].field)))
+
+                if set_default and not f['ast'].field._directives:
+                    # Protect the object from Patch queries by default...
+                    ro = AST2({'_cst__bb': '@', '_name': AST2({'name': 'x_patch_ro'}), '_args': None})
+                    self._ast_set(f['ast'].field, '_directives', [ro])
+
         return
 
     def copy_hook_directives(self, data_types_in, name_out, data_type_out):
-        ''' Copy Special directive as pre and post hook that start by add_*, update_*, delete_* etc
+        ''' Copy Special directive as pre and post hook that start by hook_*
             in mutation corresponding types. '''
 
         for data_type in data_types_in:
@@ -303,12 +338,12 @@ class SemanticFilter:
                         pre_directive = directive_.copy()
                         post_directive = directive_.copy()
 
-                        # Add Pre Hook (Input)
+                        # Add Pre Hook (Input) (Query + Mutations)
                         pre_directive["cst"] = op + type_ + "Input"
                         args = self.get_args(f['ast'].field)
                         args.insert(len(args)-1, pre_directive)
 
-                        # Only add Post Hook for those queries
+                        # Only add Post Hook for Mutation queries
                         if op in ("add", "update", "delete"):
                             # Add Post Hook (Query or Mutation Field)
                             post_directive["cst"] = op + type_
@@ -325,6 +360,8 @@ class SemanticFilter:
         if interface_name:
             field_names += [x.get('name') for x in getattr(self, "interfaces")[interface_name]]
 
+        # LOG DEBUG
+        #print("Updating Doublon: %s interface: %s, fields: %s" % (name, interface_name, field_names))
         for f in data[name]:
             # Iterates over the fields of the "duplicated" object <f>
             for _ff in self.get_fields(ast):
@@ -405,8 +442,11 @@ class GqlgenSemantics(GraphqlSemantics):
 
     def object_type_definition(self, ast):
         ''' Type handle
-            * filter ou doublon
-            * add implemented interfaces fields if not already presents
+        * add or updated (doublon) types: Doublon occurs because Type are present twice, once from the file
+             where the type is defined, and twice from the generated schema from dgraph.
+             We need both because, the original bring the magixc query and input directive
+             while Dgraph can bring new properties.
+        * inherit from interfaces fields and directives if not already presents
         '''
         assert(isinstance(ast, AST))
         ast = AST2(ast)
@@ -417,15 +457,14 @@ class GqlgenSemantics(GraphqlSemantics):
             self.sf.update_fields('types', name, ast)
             return None
         else:
-            self.sf.populate_data('types', name, ast)
             self.sf.inherit_interface(ast)
+            self.sf.populate_data('types', name, ast)
 
         # remove interface gqlgen compatibility !
         self.sf._ast_set(ast, '_implements', None)
 
         if name in ("Mutation", "Query"):
-            self.sf.copy_hook_directives(['types', 'interfaces'],
-                                         name, 'types')
+            self.sf.copy_hook_directives(['types', 'interfaces'], name, 'types')
 
         return ast
 
@@ -433,6 +472,8 @@ class GqlgenSemantics(GraphqlSemantics):
         ''' Input handle
             * filter ou doublon
             * add filtered directive
+                - @x_* directive work with *Patch input (we assumed that AddInput are managed by the BLA)
+                - @w_* directieve work Add*Input input *Patch inputs, (used to alter a input field)
         '''
         assert(isinstance(ast, AST))
         ast = AST2(ast)
@@ -445,23 +486,20 @@ class GqlgenSemantics(GraphqlSemantics):
             self.sf.populate_data('inputs', name, ast, filter_directives=False)
 
         type_name = None
-        if name.endswith('Patch'):
-            # This match the input field for the "Update" and "Remove" mutations
-            type_name = re.match(r"(\w*)Patch", name).groups()[0]
-            if type_name:
-                self.sf.copy_directives(type_name, ['types', 'interfaces'],
-                                        name, 'inputs', r'^patch_')
-        elif name.startswith('Add') and name.endswith('Input'):
+
+
+        if name.startswith('Add') and name.endswith('Input'):
             # This match the input field for the "Add" mutations
             type_name = re.match(r"Add(\w*)Input", name).groups()[0]
             if type_name:
-                self.sf.copy_directives(type_name, ['types', 'interfaces'],
-                                        name, 'inputs', r'^add_')
+                self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_')
+        elif name.endswith('Patch'):
+            # This match the input field for the "Update" and "Remove" mutations
+            type_name = re.match(r"(\w*)Patch", name).groups()[0]
+            if type_name:
+                self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_')
+                self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_', set_default=True)
 
-        # Move all global directive (alter_*)
-        if type_name:
-            self.sf.copy_directives(type_name, ['types', 'interfaces'],
-                                    name, 'inputs', r'^alter_')
         return ast
 
     def enum_type_definition(self, ast):
@@ -485,7 +523,7 @@ class DgraphSemantics(GraphqlSemantics):
 
     '''Dgraph semantic.
     '''
-    _dgraph_directives = ["id", "search", "hasInverse", "remote", "custom", "auth", "lambda", "generate"]
+    _dgraph_directives = ["id", "search", "hasInverse", "remote", "custom", "auth", "lambda", "generate", "secret", "dgraph", "default", "cacheControl"]
 
     def interface_type_definition(self, ast):
         ''' Interface handle
@@ -539,9 +577,9 @@ class SDL:
             * if rule_name starts with "_", it will be appended to
                 the output with no special treatment.
             * rule_name can be defined as `name__code` where code
-              can be [ba, bb, bs] that stands respectively for:
-                * blank after
+              can be [bb, bs, bs] that stands respectively for:
                 * blank before
+                * blank after
                 * blank surrounded
             * `name` has a special treatment to manage space syntax.
             * `comment` are filtered out.
