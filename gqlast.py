@@ -18,22 +18,27 @@ Options:
     --nv            Silent output.
 '''
 
-from tatsu import compile
-from tatsu.util import asjsons
-from tatsu.ast import AST
 import sys
 import re
 import itertools
 from collections import OrderedDict, defaultdict
+from copy import deepcopy
 from pprint import pprint
 from docopt import docopt
+from tatsu import compile
+from tatsu.util import asjsons
+from tatsu.ast import AST
 
 from gram.graphql import GRAPHQLParser
 
 sys.setrecursionlimit(10**4)
 
 
+_dgraph_directives = ['id', 'search', 'hasInverse', 'remote', 'custom', 'auth', 'lambda', 'generate', 'secret', 'dgraph', 'default', 'cacheControl']
+
 class AST2(AST):
+    # see https://github.com/neogeny/TatSu/issues/164#issuecomment-609044281
+    # Created because of the need of _ast_set to keep order...
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -43,18 +48,22 @@ class AST2(AST):
 
 
 class SemanticFilter:
+    ''' Semantic based the EBNF Grammar defined at gram/graphql.ebnf '''
+
     def __init__(self):
+        ''' Keep track of mutables object in the grammar. '''
         self.interfaces = OrderedDict()
         self.types = OrderedDict()
         self.inputs = OrderedDict()
         self.enums = []
 
+        # Also :
+        # {type}__directive : [query level directives]
+        # {type}__implements : [implemented interfaces]
+
     @staticmethod
     def get_name(ast):
-        if not ast:
-            return ""
-        else:
-            return ast._name.name
+        return '' if not ast else ast._name.name
 
     @staticmethod
     def get_fields(ast):
@@ -118,7 +127,7 @@ class SemanticFilter:
 
     def populate_data(self, data_type, name, ast, filter_directives=True):
         # LOG DEBUG
-        #print("Populate: %s %s" % (data_type, name))
+        #print('Populate: %s %s' % (data_type, name))
         data = getattr(self, data_type)
         data[name] = []
         self._populate_data(data, name, ast, filter_directives=filter_directives)
@@ -128,14 +137,14 @@ class SemanticFilter:
         ''' Populate data from ast parsing. '''
 
         # Populate Types Directives
-        data[name+"__directives"] = []
+        data[name+'__directives'] = []
         if ast.get('_directives'):
             to_remove = []
             for i, d in enumerate(ast._directives):
                 if not d:
                     continue
 
-                data[name+"__directives"].append(d)
+                data[name+'__directives'].append(d)
                 if d._name.name == 'hook_':
                     to_remove.append(i)
 
@@ -143,8 +152,8 @@ class SemanticFilter:
                 ast._directives.pop(i)
 
         # add interfaces info
-        if ast.get("_implements"):
-            data[name+"__implements"] = ast._implements[1].name
+        if ast.get('_implements'):
+            data[name+'__implements'] = ast._implements[1].name
 
         # Populate fields
         fields = self.get_fields(ast)
@@ -152,23 +161,19 @@ class SemanticFilter:
             self._push_field(name, f, data, filter_directives)
 
         return
-    def _push_field(self, name, f, data, filter_directives=False, force=False):
+    def _push_field(self, name, f, data, filter_directives=False, update=False):
         field = f.field
 
         # Add field
-        fn = self.get_name(field)
-        field_data = {'name': fn,
-                      'ast': f,
-                      #'ast_copy': f.copy(),
-                      'args': None, # list of AST
-                      'directives': [], # list of structured AST
+        field_data = {'name': self.get_name(field),
+                      'args': self.get_args(field), # list of AST
+                      'directives': [], # list of AST
+                      # -- keep pointer to propagate modifications
+                      'ast': f, # AST
                      }
 
-        # Add and filter arguments
-        field_data['args'] = self.get_args(field)
-
-        # Add and filter directives
-        if field.get("_directives"):
+        # Feed and filter directives
+        if field.get('_directives'):
             to_remove = []
             for i, d in enumerate(field._directives):
                 if not d:
@@ -179,7 +184,6 @@ class SemanticFilter:
                 field_data['directives'].append({
                     'name': dn,
                     'ast': d,
-                    #'ast_copy': d.copy(),
                 })
                 if dn.startswith('x_') or dn.startswith('w_'):
                     to_remove.append(i)
@@ -189,12 +193,9 @@ class SemanticFilter:
                 for i in to_remove[::-1]:
                     field._directives.pop(i)
 
-        if force:
-            try:
-                data[name][-1]['ast']["extra"] = f
-            except:
-                print(data[name][-1])
-                exit()
+        if update:
+            # There should be at list one field already in this object.
+            data[name][-1]['ast']['extra'] = f
         else:
             data[name].append(field_data)
 
@@ -208,12 +209,12 @@ class SemanticFilter:
 
         if len(ast._implements) > 2:
             # @debug: multiple inheritance will break.
-            raise NotImplementedError("Review this code for multiple inheritance.")
+            raise NotImplementedError('Review this code for multiple inheritance.')
         else:
             interface_name = ast._implements[1].name
 
         # LOG DEBUG
-        #print("%s Inheriting interface %s : " % (ast._name.name,  interface_name))
+        #print('%s Inheriting interface %s : ' % (ast._name.name,  interface_name))
         #pprint(self.interfaces[interface_name])
 
         # Get ast fields...
@@ -226,20 +227,22 @@ class SemanticFilter:
                 continue
 
             # LOG DEBUG
-            #print("%s inherited %s field from %s" % (ast._name.name, name, interface_name))
+            #print('%s inherited %s field from %s' % (ast._name.name, name, interface_name))
 
             # Inherit a  field
-            fields.append(fd)
+            # deepcopy prevent the parent AST to be modified later, when
+            # working on the child AST.
+            fields.append(deepcopy(fd))
 
             ## Current field
             curfd = [x.field for x in fields if name == self.get_name(x.field)][0]
 
             # Inherit a directive
-            directives = itf_fd["directives"]
+            directives = itf_fd['directives']
             if not curfd._directives and directives:
                 self._ast_set(curfd, '_directives', [x['ast'] for x in  directives])
                 # LOG DEBUG
-                #print("%s inherited %s directive from %s" % (curfd._name.name, len(directives), interface_name))
+                #print('%s inherited %s directive from %s' % (curfd._name.name, len(directives), interface_name))
 
 
         return
@@ -254,7 +257,7 @@ class SemanticFilter:
             return
 
         if len(ast._implements) > 2:
-            raise NotImplementedError("Review this code for multiple inheritance.")
+            raise NotImplementedError('Review this code for multiple inheritance.')
         else:
             interface_name = ast._implements[1].name
 
@@ -271,7 +274,7 @@ class SemanticFilter:
 
         if len(fields) == 0:
             # Dgraph need at least one field.
-            fields.append(AST(field="_VOID: String"))
+            fields.append(AST(field='_VOID: String'))
 
         return
 
@@ -284,11 +287,11 @@ class SemanticFilter:
             if name_in in data_in:
                 _fields = data_in[name_in]
                 # LOG DEBUG
-                #print("Entering input copy %s -> %s " % (name_in, name_out))
+                #print('Entering input copy %s -> %s ' % (name_in, name_out))
                 break
 
         if not _fields:
-            raise ValueError("Type `%s' unknown" % name_in)
+            raise ValueError('Type `%s` unknown' % name_in)
 
         data_out = getattr(self, data_type_out)
         for f in data_out[name_out]:
@@ -298,13 +301,13 @@ class SemanticFilter:
 
                 for d in _f['directives']:
                     dn = d['name']
-                    if re.search(directive_name, dn) and (not with_args or with_args and d["ast"]._args):
+                    if re.search(directive_name, dn) and (not with_args or with_args and d['ast']._args):
                         if not f['ast'].field._directives:
                             self._ast_set(f['ast'].field, '_directives', [])
 
                         f['ast'].field['_directives'].append(d['ast'])
                         # LOG DEBUG
-                        #print("directives %s  copied in %s" % (d["ast"]._name.name, name_out+"."+self.get_name(f['ast'].field)))
+                        #print('directives %s  copied in %s' % (d['ast']._name.name, name_out+'.'+self.get_name(f['ast'].field)))
 
                 if set_default and not f['ast'].field._directives:
                     # Protect the object from Patch queries by default...
@@ -321,8 +324,7 @@ class SemanticFilter:
             data_in = getattr(self, data_type)
             data_out = getattr(self, data_type_out)
             for f in data_out[name_out]:
-                #m = re.match(r"(add|update|delete|query|get)(\w*)", f['name'])
-                m = re.match(r"(query|get|add|update|delete)(\w*)", f['name'])
+                m = re.match(r'(query|get|add|update|delete)(\w*)', f['name'])
                 if not m:
                     # unnkow query
                     continue
@@ -337,14 +339,14 @@ class SemanticFilter:
                         post_directive = directive_.copy()
 
                         # Add Pre Hook (Input) (Query + Mutations)
-                        pre_directive["cst"] = op + type_ + "Input"
+                        pre_directive['cst'] = op + type_ + 'Input'
                         args = list(self.get_args(f['ast'].field))
                         args.insert(len(args)-1, pre_directive)
 
                         # Only add Post Hook for Mutation queries
-                        if op in ("add", "update", "delete"):
+                        if op in ('add', 'update', 'delete'):
                             # Add Post Hook (Query or Mutation Field)
-                            post_directive["cst"] = op + type_
+                            post_directive['cst'] = op + type_
                             post_directives = self.get_directives(f['ast'].field)
                             post_directives.insert(len(post_directives)-1, post_directive)
 
@@ -352,36 +354,33 @@ class SemanticFilter:
         ''' Add new fields if not present on object.
             Update arguments eventually.
         '''
+
         data = getattr(self, data_type)
         field_names = [x.get('name') for x in data[name]]
-        interface_name = data.get(name+"__implements")
-        if interface_name:
-            field_names += [x.get('name') for x in getattr(self, "interfaces")[interface_name]]
+        interface_name = data.get(name+'__implements')
+        if interface_name and data_type != "interfaces":
+            field_names += [x.get('name') for x in getattr(self, 'interfaces')[interface_name]]
 
         # LOG DEBUG
-        #print("Updating Doublon: %s interface: %s, fields: %s" % (name, interface_name, field_names))
+        #print('Updating Doublon: %s interface: %s, fields: %s' % (name, interface_name, field_names))
         for f in data[name]:
-            # Iterates over the fields of the "duplicated" object <f>
+            # Iterates over the fields of the 'duplicated' object <f>
             for _ff in self.get_fields(ast):
                 _field = _ff.field
                 _name = self.get_name(_field)
 
                 if _name not in field_names and _name not in ['_VOID']:
                     # Add a new field.
-                    self._push_field(name, _ff, data, force=True)
+                    self._push_field(name, _ff, data, update=True)
                     field_names.append(_name)
 
-                elif f['name'] != _name:
-                    #print(_name, self.get_args(_field))
-                    #print(f['ast'].field)
-                    #print("_-_-_-_-_-_-_")
-                    continue
-                else:
-                    # Update args(input/filter); if the arguments don't already exists
-                    # and if the  new field has non empty arguments.
+                elif f['name'] == _name:
+                    # Update a field
                     args = f['args']
                     new_args = self.get_args(_field)
                     if not args and new_args:
+                        # Update args(input/filter); if the arguments don't already exists
+                        # and if the  new field has non empty arguments.
                         self._ast_set(f['ast'].field, 'args', new_args)
                         # We don't need that anymore since the ASR is ordered now ?
                         #pos = list(_field).index('args')
@@ -418,7 +417,13 @@ class GraphqlSemantics:
 
 class GqlgenSemantics(GraphqlSemantics):
 
-    '''Gqlgen Semantic'''
+    '''Gqlgen Semantic
+        * filter-out dgraph directive
+        * change interface to normal type to avoid trouble...
+        * copy fields of implemented type to comply with the Ggqlgen schema semantic.
+        * copy new argument/filter eventually present in doublon.
+        * filter doublon
+    '''
 
     def interface_type_definition(self, ast):
         ''' Interface handle
@@ -463,7 +468,7 @@ class GqlgenSemantics(GraphqlSemantics):
         # remove interface gqlgen compatibility !
         self.sf._ast_set(ast, '_implements', None)
 
-        if name in ("Mutation", "Query"):
+        if name in ('Mutation', 'Query'):
             self.sf.copy_hook_directives(['types', 'interfaces'], name, 'types')
 
         return ast
@@ -489,15 +494,15 @@ class GqlgenSemantics(GraphqlSemantics):
 
 
         if name.startswith('Add') and name.endswith('Input'):
-            # This match the input field for the "Add" mutations
-            type_name = re.match(r"Add(\w*)Input", name).groups()[0]
+            # This match the input field for the 'Add' mutations
+            type_name = re.match(r'Add(\w*)Input', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_')
                 # If there no rule, ignore the directive as add input are allowed by default.
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_alter', with_args=True)
         elif name.endswith('Patch'):
-            # This match the input field for the "Update" and "Remove" mutations
-            type_name = re.match(r"(\w*)Patch", name).groups()[0]
+            # This match the input field for the 'Update' and 'Remove' mutations
+            type_name = re.match(r'(\w*)Patch', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_')
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_', set_default=True)
@@ -520,12 +525,21 @@ class GqlgenSemantics(GraphqlSemantics):
 
         return ast
 
+    def directive(self, ast):
+        ''' Filter  non-dgraph directive. '''
+        if ast._name.name in _dgraph_directives:
+            return ''
+        else:
+            return ast
+
 
 class DgraphSemantics(GraphqlSemantics):
 
     '''Dgraph semantic.
+        * filter-out non-dgraph directives
+        * copy fields of implemented type to comply with the Ggqlgen schema semantic.
+        * filter doublon
     '''
-    _dgraph_directives = ["id", "search", "hasInverse", "remote", "custom", "auth", "lambda", "generate", "secret", "dgraph", "default", "cacheControl"]
 
     def interface_type_definition(self, ast):
         ''' Interface handle
@@ -546,7 +560,7 @@ class DgraphSemantics(GraphqlSemantics):
 
     def object_type_definition(self, ast):
         '''Type handle
-            * filter ot doublon
+            * filter on doublon
             * add implemented interfaces fields if not already presents
         '''
         assert(isinstance(ast, AST))
@@ -567,10 +581,10 @@ class DgraphSemantics(GraphqlSemantics):
 
     def directive(self, ast):
         ''' Filter out non-dgraph directive. '''
-        if ast._name.name in self._dgraph_directives:
+        if ast._name.name in _dgraph_directives:
             return ast
         else:
-            return ""
+            return ''
 
 
 class SDL:
@@ -578,7 +592,7 @@ class SDL:
 
         The module interpret the rule name given by tatsu
         (with the synxax `rule_name:rule`) with the following semantics:
-            * if rule_name starts with "_", it will be appended to
+            * if rule_name starts with '_', it will be appended to
                 the output with no special treatment.
             * rule_name can be defined as `name__code` where code
               can be [bb, bs, bs] that stands respectively for:
@@ -589,7 +603,7 @@ class SDL:
             * `comment` are filtered out.
             * `args` do not make new line.
             * other rule are appended with a new line,
-              specially the `field` rule name.
+              notably the `field` rule name.
 
         Furthermore special rule are defined be Semantic class `*Semantics`.
         Reports to the methods documentation for further informantion.
@@ -599,11 +613,11 @@ class SDL:
         self.s = settings
 
         if not self.s['FILE']:
-            raise ValueError("You must provide a GraphQL FILE argument.")
+            raise ValueError('You must provide a GraphQL FILE argument.')
         else:
             infile = self.s['FILE'][0]
 
-        self._grammar = open("gram/graphql.ebnf").read()
+        self._grammar = open('gram/graphql.ebnf').read()
         self._target = open(infile).read()
 
         if self.s['--dgraph']:
@@ -615,7 +629,7 @@ class SDL:
         self.parser = GRAPHQLParser()
 
         self.ast = self.parser.parse(self._target,
-                                     rule_name="start",
+                                     rule_name='start',
                                      semantics=self.semantics,
                                      parseinfo=False)
 
@@ -632,7 +646,7 @@ class SDL:
             out = [nl]
 
         # filter empty things
-        out = [x for x in out if x != ""]
+        out = [x for x in out if x != '']
 
         for nth, o in enumerate(ast):
             if isinstance(o, AST):
@@ -682,21 +696,21 @@ class SDL:
                         continue
 
                     # type/rule_name filtering
-                    if _type in ("comment", "doc"):
+                    if _type in ('comment', 'doc'):
                         try:
-                            comment = "".join(o.comment)
+                            comment = ''.join(o.comment)
                         except:
                             # bug in non dgraph...@debug
                             continue
 
-                        if o.comment and comment.startswith("# Dgraph.Authorization"):
+                        if o.comment and comment.startswith('# Dgraph.Authorization'):
                             # keep comments
-                            out += "\n\n"
+                            out += '\n\n'
                         else: # ignore comments
                             continue
-                    elif _type == "args":
+                    elif _type == 'args':
                         ignore_nl = True
-                    elif _type in ("name"):
+                    elif _type in ('name'):
                         # Manage space between names
 
                         if out[-1] == '\n':
@@ -707,7 +721,7 @@ class SDL:
                         elif out[-1] not in ('[', '(', '@'):
                             # Space separator between words.
                             out.append(' ')
-                        elif _prev in ("[",):
+                        elif _prev in ('[',):
                             out[-2] += ' '
 
                         # space after object definition
@@ -720,7 +734,7 @@ class SDL:
                         elif _next and isinstance(_next, (tuple, list)) and _next[0] == 'implements':
                             v += ' '
 
-                        #print("dict-- ", k, v, _prev, _next)
+                        #print('dict-- ', k, v, _prev, _next)
 
                     elif _type.startswith('_'):
                         # Don't append newline for rulename that starts with '_'.
@@ -757,7 +771,7 @@ class SDL:
                     o = '\n'+o
                 out.append(o)
             else:
-                raise NotImplementedError("Unknown type: %s" % type(o))
+                raise NotImplementedError('Unknown type: %s' % type(o))
 
         if root:
             out = ''.join(out)
@@ -765,7 +779,7 @@ class SDL:
         return out
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = docopt(__doc__, version='0.0')
     parser = SDL(args)
     sdl = parser.stringify()

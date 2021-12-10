@@ -135,52 +135,37 @@ directive @hook_updateVote on FIELD_DEFINITION
 
 directive @hook_deleteVote on FIELD_DEFINITION
 
-type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($OWNIDS: [String]) {
-        queryNode(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
-    }"""
-},{ rule:"""query ($ROOTIDS: [String]) {
-        queryNode(filter: {visibility: {eq: Private}, and: [{rootnameid: {in: $ROOTIDS}}]}) { id }
-    }"""
-},{ rule:"""query ($USERNAME: String!) {
-        queryNode(filter: {visibility: {eq: Secret}}) {
-          children {
-              first_link(filter: {username: {eq: $USERNAME}}) { username }
-          }
-        }
-    }"""
-}]
-}) {
+type Node {
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
-  name: String! @search(by: [term])
-  nameid: String! @search(by: [hash, regexp]) @id
-  rootnameid: String! @search(by: [hash, regexp])
+  name: String!
+  nameid: String!
+  rootnameid: String!
   parent(filter: NodeFilter): Node
-  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: parent)
-  type_: NodeType! @search
-  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: emitter)
-  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: receiver)
-  about: String @search(by: [fulltext])
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  type_: NodeType!
+  tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  about: String
   mandate(filter: MandateFilter): Mandate
   docs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
   source(filter: BlobFilter): Blob
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
-  visibility: NodeVisibility! @search
-  mode: NodeMode! @search
+  visibility: NodeVisibility!
+  mode: NodeMode!
   rights: Int!
-  isArchived: Boolean! @search
-  isRoot: Boolean! @search
-  isPersonal: Boolean @search
+  isArchived: Boolean!
+  isRoot: Boolean!
+  isPersonal: Boolean
   userCanJoin: Boolean
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
-  skills: [String!] @search(by: [term])
-  role_type: RoleType @search
+  skills: [String!]
+  role_type: RoleType
   role_ext(filter: RoleExtFilter): RoleExt
-  contracts(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote!] @hasInverse(field: node)
+  contracts(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote!]
   orga_agg(filter: OrgaAggFilter): OrgaAgg @meta(f:"getOrgaAgg", k:"nameid")
 
   childrenAggregate(filter: NodeFilter): NodeAggregateResult
@@ -211,30 +196,20 @@ type NodeFragment {
 
 type Mandate {
   id: ID!
-  purpose: String! @search(by: [fulltext])
+  purpose: String!
   responsabilities: String
   domains: String
   policies: String
 }
 
-type Label @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($OWNIDS: [String]) {
-        queryLabel { 
-          nodes(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
-        }
-    }"""
-},{ rule:"""query ($ROOTIDS: [String]) {
-        queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
-    }"""
-}]
-}) {
+type Label {
   id: ID!
-  rootnameid: String! @search(by: [hash])
-  name: String! @search(by: [hash, term])
+  rootnameid: String!
+  name: String!
   description: String
   color: String
-  tensions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: labels)
-  nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: labels)
+  tensions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   n_nodes: Int
   n_tensions: Int
 
@@ -242,25 +217,15 @@ type Label @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   nodesAggregate(filter: NodeFilter): NodeAggregateResult
 }
 
-type RoleExt @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($OWNIDS: [String]) {
-        queryRoleExt { 
-          nodes(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
-        }
-    }"""
-},{ rule:"""query ($ROOTIDS: [String]) {
-        queryRoleExt(filter: {rootnameid: {in: $ROOTIDS}}) { id }
-    }"""
-}]
-}) {
+type RoleExt {
   id: ID!
-  rootnameid: String! @search(by: [hash])
-  name: String! @search(by: [hash, term])
+  rootnameid: String!
+  name: String!
   about: String
   role_type: RoleType!
   color: String
   mandate(filter: MandateFilter): Mandate
-  nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: role_ext)
+  nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   n_nodes: Int
 
   nodesAggregate(filter: NodeFilter): NodeAggregateResult
@@ -271,92 +236,37 @@ type OrgaAgg {
   n_guests: Int
 }
 
-type Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($USERNAME: String!) {
-      queryPost {
-        createdBy(filter: {username: {eq: $USERNAME}}) { username }
-      }
-    }"""
-}]
-}) {
+type Post {
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
-  message: String @search(by: [fulltext])
-
-  candidatesAggregate(filter: UserFilter): UserAggregateResult
-  participantsAggregate(filter: VoteFilter): VoteAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  assigneesAggregate(filter: UserFilter): UserAggregateResult
-  labelsAggregate(filter: LabelFilter): LabelAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  blobsAggregate(filter: BlobFilter): BlobAggregateResult
-  contractsAggregate(filter: ContractFilter): ContractAggregateResult
-  historyAggregate(filter: EventFilter): EventAggregateResult
+  message: String
 }
 
-type Tension @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($OWNIDS: [String]) {
-        queryTension {
-          receiver(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
-        }
-    }"""
-},{ rule:"""query ($ROOTIDS: [String]) {
-        queryTension {
-          receiver(filter: {visibility: {eq: Private}, and: [{rootnameid: {in: $ROOTIDS}}]}) { id }
-        }
-    }"""
-},{ rule:"""query ($USERNAME: String!) {
-        queryTension {
-          receiver(filter: {visibility: {eq: Secret}}) { 
-            children {
-                first_link(filter: {username: {eq: $USERNAME}}) { username }
-            }
-          }
-        }
-    }"""
-}]
-}, add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($USERNAME: String!) {
-        queryTension {
-          emitter {
-            first_link(filter: {username: {eq: $USERNAME}}) { username }
-          }
-        }
-    }"""
-},{ rule:"""query {
-        queryTension {
-          emitter(filter: {role_type: {eq: Bot}}) { id }
-        }
-    }"""
-}]
-}) {
-  emitterid: String! @search(by: [hash, regexp])
+type Tension {
+  emitterid: String!
   emitter(filter: NodeFilter): Node!
-  receiverid: String! @search(by: [hash, regexp])
+  receiverid: String!
   receiver(filter: NodeFilter): Node!
-  title: String! @search(by: [fulltext])
-  type_: TensionType! @search
-  status: TensionStatus! @search
+  title: String!
+  type_: TensionType!
+  status: TensionStatus!
   assignees(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   action: TensionAction
-  blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!] @hasInverse(field: tension)
-  contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!] @hasInverse(field: tension)
-  history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]! @hasInverse(field: tension)
+  blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!]
+  contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
+  history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]!
   n_comments: Int
   n_open_contracts: Int
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
-  message: String @search(by: [fulltext])
+  message: String
 
-  candidatesAggregate(filter: UserFilter): UserAggregateResult
-  participantsAggregate(filter: VoteFilter): VoteAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
   assigneesAggregate(filter: UserFilter): UserAggregateResult
   labelsAggregate(filter: LabelFilter): LabelAggregateResult
   commentsAggregate(filter: CommentFilter): CommentAggregateResult
@@ -365,171 +275,98 @@ type Tension @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   historyAggregate(filter: EventFilter): EventAggregateResult
 }
 
-type Comment @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($USERNAME: String!) {
-      queryComment {
-        createdBy(filter: {username: {eq: $USERNAME}}) { username }
-      }
-    }"""
-}]
-}) {
-  message: String! @search(by: [fulltext])
+type Comment {
+  message: String!
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
 }
 
 type Blob {
   tension(filter: TensionFilter): Tension!
-  blob_type: BlobType! @search
-  pushedFlag: DateTime @search
-  archivedFlag: DateTime @search
+  blob_type: BlobType!
+  pushedFlag: DateTime
+  archivedFlag: DateTime
   node(filter: NodeFragmentFilter): NodeFragment
   md: String
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
-  message: String @search(by: [fulltext])
-
-  candidatesAggregate(filter: UserFilter): UserAggregateResult
-  participantsAggregate(filter: VoteFilter): VoteAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  assigneesAggregate(filter: UserFilter): UserAggregateResult
-  labelsAggregate(filter: LabelFilter): LabelAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  blobsAggregate(filter: BlobFilter): BlobAggregateResult
-  contractsAggregate(filter: ContractFilter): ContractAggregateResult
-  historyAggregate(filter: EventFilter): EventAggregateResult
+  message: String
 }
 
 type Event {
   tension(filter: TensionFilter): Tension!
-  event_type: TensionEvent! @search
+  event_type: TensionEvent!
   old: String
   new: String
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
-  message: String @search(by: [fulltext])
-
-  candidatesAggregate(filter: UserFilter): UserAggregateResult
-  participantsAggregate(filter: VoteFilter): VoteAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  assigneesAggregate(filter: UserFilter): UserAggregateResult
-  labelsAggregate(filter: LabelFilter): LabelAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  blobsAggregate(filter: BlobFilter): BlobAggregateResult
-  contractsAggregate(filter: ContractFilter): ContractAggregateResult
-  historyAggregate(filter: EventFilter): EventAggregateResult
+  message: String
 }
 
 type EventFragment {
-  event_type: TensionEvent! @search
+  event_type: TensionEvent!
   old: String
   new: String
 }
 
-type Contract @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($OWNIDS: [String]) {
-        queryContract {
-          tension { receiver(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id } }
-        }
-    }"""
-},{ rule:"""query ($ROOTIDS: [String]) {
-        queryContract {
-          tension { receiver(filter: {visibility: {eq: Private}, and: [{rootnameid: {in: $ROOTIDS}}]}) { id } }
-        }
-    }"""
-},{ rule:"""query ($USERNAME: String!) {
-        queryContract {
-          tension { 
-            receiver(filter: {visibility: {eq: Secret}}) { 
-              children {
-                  first_link(filter: {username: {eq: $USERNAME}}) { username }
-              }
-            }
-          }
-        }
-    }"""
-}]
-}) {
-  contractid: String! @id
+type Contract {
+  contractid: String!
   tension(filter: TensionFilter): Tension!
-  status: ContractStatus! @search
-  contract_type: ContractType! @search
-  closedAt: DateTime @search
+  status: ContractStatus!
+  contract_type: ContractType!
+  closedAt: DateTime
   event(filter: EventFragmentFilter): EventFragment!
-  candidates(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!] @hasInverse(field: contracts)
-  participants(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote!]! @hasInverse(field: contract)
+  candidates(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
+  participants(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote!]!
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   isValidator: Boolean @isContractValidator
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
-  message: String @search(by: [fulltext])
+  message: String
 
   candidatesAggregate(filter: UserFilter): UserAggregateResult
   participantsAggregate(filter: VoteFilter): VoteAggregateResult
   commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  assigneesAggregate(filter: UserFilter): UserAggregateResult
-  labelsAggregate(filter: LabelFilter): LabelAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  blobsAggregate(filter: BlobFilter): BlobAggregateResult
-  contractsAggregate(filter: ContractFilter): ContractAggregateResult
-  historyAggregate(filter: EventFilter): EventAggregateResult
 }
 
-type Vote @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
-},{ rule:"""query ($USERNAME: String!) {
-      queryVote {
-        node { first_link(filter: {username: {eq: $USERNAME}}) { username } }
-      }
-    }"""
-}]
-}) {
-  voteid: String! @id
+type Vote {
+  voteid: String!
   contract(filter: ContractFilter): Contract!
   node(filter: NodeFilter): Node!
   data: [Int!]!
   id: ID!
   createdBy(filter: UserFilter): User!
-  createdAt: DateTime! @search
+  createdAt: DateTime!
   updatedAt: DateTime
-  message: String @search(by: [fulltext])
-
-  candidatesAggregate(filter: UserFilter): UserAggregateResult
-  participantsAggregate(filter: VoteFilter): VoteAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  assigneesAggregate(filter: UserFilter): UserAggregateResult
-  labelsAggregate(filter: LabelFilter): LabelAggregateResult
-  commentsAggregate(filter: CommentFilter): CommentAggregateResult
-  blobsAggregate(filter: BlobFilter): BlobAggregateResult
-  contractsAggregate(filter: ContractFilter): ContractAggregateResult
-  historyAggregate(filter: EventFilter): EventAggregateResult
+  message: String
 }
 
 type User {
   id: ID!
   createdAt: DateTime!
   lastAck: DateTime!
-  username: String! @id
+  username: String!
   name: String
   password: String! @hidden
-  email: String! @hidden @search(by: [hash])
+  email: String! @hidden
   emailHash: String @hidden
   emailValidated: Boolean! @hidden
   bio: String
   utc: String
   rights(filter: UserRightsFilter): UserRights!
-  roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: first_link)
-  backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!] @hasInverse(field: second_link)
-  tensions_created(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: createdBy)
-  tensions_assigned(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!] @hasInverse(field: assignees)
-  contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!] @hasInverse(field: candidates)
+  roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  tensions_created(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  tensions_assigned(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
+  contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
 
   rolesAggregate(filter: NodeFilter): NodeAggregateResult
   backed_rolesAggregate(filter: NodeFilter): NodeAggregateResult
@@ -684,11 +521,7 @@ enum UserType {
 
 # Dgraph.Authorization {"VerificationKey":"checkJwkToken_or_pubkey","Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"HS256"}
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
 directive @remote on OBJECT|INTERFACE|UNION|INPUT_OBJECT|ENUM
 
@@ -696,9 +529,11 @@ directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJ
 
 directive @cacheControl(maxAge: Int!) on QUERY
 
-directive @lambda on FIELD_DEFINITION
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
 directive @id(interface: Boolean) on FIELD_DEFINITION
 
@@ -708,13 +543,15 @@ directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: Auth
 
 directive @cascade(fields: [String]) on FIELD
 
+directive @lambda on FIELD_DEFINITION
+
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @remoteResponse(name: String) on FIELD_DEFINITION
 
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT|INTERFACE
-
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
