@@ -1,4 +1,6 @@
 @@grammar::GRAPHQL
+@@comments :: //
+@@eol_comments :: //
 
 
 # Each rule name/marker can be of the form -> name[__code]:
@@ -7,9 +9,9 @@
 # else, a newline is append.
 
 
-document
+start
     =
-    {definition}+ 
+    {definition}+ $
     ;
 
 
@@ -106,6 +108,7 @@ inline_fragment
 
 
 value = [LINE_COMMENT] _value;
+
 _value
     =
     | variable
@@ -223,9 +226,7 @@ directives
 
 directive
     =
-   _cst__bb:'@'
-   _name:name [_args:arguments]
-    ;
+   _cst__bb:'@' _name:name _args:[arguments] ;
 
 
 type_system_definition
@@ -306,7 +307,7 @@ scalar_type_extension
 
 object_type_definition
     =
-    [description] _cst:'type' _name:name [_implements:implements_interfaces] [_directives:directives] [_fields:fields_definition]
+    [description] _cst:'type' _name:name _implements:[implements_interfaces] _directives:[directives] _fields:[fields_definition]
     ;
 
 
@@ -328,7 +329,7 @@ _field_definition
 
 field_definition
     =
-    [description] _name:name [args:arguments_definition] _cst:':' _type:type [_directives:directives]
+    [description] _name:name args:[arguments_definition] _cst:':' _type:type _directives:[directives]
     | COMMENTS
     ;
 
@@ -345,7 +346,7 @@ _input_value_definition
 
 input_value_definition
     =
-    [description] _name:name _cst:':' _type:type [_dv:default_value] [_directives:directives] ;
+    [description] _name:name _cst:':' _type:type _dv:[default_value] _directives:[directives] ;
 
 
 object_type_extension
@@ -358,11 +359,7 @@ object_type_extension
 
 interface_type_definition
     =
-    [description] 
-    _cst:'interface' 
-    _name:name 
-    [_directives:directives] 
-    [_fields:fields_definition]
+    [description] _cst:'interface' _name:name _directives:[directives] _fields:[fields_definition]
     ;
 
 
@@ -421,7 +418,7 @@ enum_type_extension
 
 input_object_type_definition
     =
-    [description] _cst:'input' _name:name [_directives:directives] [_fields:input_fields_definition]
+    [description] _cst:'input' _name:name _directives:[directives] _fields:[input_fields_definition]
     ;
 
 
@@ -440,7 +437,7 @@ input_object_type_extension
 
 directive_definition
     =
-    [description] _directive__ba:'directive' _cst:'@' _name:name [args:arguments_definition] _cst__bs:'on' _locations:directive_locations
+    [description] _directive__ba:'directive' _cst:'@' _name:name args:[arguments_definition] _cst__bs:'on' _locations:directive_locations
     ;
 
 
@@ -494,7 +491,7 @@ _name
 
 COMMENTS
     =
-    DOC | LINE_COMMENT
+    LINE_COMMENT | DOC
     ;
 
 LINE_COMMENT
@@ -527,7 +524,8 @@ STRING
 
 BLOCK_STRING
     =
-    '"""' (/[\r\n]|"[^"]|""[^"]/)%{/[^\r\n"]*/} '"""'
+    # (/[\r\n]+|"[^"]|""[^"]|/)%{ /[^\r\n"]/ }*
+    '"""' (/"[^"]|""[^"]/)%{ /[^"]+/ }* '"""'
     ;
 
 

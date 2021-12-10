@@ -35,7 +35,7 @@ sys.setrecursionlimit(10**4)
 
 class AST2(AST):
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def clear(self):
         for k in list(self):
@@ -63,8 +63,6 @@ class SemanticFilter:
         '''
         assert(len(ast._fields) == 3)
         fields = ast._fields[1]
-        # ===
-        #fields = next(a for a in ast._fields if (isinstance(a, list)))
 
         # Filter Comments
         to_remove = [i for i, f in enumerate(fields) if not f.field.get('_name')]
@@ -103,7 +101,7 @@ class SemanticFilter:
         assert(isinstance(ast, AST))
         items = list(ast.items())
         if pos:
-            # DEBUG AST, assumen empty rule are push at the end
+            # DEBUG AST, assume empty rule are push at the end
             i = list(ast).index(rule_name)
             items.pop(i)
             assert(list(ast)[pos] != rule_name)
@@ -184,7 +182,6 @@ class SemanticFilter:
                     #'ast_copy': d.copy(),
                 })
                 if dn.startswith('x_') or dn.startswith('w_'):
-                #if dn.startswith('add_') or dn.startswith('patch_') or dn.startswith('alter_'):
                     to_remove.append(i)
 
             # filter directives
@@ -234,13 +231,13 @@ class SemanticFilter:
             # Inherit a  field
             fields.append(fd)
 
-            # Current field
+            ## Current field
             curfd = [x.field for x in fields if name == self.get_name(x.field)][0]
 
             # Inherit a directive
             directives = itf_fd["directives"]
             if not curfd._directives and directives:
-                self._ast_set(curfd, '_directives',[x['ast'] for x in  directives])
+                self._ast_set(curfd, '_directives', [x['ast'] for x in  directives])
                 # LOG DEBUG
                 #print("%s inherited %s directive from %s" % (curfd._name.name, len(directives), interface_name))
 
@@ -249,7 +246,7 @@ class SemanticFilter:
 
     def inherit_interface_dgraph(self, ast):
         '''Inherits implemented interface.
-            * if field is already defined in interface, removed it.
+            * if field is already defined in interface, removed it. Dgraph will throw an error otherwie.
             * If type if empty add a dummy field.
         '''
 
@@ -273,13 +270,14 @@ class SemanticFilter:
             fields.pop(i)
 
         if len(fields) == 0:
+            # Dgraph need at least one field.
             fields.append(AST(field="_VOID: String"))
 
         return
 
     def copy_directives(self, name_in, data_types_in,
                         name_out, data_type_out,
-                        directive_name, set_default=False):
+                        directive_name, set_default=False, with_args=False):
         _fields = None
         for data_type in data_types_in:
             data_in = getattr(self, data_type)
@@ -300,7 +298,7 @@ class SemanticFilter:
 
                 for d in _f['directives']:
                     dn = d['name']
-                    if re.search(directive_name, dn):
+                    if re.search(directive_name, dn) and (not with_args or with_args and d["ast"]._args):
                         if not f['ast'].field._directives:
                             self._ast_set(f['ast'].field, '_directives', [])
 
@@ -340,7 +338,7 @@ class SemanticFilter:
 
                         # Add Pre Hook (Input) (Query + Mutations)
                         pre_directive["cst"] = op + type_ + "Input"
-                        args = self.get_args(f['ast'].field)
+                        args = list(self.get_args(f['ast'].field))
                         args.insert(len(args)-1, pre_directive)
 
                         # Only add Post Hook for Mutation queries
@@ -384,8 +382,10 @@ class SemanticFilter:
                     args = f['args']
                     new_args = self.get_args(_field)
                     if not args and new_args:
-                        pos = list(_field).index('args')
-                        self._ast_set(f['ast'].field, 'args', new_args, pos)
+                        self._ast_set(f['ast'].field, 'args', new_args)
+                        # We don't need that anymore since the ASR is ordered now ?
+                        #pos = list(_field).index('args')
+                        #self._ast_set(f['ast'].field, 'args', new_args, pos)
         return
 
 
@@ -493,6 +493,8 @@ class GqlgenSemantics(GraphqlSemantics):
             type_name = re.match(r"Add(\w*)Input", name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_')
+                # If there no rule, ignore the directive as add input are allowed by default.
+                self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_alter', with_args=True)
         elif name.endswith('Patch'):
             # This match the input field for the "Update" and "Remove" mutations
             type_name = re.match(r"(\w*)Patch", name).groups()[0]
@@ -549,13 +551,15 @@ class DgraphSemantics(GraphqlSemantics):
         '''
         assert(isinstance(ast, AST))
         ast = AST2(ast)
-
         name = self.sf.get_name(ast)
+
         # Watch out duplicate !
         if name in self.sf.types:
             self.sf.update_fields('types', name, ast)
             return None
         else:
+            # Here, this method will remove attribute.
+            # Dgraph want the same field of the interface or nothing.
             self.sf.populate_data('types', name, ast)
             self.sf.inherit_interface_dgraph(ast)
 
@@ -601,7 +605,6 @@ class SDL:
 
         self._grammar = open("gram/graphql.ebnf").read()
         self._target = open(infile).read()
-        self.rew = re.compile(r'^\w+$')
 
         if self.s['--dgraph']:
             self.semantics = DgraphSemantics()
@@ -612,7 +615,7 @@ class SDL:
         self.parser = GRAPHQLParser()
 
         self.ast = self.parser.parse(self._target,
-                                     rule_name="document",
+                                     rule_name="start",
                                      semantics=self.semantics,
                                      parseinfo=False)
 
@@ -689,9 +692,7 @@ class SDL:
                         if o.comment and comment.startswith("# Dgraph.Authorization"):
                             # keep comments
                             out += "\n\n"
-                            pass
-                        else:
-                            # ignore comments
+                        else: # ignore comments
                             continue
                     elif _type == "args":
                         ignore_nl = True
@@ -713,10 +714,10 @@ class SDL:
                         if _next and _next == '{':
                             # without AST
                             v += ' '
-                        elif _next and isinstance(_next, list) and _next[0] == '{':
+                        elif _next and isinstance(_next, (tuple, list)) and _next[0] == '{':
                             # with AST
                             v += ' '
-                        elif _next and isinstance(_next, list) and _next[0] == 'implements':
+                        elif _next and isinstance(_next, (tuple, list)) and _next[0] == 'implements':
                             v += ' '
 
                         #print("dict-- ", k, v, _prev, _next)
@@ -738,7 +739,7 @@ class SDL:
                                          ignore_nl=ignore_nl,
                                )
 
-            elif isinstance(o, list):
+            elif isinstance(o, (list, tuple)):
                 # Assume Closure
                 for mth, oo in enumerate(o):
                     if mth < len(o)-1:

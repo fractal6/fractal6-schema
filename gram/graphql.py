@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # CAVEAT UTILITOR
 #
@@ -10,15 +9,15 @@
 # Any changes you make to it will be overwritten the next time
 # the file is generated.
 
-
-from __future__ import print_function, division, absolute_import, unicode_literals
+from __future__ import annotations
 
 import sys
 
 from tatsu.buffering import Buffer
 from tatsu.parsing import Parser
-from tatsu.parsing import tatsumasu, leftrec, nomemo
-from tatsu.parsing import leftrec, nomemo  # noqa
+from tatsu.parsing import tatsumasu
+from tatsu.parsing import leftrec, nomemo, isname # noqa
+from tatsu.infos import ParserConfig
 from tatsu.util import re, generic_main  # noqa
 
 
@@ -26,66 +25,46 @@ KEYWORDS = {}  # type: ignore
 
 
 class GRAPHQLBuffer(Buffer):
-    def __init__(
-        self,
-        text,
-        whitespace=None,
-        nameguard=None,
-        comments_re=None,
-        eol_comments_re=None,
-        ignorecase=None,
-        namechars='',
-        **kwargs
-    ):
-        super(GRAPHQLBuffer, self).__init__(
-            text,
-            whitespace=whitespace,
-            nameguard=nameguard,
-            comments_re=comments_re,
-            eol_comments_re=eol_comments_re,
-            ignorecase=ignorecase,
-            namechars=namechars,
-            **kwargs
+    def __init__(self, text, /, config: ParserConfig = None, **settings):
+        base_config = ParserConfig.new(
+            owner=self,
+            whitespace=None,
+            nameguard=None,
+            comments_re='',
+            eol_comments_re='',
+            ignorecase=False,
+            namechars='',
+            parseinfo=False,
         )
+        config = base_config.replace_config(config)
+        config = config.merge(**settings)
+        super().__init__(text, config=config)
 
 
 class GRAPHQLParser(Parser):
-    def __init__(
-        self,
-        whitespace=None,
-        nameguard=None,
-        comments_re=None,
-        eol_comments_re=None,
-        ignorecase=None,
-        left_recursion=True,
-        parseinfo=True,
-        keywords=None,
-        namechars='',
-        buffer_class=GRAPHQLBuffer,
-        **kwargs
-    ):
-        if keywords is None:
-            keywords = KEYWORDS
-        super(GRAPHQLParser, self).__init__(
-            whitespace=whitespace,
-            nameguard=nameguard,
-            comments_re=comments_re,
-            eol_comments_re=eol_comments_re,
-            ignorecase=ignorecase,
-            left_recursion=left_recursion,
-            parseinfo=parseinfo,
-            keywords=keywords,
-            namechars=namechars,
-            buffer_class=buffer_class,
-            **kwargs
+    def __init__(self, config: ParserConfig = None, **settings):
+        base_config = ParserConfig.new(
+            owner=self,
+            whitespace=None,
+            nameguard=None,
+            comments_re='',
+            eol_comments_re='',
+            ignorecase=False,
+            namechars='',
+            parseinfo=False,
+            keywords=KEYWORDS,
         )
+        config = base_config.replace_config(config)
+        config = config.merge(**settings)
+        super().__init__(config=config)
 
     @tatsumasu()
-    def _document_(self):  # noqa
+    def _start_(self):  # noqa
 
         def block0():
             self._definition_()
         self._positive_closure(block0)
+        self._check_eof()
 
     @tatsumasu()
     def _definition_(self):  # noqa
@@ -96,7 +75,23 @@ class GRAPHQLParser(Parser):
                 self._executable_definition_()
             with self._option():
                 self._type_system_definition_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                '<LINE_COMMENT> <DOC> <COMMENTS>'
+                '<operation_definition>'
+                '<fragment_definition>'
+                '<executable_definition>'
+                '<schema_definition>'
+                '<directive_definition>'
+                '<interface_type_definition>'
+                '<enum_type_definition>'
+                '<object_type_definition>'
+                '<type_system_extension>'
+                '<input_object_type_definition>'
+                '<union_type_definition>'
+                '<scalar_type_definition>'
+                '<type_system_definition>'
+            )
 
     @tatsumasu()
     def _executable_definition_(self):  # noqa
@@ -105,7 +100,12 @@ class GRAPHQLParser(Parser):
                 self._operation_definition_()
             with self._option():
                 self._fragment_definition_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                '<operation_type> <selection_set>'
+                "<operation_definition> 'fragment'"
+                '<fragment_definition>'
+            )
 
     @tatsumasu()
     def _operation_definition_(self):  # noqa
@@ -121,7 +121,11 @@ class GRAPHQLParser(Parser):
                 self._selection_set_()
             with self._option():
                 self._selection_set_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'query' 'mutation' 'subscription'"
+                "<operation_type> '{' <selection_set>"
+            )
 
     @tatsumasu()
     def _operation_type_(self):  # noqa
@@ -132,7 +136,10 @@ class GRAPHQLParser(Parser):
                 self._token('mutation')
             with self._option():
                 self._token('subscription')
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'query' 'mutation' 'subscription'"
+            )
 
     @tatsumasu()
     def _selection_set_(self):  # noqa
@@ -152,7 +159,11 @@ class GRAPHQLParser(Parser):
                 self._fragment_spread_()
             with self._option():
                 self._inline_fragment_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "<name> <alias> <field> '...'"
+                '<fragment_spread> <inline_fragment>'
+            )
 
     @tatsumasu()
     def _field_(self):  # noqa
@@ -189,12 +200,15 @@ class GRAPHQLParser(Parser):
                     self._token('[')
                     self._value_()
 
-                    def block0():
+                    def block1():
                         self._token(',')
                         self._value_()
-                    self._closure(block0)
+                    self._closure(block1)
                     self._token(']')
-                self._error('no available options')
+                self._error(
+                    'expecting one of: '
+                    "<value> '['"
+                )
 
     @tatsumasu()
     def _alias_(self):  # noqa
@@ -263,13 +277,21 @@ class GRAPHQLParser(Parser):
                 self._list_value_()
             with self._option():
                 self._object_value_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'$' <variable> <int> <int_value> <float>"
+                '<float_value> <BLOCK_STRING> <STRING>'
+                "<string_value> 'true' 'false'"
+                "<boolean_value> 'null' <null_value>"
+                "<name> <enum_value> '[' <list_value> '{'"
+                '<object_value>'
+            )
 
     @tatsumasu()
     def _int_value_(self):  # noqa
         self._int_()
         self.name_last_node('_join')
-        self.ast._define(
+        self._define(
             ['_join'],
             []
         )
@@ -278,7 +300,7 @@ class GRAPHQLParser(Parser):
     def _float_value_(self):  # noqa
         self._float_()
         self.name_last_node('_join')
-        self.ast._define(
+        self._define(
             ['_join'],
             []
         )
@@ -290,7 +312,10 @@ class GRAPHQLParser(Parser):
                 self._token('true')
             with self._option():
                 self._token('false')
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'true' 'false'"
+            )
 
     @tatsumasu()
     def _string_value_(self):  # noqa
@@ -299,7 +324,10 @@ class GRAPHQLParser(Parser):
                 self._BLOCK_STRING_()
             with self._option():
                 self._STRING_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                '\'"""\' <BLOCK_STRING> \'"\' <STRING>'
+            )
 
     @tatsumasu()
     def _null_value_(self):  # noqa
@@ -371,9 +399,12 @@ class GRAPHQLParser(Parser):
                     self._list_type_()
                     with self._optional():
                         self._token('!')
-                self._error('no available options')
+                self._error(
+                    'expecting one of: '
+                    "<name> <named_type> '[' <list_type>"
+                )
         self.name_last_node('_type')
-        self.ast._define(
+        self._define(
             ['_type'],
             []
         )
@@ -403,9 +434,9 @@ class GRAPHQLParser(Parser):
         self.name_last_node('_name')
         with self._optional():
             self._arguments_()
-            self.name_last_node('_args')
-        self.ast._define(
-            ['_args', '_cst__bb', '_name'],
+        self.name_last_node('_args')
+        self._define(
+            ['_cst__bb', '_name', '_args'],
             []
         )
 
@@ -415,33 +446,82 @@ class GRAPHQLParser(Parser):
             with self._option():
                 self._schema_definition_()
                 self.name_last_node('schema_definition')
+                self._define(
+                    ['schema_definition'],
+                    []
+                )
             with self._option():
                 self._directive_definition_()
                 self.name_last_node('directive_definition')
+                self._define(
+                    ['directive_definition'],
+                    []
+                )
             with self._option():
                 self._interface_type_definition_()
                 self.name_last_node('interface_definition')
+                self._define(
+                    ['interface_definition'],
+                    []
+                )
             with self._option():
                 self._enum_type_definition_()
                 self.name_last_node('enum_definition')
+                self._define(
+                    ['enum_definition'],
+                    []
+                )
             with self._option():
                 self._object_type_definition_()
                 self.name_last_node('type_definition')
+                self._define(
+                    ['type_definition'],
+                    []
+                )
             with self._option():
                 self._type_system_extension_()
                 self.name_last_node('extension_definition')
+                self._define(
+                    ['extension_definition'],
+                    []
+                )
             with self._option():
                 self._input_object_type_definition_()
                 self.name_last_node('input_definition')
+                self._define(
+                    ['input_definition'],
+                    []
+                )
             with self._option():
                 self._union_type_definition_()
                 self.name_last_node('union_definition')
+                self._define(
+                    ['union_definition'],
+                    []
+                )
             with self._option():
                 self._scalar_type_definition_()
                 self.name_last_node('scalar_definition')
-            self._error('no available options')
-        self.ast._define(
-            ['directive_definition', 'enum_definition', 'extension_definition', 'input_definition', 'interface_definition', 'scalar_definition', 'schema_definition', 'type_definition', 'union_definition'],
+                self._define(
+                    ['scalar_definition'],
+                    []
+                )
+            self._error(
+                'expecting one of: '
+                "'schema' <schema_definition> 'directive'"
+                '<BLOCK_STRING> <STRING> <string_value>'
+                '<description> <directive_definition>'
+                "'interface' <interface_type_definition>"
+                "'enum' <enum_type_definition> 'type'"
+                '<object_type_definition>'
+                '<schema_extension> <type_extension>'
+                "<type_system_extension> 'input'"
+                "<input_object_type_definition> 'union'"
+                "<union_type_definition> 'scalar'"
+                '<scalar_type_definition>'
+            )
+        self._define(
+            ['schema_definition', 'directive_definition', 'interface_definition', 'enum_definition', 'type_definition', 'extension_definition', 'input_definition', 'union_definition', 'scalar_definition'],
             []
         )
 
@@ -452,7 +532,17 @@ class GRAPHQLParser(Parser):
                 self._schema_extension_()
             with self._option():
                 self._type_extension_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extend' <schema_extension>"
+                '<scalar_type_extension>'
+                '<object_type_extension>'
+                '<interface_type_extension>'
+                '<union_type_extension>'
+                '<enum_type_extension>'
+                '<input_object_type_extension>'
+                '<type_extension>'
+            )
 
     @tatsumasu()
     def _schema_definition_(self):  # noqa
@@ -482,15 +572,18 @@ class GRAPHQLParser(Parser):
                     self._directives_()
                 self._token('{')
 
-                def block0():
+                def block1():
                     self._operation_type_definition_()
-                self._positive_closure(block0)
+                self._positive_closure(block1)
                 self._token('}')
             with self._option():
                 self._token('extend')
                 self._token('schema')
                 self._directives_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extend'"
+            )
 
     @tatsumasu()
     def _operation_type_definition_(self):  # noqa
@@ -499,7 +592,7 @@ class GRAPHQLParser(Parser):
             self._token(':')
             self._named_type_()
         self.name_last_node('field')
-        self.ast._define(
+        self._define(
             ['field'],
             []
         )
@@ -523,7 +616,15 @@ class GRAPHQLParser(Parser):
                 self._enum_type_extension_()
             with self._option():
                 self._input_object_type_extension_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extends' <scalar_type_extension>"
+                "'extend' <object_type_extension>"
+                '<interface_type_extension>'
+                '<union_type_extension>'
+                '<enum_type_extension>'
+                '<input_object_type_extension>'
+            )
 
     @tatsumasu()
     def _scalar_type_definition_(self):  # noqa
@@ -551,15 +652,15 @@ class GRAPHQLParser(Parser):
         self.name_last_node('_name')
         with self._optional():
             self._implements_interfaces_()
-            self.name_last_node('_implements')
+        self.name_last_node('_implements')
         with self._optional():
             self._directives_()
-            self.name_last_node('_directives')
+        self.name_last_node('_directives')
         with self._optional():
             self._fields_definition_()
-            self.name_last_node('_fields')
-        self.ast._define(
-            ['_cst', '_directives', '_fields', '_implements', '_name'],
+        self.name_last_node('_fields')
+        self._define(
+            ['_cst', '_name', '_implements', '_directives', '_fields'],
             []
         )
 
@@ -576,7 +677,10 @@ class GRAPHQLParser(Parser):
                 self._implements_interfaces_()
                 self._token('&')
                 self._named_type_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'implements' <implements_interfaces>"
+            )
 
     @tatsumasu()
     def _fields_definition_(self):  # noqa
@@ -591,7 +695,7 @@ class GRAPHQLParser(Parser):
     def __field_definition_(self):  # noqa
         self._field_definition_()
         self.name_last_node('field')
-        self.ast._define(
+        self._define(
             ['field'],
             []
         )
@@ -606,19 +710,28 @@ class GRAPHQLParser(Parser):
                 self.name_last_node('_name')
                 with self._optional():
                     self._arguments_definition_()
-                    self.name_last_node('args')
+                self.name_last_node('args')
                 self._token(':')
                 self.name_last_node('_cst')
                 self._type_()
                 self.name_last_node('_type')
                 with self._optional():
                     self._directives_()
-                    self.name_last_node('_directives')
+                self.name_last_node('_directives')
+                self._define(
+                    ['_name', 'args', '_cst', '_type', '_directives'],
+                    []
+                )
             with self._option():
                 self._COMMENTS_()
-            self._error('no available options')
-        self.ast._define(
-            ['_cst', '_directives', '_name', '_type', 'args'],
+            self._error(
+                'expecting one of: '
+                '<_name> <name> <BLOCK_STRING> <STRING>'
+                '<string_value> \'"""\' \'"\' <description>'
+                '<LINE_COMMENT> <DOC> <COMMENTS>'
+            )
+        self._define(
+            ['_name', 'args', '_cst', '_type', '_directives'],
             []
         )
 
@@ -637,7 +750,7 @@ class GRAPHQLParser(Parser):
     def __input_value_definition_(self):  # noqa
         self._input_value_definition_()
         self.name_last_node('field')
-        self.ast._define(
+        self._define(
             ['field'],
             []
         )
@@ -654,12 +767,12 @@ class GRAPHQLParser(Parser):
         self.name_last_node('_type')
         with self._optional():
             self._default_value_()
-            self.name_last_node('_dv')
+        self.name_last_node('_dv')
         with self._optional():
             self._directives_()
-            self.name_last_node('_directives')
-        self.ast._define(
-            ['_cst', '_directives', '_dv', '_name', '_type'],
+        self.name_last_node('_directives')
+        self._define(
+            ['_name', '_cst', '_type', '_dv', '_directives'],
             []
         )
 
@@ -687,7 +800,10 @@ class GRAPHQLParser(Parser):
                 self._token('type')
                 self._name_()
                 self._implements_interfaces_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extend'"
+            )
 
     @tatsumasu()
     def _interface_type_definition_(self):  # noqa
@@ -699,12 +815,12 @@ class GRAPHQLParser(Parser):
         self.name_last_node('_name')
         with self._optional():
             self._directives_()
-            self.name_last_node('_directives')
+        self.name_last_node('_directives')
         with self._optional():
             self._fields_definition_()
-            self.name_last_node('_fields')
-        self.ast._define(
-            ['_cst', '_directives', '_fields', '_name'],
+        self.name_last_node('_fields')
+        self._define(
+            ['_cst', '_name', '_directives', '_fields'],
             []
         )
 
@@ -723,7 +839,10 @@ class GRAPHQLParser(Parser):
                 self._token('interface')
                 self._name_()
                 self._directives_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extend'"
+            )
 
     @tatsumasu()
     def _union_type_definition_(self):  # noqa
@@ -763,7 +882,10 @@ class GRAPHQLParser(Parser):
                 self._token('union')
                 self._name_()
                 self._directives_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extend'"
+            )
 
     @tatsumasu()
     def _enum_type_definition_(self):  # noqa
@@ -789,7 +911,7 @@ class GRAPHQLParser(Parser):
     def __enum_value_definition_(self):  # noqa
         self._enum_value_definition_()
         self.name_last_node('field')
-        self.ast._define(
+        self._define(
             ['field'],
             []
         )
@@ -805,7 +927,13 @@ class GRAPHQLParser(Parser):
                     self._directives_()
             with self._option():
                 self._COMMENTS_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                '<name> <_name> <enum_value>'
+                '<BLOCK_STRING> <STRING> <string_value>'
+                '\'"""\' \'"\' <description> <LINE_COMMENT>'
+                '<DOC> <COMMENTS>'
+            )
 
     @tatsumasu()
     def _enum_type_extension_(self):  # noqa
@@ -822,7 +950,10 @@ class GRAPHQLParser(Parser):
                 self._token('enum')
                 self._name_()
                 self._directives_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extend'"
+            )
 
     @tatsumasu()
     def _input_object_type_definition_(self):  # noqa
@@ -834,12 +965,12 @@ class GRAPHQLParser(Parser):
         self.name_last_node('_name')
         with self._optional():
             self._directives_()
-            self.name_last_node('_directives')
+        self.name_last_node('_directives')
         with self._optional():
             self._input_fields_definition_()
-            self.name_last_node('_fields')
-        self.ast._define(
-            ['_cst', '_directives', '_fields', '_name'],
+        self.name_last_node('_fields')
+        self._define(
+            ['_cst', '_name', '_directives', '_fields'],
             []
         )
 
@@ -867,7 +998,10 @@ class GRAPHQLParser(Parser):
                 self._token('input')
                 self._name_()
                 self._directives_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'extend'"
+            )
 
     @tatsumasu()
     def _directive_definition_(self):  # noqa
@@ -881,13 +1015,13 @@ class GRAPHQLParser(Parser):
         self.name_last_node('_name')
         with self._optional():
             self._arguments_definition_()
-            self.name_last_node('args')
+        self.name_last_node('args')
         self._token('on')
         self.name_last_node('_cst__bs')
         self._directive_locations_()
         self.name_last_node('_locations')
-        self.ast._define(
-            ['_cst', '_cst__bs', '_directive__ba', '_locations', '_name', 'args'],
+        self._define(
+            ['_directive__ba', '_cst', '_name', 'args', '_cst__bs', '_locations'],
             []
         )
 
@@ -907,7 +1041,18 @@ class GRAPHQLParser(Parser):
                 self._type_system_directive_location_()
             with self._option():
                 self._executable_directive_location_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'SCHEMA' 'SCALAR' 'OBJECT'"
+                "'FIELD_DEFINITION' 'ARGUMENT_DEFINITION'"
+                "'INTERFACE' 'UNION' 'ENUM' 'ENUM_VALUE'"
+                "'INPUT_OBJECT' 'INPUT_FIELD_DEFINITION'"
+                "<type_system_directive_location> 'QUERY'"
+                "'MUTATION' 'SUBSCRIPTION' 'FIELD'"
+                "'FRAGMENT_DEFINITION' 'FRAGMENT_SPREAD'"
+                "'INLINE_FRAGMENT'"
+                '<executable_directive_location>'
+            )
 
     @tatsumasu()
     def _executable_directive_location_(self):  # noqa
@@ -926,7 +1071,12 @@ class GRAPHQLParser(Parser):
                 self._token('FRAGMENT_SPREAD')
             with self._option():
                 self._token('INLINE_FRAGMENT')
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'QUERY' 'MUTATION' 'SUBSCRIPTION'"
+                "'FIELD' 'FRAGMENT_DEFINITION'"
+                "'FRAGMENT_SPREAD' 'INLINE_FRAGMENT'"
+            )
 
     @tatsumasu()
     def _type_system_directive_location_(self):  # noqa
@@ -953,13 +1103,19 @@ class GRAPHQLParser(Parser):
                 self._token('INPUT_OBJECT')
             with self._option():
                 self._token('INPUT_FIELD_DEFINITION')
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'SCHEMA' 'SCALAR' 'OBJECT'"
+                "'FIELD_DEFINITION' 'ARGUMENT_DEFINITION'"
+                "'INTERFACE' 'UNION' 'ENUM' 'ENUM_VALUE'"
+                "'INPUT_OBJECT' 'INPUT_FIELD_DEFINITION'"
+            )
 
     @tatsumasu()
     def _name_(self):  # noqa
         self.__name_()
         self.name_last_node('name')
-        self.ast._define(
+        self._define(
             ['name'],
             []
         )
@@ -972,16 +1128,20 @@ class GRAPHQLParser(Parser):
     def _COMMENTS_(self):  # noqa
         with self._choice():
             with self._option():
-                self._DOC_()
-            with self._option():
                 self._LINE_COMMENT_()
-            self._error('no available options')
+            with self._option():
+                self._DOC_()
+            self._error(
+                'expecting one of: '
+                '<_LINE_COMMENT> <LINE_COMMENT>'
+                '<BLOCK_STRING> <DOC>'
+            )
 
     @tatsumasu()
     def _LINE_COMMENT_(self):  # noqa
         self.__LINE_COMMENT_()
         self.name_last_node('comment')
-        self.ast._define(
+        self._define(
             ['comment'],
             []
         )
@@ -995,7 +1155,7 @@ class GRAPHQLParser(Parser):
     def _DOC_(self):  # noqa
         self._BLOCK_STRING_()
         self.name_last_node('doc')
-        self.ast._define(
+        self._define(
             ['doc'],
             []
         )
@@ -1012,10 +1172,13 @@ class GRAPHQLParser(Parser):
                         self._pattern('[^"\\\\]')
                     with self._option():
                         self._token('\\"')
-                    self._error('no available options')
+                    self._error(
+                        'expecting one of: '
+                        '<ESC> [^"\\] \'\\\\"\''
+                    )
         self._closure(block1)
         self.name_last_node('_join')
-        self.ast._define(
+        self._define(
             ['_join'],
             []
         )
@@ -1032,10 +1195,10 @@ class GRAPHQLParser(Parser):
 
         def sep0():
             with self._group():
-                self._pattern('[\\r\\n]|"[^"]|""[^"]')
+                self._pattern('"[^"]|""[^"]')
 
         def block0():
-            self._pattern('[^\\r\\n"]*')
+            self._pattern('[^"]+')
         self._join(block0, sep0)
         self._token('"""')
 
@@ -1048,7 +1211,10 @@ class GRAPHQLParser(Parser):
                     self._pattern('[\\"\\\\\\/bfnrt]')
                 with self._option():
                     self._UNICODE_()
-                self._error('no available options')
+                self._error(
+                    'expecting one of: '
+                    '[\\"\\\\/bfnrt] <UNICODE>'
+                )
 
     @tatsumasu()
     def _UNICODE_(self):  # noqa
@@ -1109,7 +1275,10 @@ class GRAPHQLParser(Parser):
                 self._int_()
                 self._FRACTIONAL_PART_()
                 self._EXPONENTIAL_PART_()
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "'0' '-' [1-9] <NONZERO_DIGIT> <int>"
+            )
 
     @tatsumasu()
     def _int_(self):  # noqa
@@ -1123,10 +1292,13 @@ class GRAPHQLParser(Parser):
                     self._token('-')
                 self._NONZERO_DIGIT_()
 
-                def block0():
+                def block1():
                     self._DIGIT_()
-                self._closure(block0)
-            self._error('no available options')
+                self._closure(block1)
+            self._error(
+                'expecting one of: '
+                "'0' '-' [1-9] <NONZERO_DIGIT>"
+            )
 
     @tatsumasu()
     def _punctuator_(self):  # noqa
@@ -1137,7 +1309,10 @@ class GRAPHQLParser(Parser):
                 self._token('...')
             with self._option():
                 self._pattern('[:=@[]{}|]')
-            self._error('no available options')
+            self._error(
+                'expecting one of: '
+                "[!$()] '...' [:=@[]{}|]"
+            )
 
     @tatsumasu()
     def _EXP_(self):  # noqa
@@ -1158,11 +1333,14 @@ class GRAPHQLParser(Parser):
                     self._token('\\uFEFF')
                 with self._option():
                     self._token('\\u0000FEFF')
-                self._error('no available options')
+                self._error(
+                    'expecting one of: '
+                    "'\\\\uEFBBBF' '\\\\uFEFF' '\\\\u0000FEFF'"
+                )
 
 
 class GRAPHQLSemantics(object):
-    def document(self, ast):  # noqa
+    def start(self, ast):  # noqa
         return ast
 
     def definition(self, ast):  # noqa
@@ -1456,14 +1634,19 @@ class GRAPHQLSemantics(object):
 
 def main(filename, start=None, **kwargs):
     if start is None:
-        start = 'document'
+        start = 'start'
     if not filename or filename == '-':
         text = sys.stdin.read()
     else:
         with open(filename) as f:
             text = f.read()
     parser = GRAPHQLParser()
-    return parser.parse(text, rule_name=start, filename=filename, **kwargs)
+    return parser.parse(
+        text,
+        rule_name=start,
+        filename=filename,
+        **kwargs
+    )
 
 
 if __name__ == '__main__':
@@ -1471,9 +1654,5 @@ if __name__ == '__main__':
     from tatsu.util import asjson
 
     ast = generic_main(main, GRAPHQLParser, name='GRAPHQL')
-    print('AST:')
-    print(ast)
-    print()
-    print('JSON:')
-    print(json.dumps(asjson(ast), indent=2))
-    print()
+    data = asjson(ast)
+    print(json.dumps(data, indent=2))

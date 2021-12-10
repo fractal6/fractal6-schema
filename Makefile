@@ -2,8 +2,11 @@
 SHELL := /bin/bash
 
 .PHONY: gen_dgraph_in/types.graphql
-default: schema
 
+# 1. make dgraph
+# 2. make schema
+# --
+default: schema
 all: parser dgraph schema 
 schema: gqlgen_in
 schema_all: dgraph schema

@@ -380,7 +380,6 @@ type Vote implements Post @auth(
   ]}
 ) @hook_ {
   # @debug: a vote should trigger a notification but its not evented (contract updated ?)
-  id: ID!
   voteid: String!  @id # {contractid}#{nameid}
   contract: Contract!
   node: Node! # Named Role (@...)
