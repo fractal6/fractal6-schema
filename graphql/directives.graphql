@@ -21,10 +21,14 @@ directive @isContractValidator on FIELD_DEFINITION
 #
 # Writer directives -- work the input field level.
 #
+# a:action  The function to be executed on the field.
+#
 ###########################################################
 
-# Lower the field value.
-directive @w_toLower on INPUT_FIELD_DEFINITION
+directive @w_set(a:String!) on INPUT_FIELD_DEFINITION
+directive @w_remove(a:String!) on INPUT_FIELD_DEFINITION
+directive @w_patch(a:String!) on INPUT_FIELD_DEFINITION
+directive @w_alter(a:String!) on INPUT_FIELD_DEFINITION
 
 
 ###########################################################
@@ -38,6 +42,10 @@ directive @w_toLower on INPUT_FIELD_DEFINITION
 # the @auth_patch_to is automatically generated on input;
 # else-if no arguments are given, the authorization is granted;
 # else the function must pass. 
+#
+# r:rule    Optional function that should pass (pass by default ie no argument)
+# f:field   Optional field to lookup
+# n:number  Optional integer value
 #
 ###########################################################
 

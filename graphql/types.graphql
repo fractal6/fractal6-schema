@@ -40,7 +40,7 @@ type Node @auth(
         }
     }""" }
   ]}
-) @hook_ {
+){
   id: ID!
   createdBy: User!      
   createdAt: DateTime!  @search 
@@ -94,10 +94,10 @@ type Node @auth(
 
 type NodeFragment {
   id: ID!
-  nameid: String    @w_toLower
-  name: String      @x_alter(r:"minLength", n:1)
-  about: String     @x_alter(r:"maxLength", n:280)
-  mandate: Mandate  @x_alter
+  nameid: String    @w_set(a:"lower")
+  name: String      @x_set(r:"minLength", n:1)
+  about: String     @x_set(r:"maxLength", n:280)
+  mandate: Mandate  @x_set
   skills: [String!] @x_alter
 
   # For Circles
@@ -118,10 +118,10 @@ type NodeFragment {
 
 type Mandate {
   id: ID!
-  purpose: String!          @x_alter @search(by: [fulltext])
-  responsabilities: String  @x_alter
-  domains: String           @x_alter
-  policies: String          @x_alter
+  purpose: String!          @x_set @search(by: [fulltext])
+  responsabilities: String  @x_set
+  domains: String           @x_set
+  policies: String          @x_set
 }
 
 type Label @auth(
@@ -142,9 +142,9 @@ type Label @auth(
 ) @hook_ {
   id: ID!
   rootnameid: String!   @search(by: [hash])
-  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLength", n:1) @w_toLower 
-  description: String   @x_alter(r:"maxLength", n:280)
-  color: String         @x_alter
+  name: String!         @search(by: [hash, term]) @x_set(r:"unique", f:"rootnameid") @x_set(r:"minLength", n:1) @w_set(a:"lower") 
+  description: String   @x_set(r:"maxLength", n:280)
+  color: String         @x_set
   tensions: [Tension!]  @hasInverse(field: labels) @x_ro
   nodes: [Node!]        @hasInverse(field: labels) @x_alter(r:"oneByOne")
 
@@ -171,11 +171,11 @@ type RoleExt @auth(
 ) @hook_ {
   id: ID!
   rootnameid: String!   @search(by: [hash])
-  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLength", n:1) @w_toLower 
-  about: String         @x_alter(r:"maxLength", n:280)
-  role_type: RoleType!  @x_alter
-  color: String         @x_alter
-  mandate: Mandate      @x_alter
+  name: String!         @search(by: [hash, term]) @x_set(r:"unique", f:"rootnameid") @x_set(r:"minLength", n:1) @w_set(a:"lower") 
+  about: String         @x_set(r:"maxLength", n:280)
+  role_type: RoleType!  @x_set
+  color: String         @x_set
+  mandate: Mandate      @x_set
   nodes: [Node!]        @hasInverse(field: role_ext) @x_alter(r:"oneByOne")
 
   # -- @debug : Aggregate count result.
@@ -209,8 +209,8 @@ interface Post @auth(
   id: ID!
   createdBy: User!       
   createdAt: DateTime!  @search 
-  updatedAt: DateTime                           @x_alter(r:"isOwner", f:"createdBy")
-  message: String       @search(by: [fulltext]) @x_alter(r:"isOwner", f:"createdBy") 
+  updatedAt: DateTime                           @x_set(r:"isOwner", f:"createdBy")
+  message: String       @search(by: [fulltext]) @x_set(r:"isOwner", f:"createdBy") 
 }
 
 type Tension implements Post @auth(
@@ -264,7 +264,7 @@ type Tension implements Post @auth(
   receiverid: String!    @search(by: [hash, regexp]) # @DEBUG: Waiting Nested filter in Dgragh
   receiver: Node!        
 
-  title: String!         @search(by: [fulltext]) @x_alter(r:"minLength", n:1) 
+  title: String!         @search(by: [fulltext]) @x_set(r:"minLength", n:1) 
   type_: TensionType!    @search 
   status: TensionStatus! @search
 
@@ -295,7 +295,7 @@ type Comment implements Post @auth(
     }""" }
   ]}
 ) @hook_ {
-  message: String!  @search(by: [fulltext]) @x_alter
+  message: String!  @search(by: [fulltext]) @x_set
 }
 
 type Blob implements Post {
