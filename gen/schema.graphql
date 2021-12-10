@@ -1,4 +1,60 @@
 
+directive @hook_addNodeInput on ARGUMENT_DEFINITION
+directive @hook_addNode on FIELD_DEFINITION
+directive @hook_updateNodeInput on ARGUMENT_DEFINITION
+directive @hook_updateNode on FIELD_DEFINITION
+directive @hook_deleteNodeInput on ARGUMENT_DEFINITION
+directive @hook_deleteNode on FIELD_DEFINITION
+directive @hook_addLabelInput on ARGUMENT_DEFINITION
+directive @hook_addLabel on FIELD_DEFINITION
+directive @hook_updateLabelInput on ARGUMENT_DEFINITION
+directive @hook_updateLabel on FIELD_DEFINITION
+directive @hook_deleteLabelInput on ARGUMENT_DEFINITION
+directive @hook_deleteLabel on FIELD_DEFINITION
+directive @hook_addRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_addRoleExt on FIELD_DEFINITION
+directive @hook_updateRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_updateRoleExt on FIELD_DEFINITION
+directive @hook_deleteRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_deleteRoleExt on FIELD_DEFINITION
+directive @hook_addTensionInput on ARGUMENT_DEFINITION
+directive @hook_addTension on FIELD_DEFINITION
+directive @hook_updateTensionInput on ARGUMENT_DEFINITION
+directive @hook_updateTension on FIELD_DEFINITION
+directive @hook_deleteTensionInput on ARGUMENT_DEFINITION
+directive @hook_deleteTension on FIELD_DEFINITION
+directive @hook_addCommentInput on ARGUMENT_DEFINITION
+directive @hook_addComment on FIELD_DEFINITION
+directive @hook_updateCommentInput on ARGUMENT_DEFINITION
+directive @hook_updateComment on FIELD_DEFINITION
+directive @hook_deleteCommentInput on ARGUMENT_DEFINITION
+directive @hook_deleteComment on FIELD_DEFINITION
+directive @hook_addContractInput on ARGUMENT_DEFINITION
+directive @hook_addContract on FIELD_DEFINITION
+directive @hook_updateContractInput on ARGUMENT_DEFINITION
+directive @hook_updateContract on FIELD_DEFINITION
+directive @hook_deleteContractInput on ARGUMENT_DEFINITION
+directive @hook_deleteContract on FIELD_DEFINITION
+directive @hook_addVoteInput on ARGUMENT_DEFINITION
+directive @hook_addVote on FIELD_DEFINITION
+directive @hook_updateVoteInput on ARGUMENT_DEFINITION
+directive @hook_updateVote on FIELD_DEFINITION
+directive @hook_deleteVoteInput on ARGUMENT_DEFINITION
+directive @hook_deleteVote on FIELD_DEFINITION
+directive @hook_getNodeInput on ARGUMENT_DEFINITION
+directive @hook_queryNodeInput on ARGUMENT_DEFINITION
+directive @hook_getLabelInput on ARGUMENT_DEFINITION
+directive @hook_queryLabelInput on ARGUMENT_DEFINITION
+directive @hook_getRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_queryRoleExtInput on ARGUMENT_DEFINITION
+directive @hook_getTensionInput on ARGUMENT_DEFINITION
+directive @hook_queryTensionInput on ARGUMENT_DEFINITION
+directive @hook_getCommentInput on ARGUMENT_DEFINITION
+directive @hook_queryCommentInput on ARGUMENT_DEFINITION
+directive @hook_getContractInput on ARGUMENT_DEFINITION
+directive @hook_queryContractInput on ARGUMENT_DEFINITION
+directive @hook_getVoteInput on ARGUMENT_DEFINITION
+directive @hook_queryVoteInput on ARGUMENT_DEFINITION
 
 
 directive @hidden on FIELD_DEFINITION
@@ -22,118 +78,6 @@ directive @x_alter(r: String, f: String, n: Int) on INPUT_FIELD_DEFINITION
 directive @x_patch_ro on INPUT_FIELD_DEFINITION
 
 directive @x_ro on INPUT_FIELD_DEFINITION
-
-directive @hook_getNodeInput on ARGUMENT_DEFINITION
-
-directive @hook_queryNodeInput on ARGUMENT_DEFINITION
-
-directive @hook_addNodeInput on ARGUMENT_DEFINITION
-
-directive @hook_updateNodeInput on ARGUMENT_DEFINITION
-
-directive @hook_deleteNodeInput on ARGUMENT_DEFINITION
-
-directive @hook_addNode on FIELD_DEFINITION
-
-directive @hook_updateNode on FIELD_DEFINITION
-
-directive @hook_deleteNode on FIELD_DEFINITION
-
-directive @hook_getRoleExtInput on ARGUMENT_DEFINITION
-
-directive @hook_queryRoleExtInput on ARGUMENT_DEFINITION
-
-directive @hook_addRoleExtInput on ARGUMENT_DEFINITION
-
-directive @hook_updateRoleExtInput on ARGUMENT_DEFINITION
-
-directive @hook_deleteRoleExtInput on ARGUMENT_DEFINITION
-
-directive @hook_addRoleExt on FIELD_DEFINITION
-
-directive @hook_updateRoleExt on FIELD_DEFINITION
-
-directive @hook_deleteRoleExt on FIELD_DEFINITION
-
-directive @hook_getLabelInput on ARGUMENT_DEFINITION
-
-directive @hook_queryLabelInput on ARGUMENT_DEFINITION
-
-directive @hook_addLabelInput on ARGUMENT_DEFINITION
-
-directive @hook_updateLabelInput on ARGUMENT_DEFINITION
-
-directive @hook_deleteLabelInput on ARGUMENT_DEFINITION
-
-directive @hook_addLabel on FIELD_DEFINITION
-
-directive @hook_updateLabel on FIELD_DEFINITION
-
-directive @hook_deleteLabel on FIELD_DEFINITION
-
-directive @hook_getTensionInput on ARGUMENT_DEFINITION
-
-directive @hook_queryTensionInput on ARGUMENT_DEFINITION
-
-directive @hook_addTensionInput on ARGUMENT_DEFINITION
-
-directive @hook_updateTensionInput on ARGUMENT_DEFINITION
-
-directive @hook_deleteTensionInput on ARGUMENT_DEFINITION
-
-directive @hook_addTension on FIELD_DEFINITION
-
-directive @hook_updateTension on FIELD_DEFINITION
-
-directive @hook_deleteTension on FIELD_DEFINITION
-
-directive @hook_getCommentInput on ARGUMENT_DEFINITION
-
-directive @hook_queryCommentInput on ARGUMENT_DEFINITION
-
-directive @hook_addCommentInput on ARGUMENT_DEFINITION
-
-directive @hook_updateCommentInput on ARGUMENT_DEFINITION
-
-directive @hook_deleteCommentInput on ARGUMENT_DEFINITION
-
-directive @hook_addComment on FIELD_DEFINITION
-
-directive @hook_updateComment on FIELD_DEFINITION
-
-directive @hook_deleteComment on FIELD_DEFINITION
-
-directive @hook_getContractInput on ARGUMENT_DEFINITION
-
-directive @hook_queryContractInput on ARGUMENT_DEFINITION
-
-directive @hook_addContractInput on ARGUMENT_DEFINITION
-
-directive @hook_updateContractInput on ARGUMENT_DEFINITION
-
-directive @hook_deleteContractInput on ARGUMENT_DEFINITION
-
-directive @hook_addContract on FIELD_DEFINITION
-
-directive @hook_updateContract on FIELD_DEFINITION
-
-directive @hook_deleteContract on FIELD_DEFINITION
-
-directive @hook_getVoteInput on ARGUMENT_DEFINITION
-
-directive @hook_queryVoteInput on ARGUMENT_DEFINITION
-
-directive @hook_addVoteInput on ARGUMENT_DEFINITION
-
-directive @hook_updateVoteInput on ARGUMENT_DEFINITION
-
-directive @hook_deleteVoteInput on ARGUMENT_DEFINITION
-
-directive @hook_addVote on FIELD_DEFINITION
-
-directive @hook_updateVote on FIELD_DEFINITION
-
-directive @hook_deleteVote on FIELD_DEFINITION
 
 type Node {
   id: ID!
@@ -523,6 +467,8 @@ enum UserType {
 
 directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
+
 directive @remote on OBJECT|INTERFACE|UNION|INPUT_OBJECT|ENUM
 
 directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT|INTERFACE
@@ -533,7 +479,7 @@ directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
 
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
 directive @id(interface: Boolean) on FIELD_DEFINITION
 
@@ -545,13 +491,11 @@ directive @cascade(fields: [String]) on FIELD
 
 directive @lambda on FIELD_DEFINITION
 
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT|INTERFACE
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT|INTERFACE
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -1577,32 +1521,32 @@ input MultiPolygonRef {
 }
 
 type Mutation {
-  addNode(input: [AddNodeInput!]!, upsert: Boolean): AddNodePayload @hook_addNode
-  updateNode(input: UpdateNodeInput!): UpdateNodePayload @hook_updateNode
-  deleteNode(filter: NodeFilter!): DeleteNodePayload @hook_deleteNode
+  addNode(input: [AddNodeInput!]!, upsert: Boolean @hook_addNodeInput): AddNodePayload @hook_addNode
+  updateNode(input: UpdateNodeInput! @hook_updateNodeInput): UpdateNodePayload @hook_updateNode
+  deleteNode(filter: NodeFilter! @hook_deleteNodeInput): DeleteNodePayload @hook_deleteNode
   addNodeFragment(input: [AddNodeFragmentInput!]!): AddNodeFragmentPayload
   updateNodeFragment(input: UpdateNodeFragmentInput!): UpdateNodeFragmentPayload
   deleteNodeFragment(filter: NodeFragmentFilter!): DeleteNodeFragmentPayload
   addMandate(input: [AddMandateInput!]!): AddMandatePayload
   updateMandate(input: UpdateMandateInput!): UpdateMandatePayload
   deleteMandate(filter: MandateFilter!): DeleteMandatePayload
-  addLabel(input: [AddLabelInput!]!): AddLabelPayload @hook_addLabel
-  updateLabel(input: UpdateLabelInput!): UpdateLabelPayload @hook_updateLabel
-  deleteLabel(filter: LabelFilter!): DeleteLabelPayload @hook_deleteLabel
-  addRoleExt(input: [AddRoleExtInput!]!): AddRoleExtPayload @hook_addRoleExt
-  updateRoleExt(input: UpdateRoleExtInput!): UpdateRoleExtPayload @hook_updateRoleExt
-  deleteRoleExt(filter: RoleExtFilter!): DeleteRoleExtPayload @hook_deleteRoleExt
+  addLabel(input: [AddLabelInput!]! @hook_addLabelInput): AddLabelPayload @hook_addLabel
+  updateLabel(input: UpdateLabelInput! @hook_updateLabelInput): UpdateLabelPayload @hook_updateLabel
+  deleteLabel(filter: LabelFilter! @hook_deleteLabelInput): DeleteLabelPayload @hook_deleteLabel
+  addRoleExt(input: [AddRoleExtInput!]! @hook_addRoleExtInput): AddRoleExtPayload @hook_addRoleExt
+  updateRoleExt(input: UpdateRoleExtInput! @hook_updateRoleExtInput): UpdateRoleExtPayload @hook_updateRoleExt
+  deleteRoleExt(filter: RoleExtFilter! @hook_deleteRoleExtInput): DeleteRoleExtPayload @hook_deleteRoleExt
   addOrgaAgg(input: [AddOrgaAggInput!]!): AddOrgaAggPayload
   updateOrgaAgg(input: UpdateOrgaAggInput!): UpdateOrgaAggPayload
   deleteOrgaAgg(filter: OrgaAggFilter!): DeleteOrgaAggPayload
   updatePost(input: UpdatePostInput!): UpdatePostPayload
   deletePost(filter: PostFilter!): DeletePostPayload
-  addTension(input: [AddTensionInput!]!): AddTensionPayload @hook_addTension
-  updateTension(input: UpdateTensionInput!): UpdateTensionPayload @hook_updateTension
-  deleteTension(filter: TensionFilter!): DeleteTensionPayload @hook_deleteTension
-  addComment(input: [AddCommentInput!]!): AddCommentPayload @hook_addComment
-  updateComment(input: UpdateCommentInput!): UpdateCommentPayload @hook_updateComment
-  deleteComment(filter: CommentFilter!): DeleteCommentPayload @hook_deleteComment
+  addTension(input: [AddTensionInput!]! @hook_addTensionInput): AddTensionPayload @hook_addTension
+  updateTension(input: UpdateTensionInput! @hook_updateTensionInput): UpdateTensionPayload @hook_updateTension
+  deleteTension(filter: TensionFilter! @hook_deleteTensionInput): DeleteTensionPayload @hook_deleteTension
+  addComment(input: [AddCommentInput!]! @hook_addCommentInput): AddCommentPayload @hook_addComment
+  updateComment(input: UpdateCommentInput! @hook_updateCommentInput): UpdateCommentPayload @hook_updateComment
+  deleteComment(filter: CommentFilter! @hook_deleteCommentInput): DeleteCommentPayload @hook_deleteComment
   addBlob(input: [AddBlobInput!]!): AddBlobPayload
   updateBlob(input: UpdateBlobInput!): UpdateBlobPayload
   deleteBlob(filter: BlobFilter!): DeleteBlobPayload
@@ -1612,12 +1556,12 @@ type Mutation {
   addEventFragment(input: [AddEventFragmentInput!]!): AddEventFragmentPayload
   updateEventFragment(input: UpdateEventFragmentInput!): UpdateEventFragmentPayload
   deleteEventFragment(filter: EventFragmentFilter!): DeleteEventFragmentPayload
-  addContract(input: [AddContractInput!]!, upsert: Boolean): AddContractPayload @hook_addContract
-  updateContract(input: UpdateContractInput!): UpdateContractPayload @hook_updateContract
-  deleteContract(filter: ContractFilter!): DeleteContractPayload @hook_deleteContract
-  addVote(input: [AddVoteInput!]!, upsert: Boolean): AddVotePayload @hook_addVote
-  updateVote(input: UpdateVoteInput!): UpdateVotePayload @hook_updateVote
-  deleteVote(filter: VoteFilter!): DeleteVotePayload @hook_deleteVote
+  addContract(input: [AddContractInput!]!, upsert: Boolean @hook_addContractInput): AddContractPayload @hook_addContract
+  updateContract(input: UpdateContractInput! @hook_updateContractInput): UpdateContractPayload @hook_updateContract
+  deleteContract(filter: ContractFilter! @hook_deleteContractInput): DeleteContractPayload @hook_deleteContract
+  addVote(input: [AddVoteInput!]!, upsert: Boolean @hook_addVoteInput): AddVotePayload @hook_addVote
+  updateVote(input: UpdateVoteInput! @hook_updateVoteInput): UpdateVotePayload @hook_updateVote
+  deleteVote(filter: VoteFilter! @hook_deleteVoteInput): DeleteVotePayload @hook_deleteVote
   addUser(input: [AddUserInput!]!, upsert: Boolean): AddUserPayload
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
@@ -2019,8 +1963,8 @@ input PostRef {
 }
 
 type Query {
-  getNode(id: ID, nameid: String): Node
-  queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  getNode(id: ID, nameid: String @hook_getNodeInput): Node
+  queryNode(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int @hook_queryNodeInput): [Node]
   aggregateNode(filter: NodeFilter): NodeAggregateResult
   getNodeFragment(id: ID!): NodeFragment
   queryNodeFragment(filter: NodeFragmentFilter, order: NodeFragmentOrder, first: Int, offset: Int): [NodeFragment]
@@ -2028,22 +1972,22 @@ type Query {
   getMandate(id: ID!): Mandate
   queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   aggregateMandate(filter: MandateFilter): MandateAggregateResult
-  getLabel(id: ID!): Label
-  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label]
+  getLabel(id: ID! @hook_getLabelInput): Label
+  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int @hook_queryLabelInput): [Label]
   aggregateLabel(filter: LabelFilter): LabelAggregateResult
-  getRoleExt(id: ID!): RoleExt
-  queryRoleExt(filter: RoleExtFilter, order: RoleExtOrder, first: Int, offset: Int): [RoleExt]
+  getRoleExt(id: ID! @hook_getRoleExtInput): RoleExt
+  queryRoleExt(filter: RoleExtFilter, order: RoleExtOrder, first: Int, offset: Int @hook_queryRoleExtInput): [RoleExt]
   aggregateRoleExt(filter: RoleExtFilter): RoleExtAggregateResult
   queryOrgaAgg(filter: OrgaAggFilter, order: OrgaAggOrder, first: Int, offset: Int): [OrgaAgg]
   aggregateOrgaAgg(filter: OrgaAggFilter): OrgaAggAggregateResult
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   aggregatePost(filter: PostFilter): PostAggregateResult
-  getTension(id: ID!): Tension
-  queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
+  getTension(id: ID! @hook_getTensionInput): Tension
+  queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int @hook_queryTensionInput): [Tension]
   aggregateTension(filter: TensionFilter): TensionAggregateResult
-  getComment(id: ID!): Comment
-  queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment]
+  getComment(id: ID! @hook_getCommentInput): Comment
+  queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int @hook_queryCommentInput): [Comment]
   aggregateComment(filter: CommentFilter): CommentAggregateResult
   getBlob(id: ID!): Blob
   queryBlob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
@@ -2053,11 +1997,11 @@ type Query {
   aggregateEvent(filter: EventFilter): EventAggregateResult
   queryEventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
   aggregateEventFragment(filter: EventFragmentFilter): EventFragmentAggregateResult
-  getContract(id: ID, contractid: String): Contract
-  queryContract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
+  getContract(id: ID, contractid: String @hook_getContractInput): Contract
+  queryContract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int @hook_queryContractInput): [Contract]
   aggregateContract(filter: ContractFilter): ContractAggregateResult
-  getVote(id: ID, voteid: String): Vote
-  queryVote(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote]
+  getVote(id: ID, voteid: String @hook_getVoteInput): Vote
+  queryVote(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int @hook_queryVoteInput): [Vote]
   aggregateVote(filter: VoteFilter): VoteAggregateResult
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]

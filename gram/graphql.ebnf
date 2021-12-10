@@ -4,9 +4,9 @@
 
 
 # Each rule name/marker can be of the form -> name[__code]:
-#  code is intrepreded for space control
-#  if name starts with a '_' it is ignored,
-# else, a newline is append.
+#  * {code} is intrepreded for space control
+#  * if name starts with a '_' it is ignored (ie no newline is append),
+#  * else, a newline is append.
 
 
 start

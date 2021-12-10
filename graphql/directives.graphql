@@ -34,25 +34,12 @@ directive @w_toLower on INPUT_FIELD_DEFINITION
 # Those directives are automagically generated on corresponding input types.
 # see the schema/gqlast.py parser for details.
 # --
-# By default, If no directive are given for a field, the @auth_patch_to is automatically generated on input;
+# By default, If no directive are given for a field,
+# the @auth_patch_to is automatically generated on input;
 # else-if no arguments are given, the authorization is granted;
 # else the function must pass. 
 #
 ###########################################################
-
-# Control the field value length (string).
-# minLength / maxLength
-
-# Ensure the field value (list) as only one element.
-# oneByOne
-
-# Ensure the field value is unique. 
-# If on is given, it check the uniqueness on a subset of the parent type.
-# unique
-
-# Authorize only if the field's value match the user(u) credential.
-# If user(u) field is empty, assume a user object.
-# isOwner
 
 # Add rules should be controlled by 1) dgraph @auth rule, 2) schema definition (! field) and 3) @hook_ BLA validation.
 directive @x_set(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be set
@@ -63,73 +50,10 @@ directive @x_patch_ro on INPUT_FIELD_DEFINITION # [defaut] prevent a field to b
 directive @x_ro on INPUT_FIELD_DEFINITION # make a field read-only (for exemple a an optional field that is not allowed to be set by a user.)
 
 
-#######################################################
-# @TODO: automate their generation in gqlast.py
 
 # Hook directive for mutation
-# Gqlast automatically append hook in Dgraph Type, as:
+# Gqlast automatically append hook in Dgraph Type, like:
+#
 #   addNode(input: [AddNodeInput!]! @hook_addNodeInput): AddNodePayload @hook_addNode
+#   for input
 
-# Node Hook
-directive @hook_getNodeInput on ARGUMENT_DEFINITION
-directive @hook_queryNodeInput on ARGUMENT_DEFINITION
-directive @hook_addNodeInput on ARGUMENT_DEFINITION
-directive @hook_updateNodeInput on ARGUMENT_DEFINITION
-directive @hook_deleteNodeInput on ARGUMENT_DEFINITION
-directive @hook_addNode on FIELD_DEFINITION
-directive @hook_updateNode on FIELD_DEFINITION
-directive @hook_deleteNode on FIELD_DEFINITION
-# RoleExt Hook
-directive @hook_getRoleExtInput on ARGUMENT_DEFINITION
-directive @hook_queryRoleExtInput on ARGUMENT_DEFINITION
-directive @hook_addRoleExtInput on ARGUMENT_DEFINITION
-directive @hook_updateRoleExtInput on ARGUMENT_DEFINITION
-directive @hook_deleteRoleExtInput on ARGUMENT_DEFINITION
-directive @hook_addRoleExt on FIELD_DEFINITION
-directive @hook_updateRoleExt on FIELD_DEFINITION
-directive @hook_deleteRoleExt on FIELD_DEFINITION
-# Label Hook
-directive @hook_getLabelInput on ARGUMENT_DEFINITION
-directive @hook_queryLabelInput on ARGUMENT_DEFINITION
-directive @hook_addLabelInput on ARGUMENT_DEFINITION
-directive @hook_updateLabelInput on ARGUMENT_DEFINITION
-directive @hook_deleteLabelInput on ARGUMENT_DEFINITION
-directive @hook_addLabel on FIELD_DEFINITION
-directive @hook_updateLabel on FIELD_DEFINITION
-directive @hook_deleteLabel on FIELD_DEFINITION
-# Tension Hook
-directive @hook_getTensionInput on ARGUMENT_DEFINITION
-directive @hook_queryTensionInput on ARGUMENT_DEFINITION
-directive @hook_addTensionInput on ARGUMENT_DEFINITION
-directive @hook_updateTensionInput on ARGUMENT_DEFINITION
-directive @hook_deleteTensionInput on ARGUMENT_DEFINITION
-directive @hook_addTension on FIELD_DEFINITION
-directive @hook_updateTension on FIELD_DEFINITION
-directive @hook_deleteTension on FIELD_DEFINITION
-# Comment Hook
-directive @hook_getCommentInput on ARGUMENT_DEFINITION
-directive @hook_queryCommentInput on ARGUMENT_DEFINITION
-directive @hook_addCommentInput on ARGUMENT_DEFINITION
-directive @hook_updateCommentInput on ARGUMENT_DEFINITION
-directive @hook_deleteCommentInput on ARGUMENT_DEFINITION
-directive @hook_addComment on FIELD_DEFINITION
-directive @hook_updateComment on FIELD_DEFINITION
-directive @hook_deleteComment on FIELD_DEFINITION
-# Contract Hook
-directive @hook_getContractInput on ARGUMENT_DEFINITION
-directive @hook_queryContractInput on ARGUMENT_DEFINITION
-directive @hook_addContractInput on ARGUMENT_DEFINITION
-directive @hook_updateContractInput on ARGUMENT_DEFINITION
-directive @hook_deleteContractInput on ARGUMENT_DEFINITION
-directive @hook_addContract on FIELD_DEFINITION
-directive @hook_updateContract on FIELD_DEFINITION
-directive @hook_deleteContract on FIELD_DEFINITION
-# Vote Hook
-directive @hook_getVoteInput on ARGUMENT_DEFINITION
-directive @hook_queryVoteInput on ARGUMENT_DEFINITION
-directive @hook_addVoteInput on ARGUMENT_DEFINITION
-directive @hook_updateVoteInput on ARGUMENT_DEFINITION
-directive @hook_deleteVoteInput on ARGUMENT_DEFINITION
-directive @hook_addVote on FIELD_DEFINITION
-directive @hook_updateVote on FIELD_DEFINITION
-directive @hook_deleteVote on FIELD_DEFINITION

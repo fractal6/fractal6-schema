@@ -1,5 +1,7 @@
 directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
 directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
 
 directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
@@ -10,7 +12,7 @@ directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
 
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @id(interface: Boolean) on FIELD_DEFINITION
 
@@ -22,13 +24,11 @@ directive @cascade(fields: [String]) on FIELD
 
 directive @lambda on FIELD_DEFINITION
 
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
 
 input AddBlobInput {
   createdBy: UserRef!

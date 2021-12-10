@@ -35,6 +35,7 @@ sys.setrecursionlimit(10**4)
 
 
 _dgraph_directives = ['id', 'search', 'hasInverse', 'remote', 'custom', 'auth', 'lambda', 'generate', 'secret', 'dgraph', 'default', 'cacheControl']
+_hook_prefix = "hook_"
 
 class AST2(AST):
     # see https://github.com/neogeny/TatSu/issues/164#issuecomment-609044281
@@ -51,15 +52,18 @@ class SemanticFilter:
     ''' Semantic based the EBNF Grammar defined at gram/graphql.ebnf '''
 
     def __init__(self):
-        ''' Keep track of mutables object in the grammar. '''
+
+        # Keep track of mutables object in the grammar.
         self.interfaces = OrderedDict()
         self.types = OrderedDict()
         self.inputs = OrderedDict()
         self.enums = []
-
         # Also :
-        # {type}__directive : [query level directives]
+        # {type}__directive : [query level directives] | Seek @_hook_prefix directive
         # {type}__implements : [implemented interfaces]
+
+        # Directives definition to append to the schema
+        self.extra_directives = []
 
     @staticmethod
     def get_name(ast):
@@ -145,7 +149,7 @@ class SemanticFilter:
                     continue
 
                 data[name+'__directives'].append(d)
-                if d._name.name == 'hook_':
+                if d._name.name == _hook_prefix:
                     to_remove.append(i)
 
             for i in to_remove[::-1]:
@@ -195,6 +199,7 @@ class SemanticFilter:
 
         if update:
             # There should be at list one field already in this object.
+            # extra will be added athe end of the stringify functions for this field
             data[name][-1]['ast']['extra'] = f
         else:
             data[name].append(field_data)
@@ -317,7 +322,7 @@ class SemanticFilter:
         return
 
     def copy_hook_directives(self, data_types_in, name_out, data_type_out):
-        ''' Copy Special directive as pre and post hook that start by hook_*
+        ''' Copy Special directive as pre and post hook that start by {_hook_prefix}*
             in mutation corresponding types. '''
 
         for data_type in data_types_in:
@@ -333,22 +338,38 @@ class SemanticFilter:
                 type_ = groups[1]
                 if type_ in data_in:
                     for directive_ in data_in[type_ + '__directives']:
-                        if directive_._name.name != 'hook_':
+                        if directive_._name.name != _hook_prefix:
                             continue
                         pre_directive = directive_.copy()
                         post_directive = directive_.copy()
 
                         # Add Pre Hook (Input) (Query + Mutations)
-                        pre_directive['cst'] = op + type_ + 'Input'
-                        args = list(self.get_args(f['ast'].field))
+                        pre_directive_name = _hook_prefix +  op + type_ + 'Input'
+                        self._ast_set(pre_directive, '_name', pre_directive_name) # @warning: breaks the original Grammar syntax.
+                        args = list(self.get_args(f['ast'].field)) # tuple are non mutable !
                         args.insert(len(args)-1, pre_directive)
+                        self._ast_set(f['ast'].field, 'args', args)
+
+                        # Push the directive definition
+                        if pre_directive_name not in self.extra_directives:
+                            directive_definition = "directive @%s on ARGUMENT_DEFINITION" % (pre_directive_name)
+                            self.extra_directives.append(directive_definition)
+
 
                         # Only add Post Hook for Mutation queries
                         if op in ('add', 'update', 'delete'):
                             # Add Post Hook (Query or Mutation Field)
-                            post_directive['cst'] = op + type_
+                            post_directive_name = _hook_prefix + op + type_
+                            self._ast_set(post_directive, '_name', post_directive_name) # @warning: breaks the original Grammar syntax.
+                            #post_directive['cst'] = post_directive_name
                             post_directives = self.get_directives(f['ast'].field)
                             post_directives.insert(len(post_directives)-1, post_directive)
+
+                            # Push the directive definition
+                            if post_directive_name not in self.extra_directives:
+                                directive_definition = "directive @%s on FIELD_DEFINITION" % (post_directive_name)
+                                self.extra_directives.append(directive_definition)
+
 
     def update_fields(self, data_type, name, ast):
         ''' Add new fields if not present on object.
@@ -640,16 +661,20 @@ class SDL:
 
         nl = '\n'
 
+        # Init
         if ast is None:
             root = True
-            ast = self.ast
+            ast = [
+                list(map(lambda x:x+'\n', self.sf.extra_directives)),
+                self.ast
+            ]
             out = [nl]
 
         # filter empty things
         out = [x for x in out if x != '']
 
         for nth, o in enumerate(ast):
-            if isinstance(o, AST):
+            if isinstance(o, dict): # AST like
                 keys = list(o)
                 update = False
                 if len(keys) != len(set(keys)):
