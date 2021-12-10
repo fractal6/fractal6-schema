@@ -25,6 +25,7 @@ directive @isContractValidator on FIELD_DEFINITION
 #
 ###########################################################
 
+directive @w_add(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_set(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_remove(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_patch(a:String!) on INPUT_FIELD_DEFINITION

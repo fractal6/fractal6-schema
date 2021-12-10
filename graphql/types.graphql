@@ -94,7 +94,7 @@ type Node @auth(
 
 type NodeFragment {
   id: ID!
-  nameid: String    @w_set(a:"lower")
+  nameid: String    @w_add(a:"lower")
   name: String      @x_set(r:"minLength", n:1)
   about: String     @x_set(r:"maxLength", n:280)
   mandate: Mandate  @x_set

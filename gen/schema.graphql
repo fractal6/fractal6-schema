@@ -57,6 +57,8 @@ directive @meta(f: String!, k: String!) on FIELD_DEFINITION
 
 directive @isContractValidator on FIELD_DEFINITION
 
+directive @w_add(a: String!) on INPUT_FIELD_DEFINITION
+
 directive @w_set(a: String!) on INPUT_FIELD_DEFINITION
 
 directive @w_remove(a: String!) on INPUT_FIELD_DEFINITION
@@ -463,7 +465,19 @@ enum UserType {
 
 # Dgraph.Authorization {"VerificationKey":"checkJwkToken_or_pubkey","Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"HS256"}
 
-directive @lambda on FIELD_DEFINITION
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
+
+directive @remote on OBJECT|INTERFACE|UNION|INPUT_OBJECT|ENUM
+
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT|INTERFACE
+
+directive @cacheControl(maxAge: Int!) on QUERY
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
@@ -475,25 +489,13 @@ directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: Auth
 
 directive @cascade(fields: [String]) on FIELD
 
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @remoteResponse(name: String) on FIELD_DEFINITION
+directive @lambda on FIELD_DEFINITION
 
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT|INTERFACE
 
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
-directive @remote on OBJECT|INTERFACE|UNION|INPUT_OBJECT|ENUM
-
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT|INTERFACE
-
-directive @cacheControl(maxAge: Int!) on QUERY
+directive @remoteResponse(name: String) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -577,7 +579,7 @@ type AddEventPayload {
 
 input AddLabelInput {
   rootnameid: String!
-  name: String! @w_set(a:"lower")
+  name: String!
   description: String
   color: String
   tensions: [TensionRef!]
@@ -604,7 +606,7 @@ type AddMandatePayload {
 }
 
 input AddNodeFragmentInput {
-  nameid: String @w_set(a:"lower")
+  nameid: String @w_add(a:"lower")
   name: String
   about: String
   mandate: MandateRef
@@ -673,7 +675,7 @@ type AddOrgaAggPayload {
 
 input AddRoleExtInput {
   rootnameid: String!
-  name: String! @w_set(a:"lower")
+  name: String!
   about: String
   role_type: RoleType!
   color: String
@@ -1666,7 +1668,7 @@ enum NodeFragmentOrderable {
 }
 
 input NodeFragmentPatch {
-  nameid: String @w_set(a:"lower")
+  nameid: String @x_patch_ro
   name: String @x_set(r:"minLength", n:1)
   about: String @x_set(r:"maxLength", n:280)
   mandate: MandateRef @x_set
