@@ -7,10 +7,6 @@
 #  Make the field unable to read
 directive @hidden on FIELD_DEFINITION
 
-# Count the occurence of the field given in arg (should be list).
-# Dgraph use <type>Aggreage instead (much faster).
-directive @count(f: String!) on FIELD_DEFINITION
-
 # Use for DQL requests.
 directive @meta(f: String!, k: String!) on FIELD_DEFINITION
 

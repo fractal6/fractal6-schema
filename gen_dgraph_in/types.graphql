@@ -181,10 +181,10 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
   title: String! @search(by: [fulltext])
   type_: TensionType! @search
   status: TensionStatus! @search
+  action: TensionAction
   assignees: [User!]
   labels: [Label!]
   comments: [Comment!]
-  action: TensionAction
   blobs: [Blob!] @hasInverse(field: tension)
   contracts: [Contract!] @hasInverse(field: tension)
   history: [Event!]! @hasInverse(field: tension)

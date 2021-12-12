@@ -1,7 +1,9 @@
-# <!> Code depencies <!>
-# * fractal6.go/web/auth/model: hardocded struct
-# * fractal6.go/dp/api: hardocded query
+# <!> Schema Depencies <!>
+# * fractal6.go/db/api: hardocded query
+# * fractal6.go/graph/model/auth: hardocded struct
+# * fractal6.go/graph/tension_auth/EMAP: propagated fields
 # * fractal6-ui.elm: query and case on enum object 
+# * database/script: hardocded dict
 
 
 # Universe (graph of graph)
@@ -95,9 +97,9 @@ type Node @auth(
 type NodeFragment {
   id: ID!
   nameid: String    @w_add(a:"lower")
-  name: String      @x_set(r:"minLength", n:1)
-  about: String     @x_set(r:"maxLength", n:280)
-  mandate: Mandate  @x_set
+  name: String      @x_alter(r:"minLen", n:1)
+  about: String     @x_alter(r:"maxLen", n:280)
+  mandate: Mandate  @x_alter
   skills: [String!] @x_alter
 
   # For Circles
@@ -118,10 +120,10 @@ type NodeFragment {
 
 type Mandate {
   id: ID!
-  purpose: String!          @x_set @search(by: [fulltext])
-  responsabilities: String  @x_set
-  domains: String           @x_set
-  policies: String          @x_set
+  purpose: String!          @x_alter @search(by: [fulltext])
+  responsabilities: String  @x_alter
+  domains: String           @x_alter
+  policies: String          @x_alter
 }
 
 type Label @auth(
@@ -142,9 +144,9 @@ type Label @auth(
 ) @hook_ {
   id: ID!
   rootnameid: String!   @search(by: [hash])
-  name: String!         @search(by: [hash, term]) @x_set(r:"unique", f:"rootnameid") @x_set(r:"minLength", n:1) @w_set(a:"lower") 
-  description: String   @x_set(r:"maxLength", n:280)
-  color: String         @x_set
+  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_alter(a:"lower") 
+  description: String   @x_alter(r:"maxLen", n:280)
+  color: String         @x_alter
   tensions: [Tension!]  @hasInverse(field: labels) @x_ro
   nodes: [Node!]        @hasInverse(field: labels) @x_alter(r:"oneByOne")
 
@@ -171,11 +173,11 @@ type RoleExt @auth(
 ) @hook_ {
   id: ID!
   rootnameid: String!   @search(by: [hash])
-  name: String!         @search(by: [hash, term]) @x_set(r:"unique", f:"rootnameid") @x_set(r:"minLength", n:1) @w_set(a:"lower") 
-  about: String         @x_set(r:"maxLength", n:280)
-  role_type: RoleType!  @x_set
-  color: String         @x_set
-  mandate: Mandate      @x_set
+  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_set(a:"lower") 
+  about: String         @x_alter(r:"maxLen", n:280)
+  role_type: RoleType!  @x_alter
+  color: String         @x_alter
+  mandate: Mandate      @x_alter
   nodes: [Node!]        @hasInverse(field: role_ext) @x_alter(r:"oneByOne")
 
   # -- @debug : Aggregate count result.
@@ -209,8 +211,8 @@ interface Post @auth(
   id: ID!
   createdBy: User!       
   createdAt: DateTime!  @search 
-  updatedAt: DateTime                           @x_set(r:"isOwner", f:"createdBy")
-  message: String       @search(by: [fulltext]) @x_set(r:"isOwner", f:"createdBy") 
+  updatedAt: DateTime                           @x_alter(r:"isOwner", f:"createdBy")
+  message: String       @search(by: [fulltext]) @x_alter(r:"isOwner", f:"createdBy") 
 }
 
 type Tension implements Post @auth(
@@ -264,14 +266,14 @@ type Tension implements Post @auth(
   receiverid: String!    @search(by: [hash, regexp]) # @DEBUG: Waiting Nested filter in Dgragh
   receiver: Node!        
 
-  title: String!         @search(by: [fulltext]) @x_set(r:"minLength", n:1) 
+  title: String!         @search(by: [fulltext])
   type_: TensionType!    @search 
   status: TensionStatus! @search
-
-  assignees: [User!]      
-  labels: [Label!]       
-  comments: [Comment!]   @x_alter(r:"oneByOne")
   action: TensionAction  
+
+  assignees: [User!]     @x_alter(r:"oneByOne")
+  labels: [Label!]       @x_alter(r:"oneByOne")
+  comments: [Comment!]   @x_alter(r:"oneByOne")
   blobs: [Blob!]         @hasInverse(field: tension) @x_alter(r:"oneByOne")
   contracts: [Contract!] @hasInverse(field: tension)
   history: [Event!]!     @hasInverse(field: tension) @x_alter # entry point
@@ -295,7 +297,7 @@ type Comment implements Post @auth(
     }""" }
   ]}
 ) @hook_ {
-  message: String!  @search(by: [fulltext]) @x_set
+  message: String!  @search(by: [fulltext]) @x_alter
 }
 
 type Blob implements Post {
