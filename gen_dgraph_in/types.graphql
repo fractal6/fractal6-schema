@@ -174,20 +174,20 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
     }"""
 }]
 }) {
-  emitterid: String! @search(by: [hash, regexp])
   emitter: Node!
-  receiverid: String! @search(by: [hash, regexp])
+  emitterid: String! @search(by: [hash, regexp])
   receiver: Node!
+  receiverid: String! @search(by: [hash, regexp])
   title: String! @search(by: [fulltext])
   type_: TensionType! @search
   status: TensionStatus! @search
   action: TensionAction
+  comments: [Comment!]
   assignees: [User!]
   labels: [Label!]
-  comments: [Comment!]
   blobs: [Blob!] @hasInverse(field: tension)
-  contracts: [Contract!] @hasInverse(field: tension)
   history: [Event!]! @hasInverse(field: tension)
+  contracts: [Contract!] @hasInverse(field: tension)
   n_comments: Int
   n_open_contracts: Int
 }
@@ -279,8 +279,8 @@ type User {
   id: ID!
   createdAt: DateTime!
   lastAck: DateTime!
-  username: String! @id
-  name: String
+  username: String! @search(by: [hash, regexp]) @id
+  name: String @search(by: [regexp])
   password: String!
   email: String! @search(by: [hash])
   emailHash: String

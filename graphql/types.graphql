@@ -2,7 +2,7 @@
 # * fractal6.go/db/api: hardocded query
 # * fractal6.go/graph/model/auth: hardocded struct
 # * fractal6.go/graph/tension_auth/EMAP: propagated fields
-# * fractal6-ui.elm: query and case on enum object 
+# * fractal6-ui.elm: query and case on enum object
 # * database/script: hardocded dict
 
 
@@ -23,7 +23,7 @@
 
 type Node @auth(
   query: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
@@ -44,30 +44,45 @@ type Node @auth(
   ]}
 ){
   id: ID!
-  createdBy: User!      
-  createdAt: DateTime!  @search 
-  updatedAt: DateTime   
+  """
+  The user that created this ressource.
+  """
+  createdBy: User!
+  """
+  When was this ressource created.
+  """
+  createdAt: DateTime!  @search
+  """
+  When was this ressource was last updated.
+  """
+  updatedAt: DateTime
 
   # Node naming/ID
   name: String!         @search(by: [term])
-  nameid: String!       @search(by: [hash, regexp]) @id 
+  nameid: String!       @search(by: [hash, regexp]) @id
   rootnameid: String!   @search(by: [hash, regexp]) # Convenience to recursively access children
 
   # Node linking
-  parent: Node        # If parent is null, Node is a root node
+  """
+  Link to the parent node. If parent is null, Node is a root node
+  """
+  parent: Node
+  """
+  List of chidren Node
+  """
   children: [Node!]   @hasInverse(field: parent) # @DEBUG union for multi edge graph
-  type_: NodeType!    @search 
+  type_: NodeType!    @search
 
   # Edges
-  tensions_out: [Tension!]   @hasInverse(field: emitter) 
+  tensions_out: [Tension!]   @hasInverse(field: emitter)
   tensions_in: [Tension!]    @hasInverse(field: receiver)
 
   # Documents, data, etc.
   about: String      @search(by: [fulltext])
-  mandate: Mandate  
-  docs: [Blob]      
-  source: Blob      
-  labels: [Label!]    
+  mandate: Mandate
+  docs: [Blob]
+  source: Blob
+  labels: [Label!]
 
   # Node Permission
   visibility: NodeVisibility!   @search # rules of access (R/W)
@@ -76,16 +91,16 @@ type Node @auth(
   isArchived: Boolean!          @search # Blob source is archived
   # Root node only
   #network: [Network]     @hasInverse(field: nodes)
-  isRoot: Boolean!       @search 
+  isRoot: Boolean!       @search
   isPersonal: Boolean    @search # Help explore "official" orga - nameid ends with @{username}
-  userCanJoin: Boolean   # Rather can ask to join 
+  userCanJoin: Boolean   # Rather can ask to join
 
   # Role... is a Leaf
-  first_link: User        
+  first_link: User
   second_link: User        # @TODO: User a list of users instead (think this as reserve)
-  skills: [String!]        @search(by: [term]) 
+  skills: [String!]        @search(by: [term])
   role_type: RoleType      @search # @DEBUG: Waiting Nested filter in Dgragh
-  role_ext: RoleExt       
+  role_ext: RoleExt
 
   # Interaction
   contracts: [Vote!]  @hasInverse(field: node) # only for Member role -- named role (@...)
@@ -109,7 +124,7 @@ type NodeFragment {
   # only when adding a circle.
   # For updates, one need to use the tension Event to update the circle.
 
-  # Charac
+  # Charac (only used for node creation).
   visibility: NodeVisibility
   mode: NodeMode
   type_: NodeType
@@ -128,15 +143,15 @@ type Mandate {
 
 type Label @auth(
   query: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
-        queryLabel { 
+        queryLabel {
           nodes(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
         }
     }""" },
-    # Authorize member 
+    # Authorize member
     { rule: """query ($ROOTIDS: [String]) {
         queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
     }""" }
@@ -144,7 +159,7 @@ type Label @auth(
 ) @hook_ {
   id: ID!
   rootnameid: String!   @search(by: [hash])
-  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_alter(a:"lower") 
+  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_alter(a:"lower")
   description: String   @x_alter(r:"maxLen", n:280)
   color: String         @x_alter
   tensions: [Tension!]  @hasInverse(field: labels) @x_ro
@@ -157,15 +172,15 @@ type Label @auth(
 
 type RoleExt @auth(
   query: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
-        queryRoleExt { 
+        queryRoleExt {
           nodes(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
         }
     }""" },
-    # Authorize member 
+    # Authorize member
     { rule: """query ($ROOTIDS: [String]) {
         queryRoleExt(filter: {rootnameid: {in: $ROOTIDS}}) { id }
     }""" }
@@ -173,7 +188,7 @@ type RoleExt @auth(
 ) @hook_ {
   id: ID!
   rootnameid: String!   @search(by: [hash])
-  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_set(a:"lower") 
+  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_set(a:"lower")
   about: String         @x_alter(r:"maxLen", n:280)
   role_type: RoleType!  @x_alter
   color: String         @x_alter
@@ -198,7 +213,7 @@ type OrgaAgg {
 
 interface Post @auth(
   add: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize author
     { rule: """query ($USERNAME: String!) {
@@ -209,15 +224,15 @@ interface Post @auth(
   ]}
 ){
   id: ID!
-  createdBy: User!       
-  createdAt: DateTime!  @search 
+  createdBy: User!
+  createdAt: DateTime!  @search
   updatedAt: DateTime                           @x_alter(r:"isOwner", f:"createdBy")
-  message: String       @search(by: [fulltext]) @x_alter(r:"isOwner", f:"createdBy") 
+  message: String       @search(by: [fulltext]) @x_alter(r:"isOwner", f:"createdBy")
 }
 
 type Tension implements Post @auth(
   query: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
@@ -234,7 +249,7 @@ type Tension implements Post @auth(
     # Authorize secret data (explicit member only)
     { rule: """query ($USERNAME: String!) {
         queryTension {
-          receiver(filter: {visibility: {eq: Secret}}) { 
+          receiver(filter: {visibility: {eq: Secret}}) {
             children {
                 first_link(filter: {username: {eq: $USERNAME}}) { username }
             }
@@ -243,7 +258,7 @@ type Tension implements Post @auth(
     }""" }
   ]},
   add: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize users that own the emitter role
     { rule: """query ($USERNAME: String!) {
@@ -261,22 +276,23 @@ type Tension implements Post @auth(
     }""" }
   ]}
 ) @hook_ {
+  emitter: Node!
   emitterid: String!     @search(by: [hash, regexp]) # @DEBUG: Waiting Nested filter in Dgragh
-  emitter: Node!           
+  receiver: Node!
   receiverid: String!    @search(by: [hash, regexp]) # @DEBUG: Waiting Nested filter in Dgragh
-  receiver: Node!        
 
   title: String!         @search(by: [fulltext])
-  type_: TensionType!    @search 
+  type_: TensionType!    @search
   status: TensionStatus! @search
-  action: TensionAction  
+  action: TensionAction
 
-  assignees: [User!]     @x_alter(r:"oneByOne")
-  labels: [Label!]       @x_alter(r:"oneByOne")
-  comments: [Comment!]   @x_alter(r:"oneByOne")
-  blobs: [Blob!]         @hasInverse(field: tension) @x_alter(r:"oneByOne")
-  contracts: [Contract!] @hasInverse(field: tension)
+  comments: [Comment!]   @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[Created, CommentPushed])
+  assignees: [User!]     @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved])
+  labels: [Label!]       @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved])
+  blobs: [Blob!]         @hasInverse(field: tension) @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted])
   history: [Event!]!     @hasInverse(field: tension) @x_alter # entry point
+  # --
+  contracts: [Contract!] @hasInverse(field: tension)
 
   # -- @debug : Aggregate count result.
   # We need thiss field to count things with DQL request since it is not yet
@@ -287,7 +303,7 @@ type Tension implements Post @auth(
 
 type Comment implements Post @auth(
   update: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize author
     { rule: """query ($USERNAME: String!) {
@@ -307,8 +323,8 @@ type Blob implements Post {
   archivedFlag: DateTime   @search
 
   # data
-  node: NodeFragment 
-  md: String         
+  node: NodeFragment
+  md: String
 }
 
 type Event implements Post {
@@ -326,7 +342,7 @@ type EventFragment {
 
 type Contract implements Post @auth(
   query: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
@@ -343,8 +359,8 @@ type Contract implements Post @auth(
     # Authorize secret data (explicit member only)
     { rule: """query ($USERNAME: String!) {
         queryContract {
-          tension { 
-            receiver(filter: {visibility: {eq: Secret}}) { 
+          tension {
+            receiver(filter: {visibility: {eq: Secret}}) {
               children {
                   first_link(filter: {username: {eq: $USERNAME}}) { username }
               }
@@ -354,24 +370,24 @@ type Contract implements Post @auth(
     }""" }
   ]}
 ) @hook_ {
-  # {contractid} is used to perform upsert update of vote and prevent for creating several 
-  # auto similar contract. Contractid is set to uid once the contract is closed to prevent blocking
+  # {contractid} is used to perform upsert update of vote and prevent for creating several
+  # auto similar contract. Contractid is set to its uid once the contract is closed to prevent blocking
   # the creation of new contract.
-  contractid: String! @id # {receiverid}#{TensionEvent}#old#new
-  tension: Tension!                    
-  status: ContractStatus!      @search 
-  contract_type: ContractType! @search 
-  closedAt: DateTime           @search  
-  event: EventFragment!                
-  candidates: [User!]     @hasInverse(field: contracts)  
-  participants: [Vote!]!  @hasInverse(field: contract)   # only user node (@...)                  
+  contractid: String! @id # {tid}#{TensionEvent}#old#new
+  tension: Tension!
+  status: ContractStatus!      @search
+  contract_type: ContractType! @search
+  closedAt: DateTime           @search
+  event: EventFragment!
+  candidates: [User!]     @hasInverse(field: contracts)
+  participants: [Vote!]!  @hasInverse(field: contract)   # only user node (@...)
   comments: [Comment!]    @x_alter(r:"oneByOne")
   isValidator: Boolean    @isContractValidator
 }
 
 type Vote implements Post @auth(
   add: { or: [
-    # Authorize root 
+    # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize user with role
     { rule: """query ($USERNAME: String!) {
@@ -394,15 +410,15 @@ type Vote implements Post @auth(
 
 type User {
   id: ID!
-  createdAt: DateTime! 
-  lastAck: DateTime!   
-  username: String!         @id
-  name: String              @x_patch(r:"isOwner")
-  password: String!         @hidden @x_patch(r:"isOwner") 
+  createdAt: DateTime!
+  lastAck: DateTime!
+  username: String!         @search(by: [hash, regexp]) @id
+  name: String              @search(by: [regexp]) @x_patch(r:"isOwner")
+  password: String!         @hidden @x_patch(r:"isOwner")
   # @DEBUG: Dgraph now support multiple @id, to be tried...
-  email: String!            @hidden @search(by: [hash]) @x_patch(r:"isOwner") 
-  emailHash: String         @hidden 
-  emailValidated: Boolean!  @hidden 
+  email: String!            @hidden @search(by: [hash]) @x_patch(r:"isOwner")
+  emailHash: String         @hidden
+  emailValidated: Boolean!  @hidden
   # Profile
   bio: String  @x_patch(r:"isOwner")
   utc: String  @x_patch(r:"isOwner")
@@ -484,8 +500,8 @@ enum TensionAction {
   NewCircle
   NewMd
   # Updating
-  EditRole 
-  EditCircle 
+  EditRole
+  EditCircle
   EditMd
   # Archiving
   ArchivedRole
@@ -538,7 +554,7 @@ enum BlobType {
 
 enum ContractStatus {
   Open
-  Closed 
+  Closed
   Canceled
 }
 

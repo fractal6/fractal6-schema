@@ -42,15 +42,16 @@ directive @w_alter(a:String!) on INPUT_FIELD_DEFINITION
 #
 # r:rule    Optional function that should pass (pass by default ie no argument)
 # f:field   Optional field to lookup
+# e:event   Optional event 
 # n:number  Optional integer value
 #
 ###########################################################
 
 # Add rules should be controlled by 1) dgraph @auth rule, 2) schema definition (! field) and 3) @hook_ BLA validation.
-directive @x_set(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be set
-directive @x_remove(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be removed
-directive @x_patch(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be patched (set + remove)
-directive @x_alter(r: String, f: String, n:Int) on INPUT_FIELD_DEFINITION # allows field to be altered (added + set + remove)
+directive @x_set(r: String, f: String, e: [TensionEvent!], n:Int) on INPUT_FIELD_DEFINITION # allows field to be set
+directive @x_remove(r: String, f: String, e: [TensionEvent!], n:Int) on INPUT_FIELD_DEFINITION # allows field to be removed
+directive @x_patch(r: String, f: String, e: [TensionEvent!], n:Int) on INPUT_FIELD_DEFINITION # allows field to be patched (set + remove)
+directive @x_alter(r: String, f: String, e: [TensionEvent!], n:Int) on INPUT_FIELD_DEFINITION # allows field to be altered (added + set + remove)
 directive @x_patch_ro on INPUT_FIELD_DEFINITION # [defaut] prevent a field to be patched.
 directive @x_ro on INPUT_FIELD_DEFINITION # make a field read-only (for exemple a an optional field that is not allowed to be set by a user.)
 

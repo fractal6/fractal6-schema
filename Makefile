@@ -21,6 +21,7 @@ dgraph: gen_dgraph_in/types.graphql
 
 gqlgen_in:
 	# Generate Gqlgen compatible GraphQL files with dgraph generated Query and Mutation.
+	# Fish shell: use `(cat .. | psub)` instead.
 	./gqlast.py <(cat graphql/directives.graphql graphql/types.graphql gen_dgraph_out/schema.graphql) > gen/schema.graphql
 
 gen_dgraph_in/types.graphql:

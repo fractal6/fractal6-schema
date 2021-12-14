@@ -372,9 +372,9 @@ class SemanticFilter:
 
 
     def update_fields(self, data_type, name, ast):
-        ''' Add new fields if not present on object.
+        """ Add new fields if not present on object.
             Update arguments eventually.
-        '''
+        """
 
         data = getattr(self, data_type)
         field_names = [x.get('name') for x in data[name]]
