@@ -13,9 +13,9 @@ Parse the FILE input and apply transformations:
 
 
 Options:
-    -d --debug      Show debug informations.
-    ---dgraph       Filter schema for dgraph.
-    --nv            Silent output.
+    -d --debug     Show debug informations.
+    --dgraph       Filter schema for dgraph.
+    --nv           Silent output.
 '''
 
 import sys
@@ -448,7 +448,7 @@ class GqlgenSemantics(GraphqlSemantics):
 
     def interface_type_definition(self, ast):
         ''' Interface handle
-            * filter ou doublon
+            * filter out doublon
         '''
         assert(isinstance(ast, AST))
         ast = AST2(ast)
@@ -496,7 +496,7 @@ class GqlgenSemantics(GraphqlSemantics):
 
     def input_object_type_definition(self, ast):
         ''' Input handle
-            * filter ou doublon
+            * filter out doublon
             * add filtered directive
                 - @x_* directive work with *Patch input (we assumed that AddInput are managed by the BLA)
                 - @w_* directieve work Add*Input input *Patch inputs, (used to alter a input field)
@@ -532,7 +532,7 @@ class GqlgenSemantics(GraphqlSemantics):
 
     def enum_type_definition(self, ast):
         ''' Enum handle
-            * filter ou doublon
+            * filter out doublon
         '''
 
         assert(not isinstance(ast, AST))

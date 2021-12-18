@@ -1,34 +1,34 @@
 directive @remoteResponse(name: String) on FIELD_DEFINITION
 
-directive @cacheControl(maxAge: Int!) on QUERY
-
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
-
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
-
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
-directive @lambda on FIELD_DEFINITION
-
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
-directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
+
+directive @lambda on FIELD_DEFINITION
+
+directive @cacheControl(maxAge: Int!) on QUERY
+
+directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
 directive @cascade(fields: [String]) on FIELD
 
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+
 directive @id(interface: Boolean) on FIELD_DEFINITION
+
+directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -72,8 +72,9 @@ input AddContractInput {
   contract_type: ContractType!
   closedAt: DateTime
   event: EventFragmentRef!
-  candidates: [UserRef!]
   participants: [VoteRef!]!
+  candidates: [UserRef!]
+  pending_candidates: [PendingUserRef!]
   comments: [CommentRef!]
   isValidator: Boolean
 }
@@ -203,6 +204,15 @@ input AddOrgaAggInput {
 
 type AddOrgaAggPayload {
   orgaAgg(filter: OrgaAggFilter, order: OrgaAggOrder, first: Int, offset: Int): [OrgaAgg]
+  numUids: Int
+}
+
+input AddPendingUserInput {
+  email: String
+}
+
+type AddPendingUserPayload {
+  pendingUser(filter: PendingUserFilter, order: PendingUserOrder, first: Int, offset: Int): [PendingUser]
   numUids: Int
 }
 
@@ -505,12 +515,14 @@ type Contract implements Post {
   contract_type: ContractType!
   closedAt: DateTime
   event(filter: EventFragmentFilter): EventFragment!
-  candidates(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
   participants(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote!]!
+  candidates(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
+  pending_candidates(filter: PendingUserFilter, order: PendingUserOrder, first: Int, offset: Int): [PendingUser!]
   comments(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int): [Comment!]
   isValidator: Boolean
-  candidatesAggregate(filter: UserFilter): UserAggregateResult
   participantsAggregate(filter: VoteFilter): VoteAggregateResult
+  candidatesAggregate(filter: UserFilter): UserAggregateResult
+  pending_candidatesAggregate(filter: PendingUserFilter): PendingUserAggregateResult
   commentsAggregate(filter: CommentFilter): CommentAggregateResult
 }
 
@@ -553,8 +565,9 @@ enum ContractHasFilter {
   contract_type
   closedAt
   event
-  candidates
   participants
+  candidates
+  pending_candidates
   comments
   isValidator
 }
@@ -584,8 +597,9 @@ input ContractPatch {
   contract_type: ContractType
   closedAt: DateTime
   event: EventFragmentRef
-  candidates: [UserRef!]
   participants: [VoteRef!]
+  candidates: [UserRef!]
+  pending_candidates: [PendingUserRef!]
   comments: [CommentRef!]
   isValidator: Boolean
 }
@@ -602,8 +616,9 @@ input ContractRef {
   contract_type: ContractType
   closedAt: DateTime
   event: EventFragmentRef
-  candidates: [UserRef!]
   participants: [VoteRef!]
+  candidates: [UserRef!]
+  pending_candidates: [PendingUserRef!]
   comments: [CommentRef!]
   isValidator: Boolean
 }
@@ -721,6 +736,12 @@ type DeleteNodePayload {
 
 type DeleteOrgaAggPayload {
   orgaAgg(filter: OrgaAggFilter, order: OrgaAggOrder, first: Int, offset: Int): [OrgaAgg]
+  msg: String
+  numUids: Int
+}
+
+type DeletePendingUserPayload {
+  pendingUser(filter: PendingUserFilter, order: PendingUserOrder, first: Int, offset: Int): [PendingUser]
   msg: String
   numUids: Int
 }
@@ -1205,6 +1226,9 @@ type Mutation {
   addContract(input: [AddContractInput!]!, upsert: Boolean): AddContractPayload
   updateContract(input: UpdateContractInput!): UpdateContractPayload
   deleteContract(filter: ContractFilter!): DeleteContractPayload
+  addPendingUser(input: [AddPendingUserInput!]!): AddPendingUserPayload
+  updatePendingUser(input: UpdatePendingUserInput!): UpdatePendingUserPayload
+  deletePendingUser(filter: PendingUserFilter!): DeletePendingUserPayload
   addVote(input: [AddVoteInput!]!, upsert: Boolean): AddVotePayload
   updateVote(input: UpdateVoteInput!): UpdateVotePayload
   deleteVote(filter: VoteFilter!): DeleteVotePayload
@@ -1598,6 +1622,45 @@ input OrgaAggRef {
   n_guests: Int
 }
 
+type PendingUser {
+  email: String
+}
+
+type PendingUserAggregateResult {
+  count: Int
+  emailMin: String
+  emailMax: String
+}
+
+input PendingUserFilter {
+  has: [PendingUserHasFilter]
+  and: [PendingUserFilter]
+  or: [PendingUserFilter]
+  not: PendingUserFilter
+}
+
+enum PendingUserHasFilter {
+  email
+}
+
+input PendingUserOrder {
+  asc: PendingUserOrderable
+  desc: PendingUserOrderable
+  then: PendingUserOrder
+}
+
+enum PendingUserOrderable {
+  email
+}
+
+input PendingUserPatch {
+  email: String
+}
+
+input PendingUserRef {
+  email: String
+}
+
 type Point {
   longitude: Float!
   latitude: Float!
@@ -1732,6 +1795,8 @@ type Query {
   getContract(id: ID, contractid: String): Contract
   queryContract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
   aggregateContract(filter: ContractFilter): ContractAggregateResult
+  queryPendingUser(filter: PendingUserFilter, order: PendingUserOrder, first: Int, offset: Int): [PendingUser]
+  aggregatePendingUser(filter: PendingUserFilter): PendingUserAggregateResult
   getVote(id: ID, voteid: String): Vote
   queryVote(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote]
   aggregateVote(filter: VoteFilter): VoteAggregateResult
@@ -2218,6 +2283,17 @@ input UpdateOrgaAggInput {
 
 type UpdateOrgaAggPayload {
   orgaAgg(filter: OrgaAggFilter, order: OrgaAggOrder, first: Int, offset: Int): [OrgaAgg]
+  numUids: Int
+}
+
+input UpdatePendingUserInput {
+  filter: PendingUserFilter!
+  set: PendingUserPatch
+  remove: PendingUserPatch
+}
+
+type UpdatePendingUserPayload {
+  pendingUser(filter: PendingUserFilter, order: PendingUserOrder, first: Int, offset: Int): [PendingUser]
   numUids: Int
 }
 

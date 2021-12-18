@@ -145,13 +145,14 @@ type Label @auth(
   query: { or: [
     # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
-    # Authorize public data OR Owner
-    { rule: """query ($OWNIDS: [String]) {
+    # Authorize public data
+    { rule: """query {
         queryLabel {
-          nodes(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
+          nodes(filter: {visibility: {eq: Public}}) { id }
         }
     }""" },
-    # Authorize member
+    # Authorize member and owner
+    # Note: when a node is removes from Label.nodes, there is an auth regression.
     { rule: """query ($ROOTIDS: [String]) {
         queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
     }""" }
@@ -174,13 +175,14 @@ type RoleExt @auth(
   query: { or: [
     # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
-    # Authorize public data OR Owner
-    { rule: """query ($OWNIDS: [String]) {
+    # Authorize public data
+    { rule: """query {
         queryRoleExt {
-          nodes(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
+          nodes(filter: {visibility: {eq: Public}}) { id }
         }
     }""" },
-    # Authorize member
+    # Authorize member and owner
+    # Note: when a node is removes from Label.nodes, there is an auth regression.
     { rule: """query ($ROOTIDS: [String]) {
         queryRoleExt(filter: {rootnameid: {in: $ROOTIDS}}) { id }
     }""" }
@@ -286,9 +288,9 @@ type Tension implements Post @auth(
   status: TensionStatus! @search
   action: TensionAction
 
-  comments: [Comment!]   @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[Created, CommentPushed])
-  assignees: [User!]     @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved])
-  labels: [Label!]       @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved])
+  comments: [Comment!]   @x_alter(r:"hasEvent", e:[Created, CommentPushed])         @x_alter(r:"oneByOne")
+  assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
+  labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved])
   blobs: [Blob!]         @hasInverse(field: tension) @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted])
   history: [Event!]!     @hasInverse(field: tension) @x_alter # entry point
   # --
@@ -379,10 +381,15 @@ type Contract implements Post @auth(
   contract_type: ContractType! @search
   closedAt: DateTime           @search
   event: EventFragment!
-  candidates: [User!]     @hasInverse(field: contracts)
-  participants: [Vote!]!  @hasInverse(field: contract)   # only user node (@...)
-  comments: [Comment!]    @x_alter(r:"oneByOne")
-  isValidator: Boolean    @isContractValidator
+  participants: [Vote!]!       @hasInverse(field: contract)   # only user node (@...)
+  candidates: [User!]          @hasInverse(field: contracts)
+  pending_candidates: [PendingUser!]
+  comments: [Comment!]         @x_alter(r:"oneByOne")
+  isValidator: Boolean         @isContractValidator
+}
+
+type PendingUser {
+  email: String
 }
 
 type Vote implements Post @auth(
@@ -461,7 +468,7 @@ enum RoleType { # LeafType
   Member # member with roles
   Guest # member with no roles
   Retired # Retired member
-  Pending # Invited member @todo
+  Pending # Invited member
   # Role
   Coordinator # Local admin Role
   Peer # Regular Role
