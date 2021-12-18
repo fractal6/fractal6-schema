@@ -67,7 +67,7 @@ arguments
 argument
     =
     # allows Dgraph auth directives (| {...})
-    name ':' (value | '[' value {',' value} ']' )
+    {LINE_COMMENT} name ':' (value | '[' value {',' value} ']' )
     ;
 
 
@@ -107,7 +107,7 @@ inline_fragment
     ;
 
 
-value = [LINE_COMMENT] _value;
+value = {LINE_COMMENT} _value;
 
 _value
     =

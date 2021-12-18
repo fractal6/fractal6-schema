@@ -37,6 +37,10 @@ sys.setrecursionlimit(10**4)
 _dgraph_directives = ['id', 'search', 'hasInverse', 'remote', 'custom', 'auth', 'lambda', 'generate', 'secret', 'dgraph', 'default', 'cacheControl']
 _hook_prefix = "hook_"
 
+# IMPROVEMENT:
+# * Show the line when an assert error occurs...
+#
+
 class AST2(AST):
     # see https://github.com/neogeny/TatSu/issues/164#issuecomment-609044281
     # Created because of the need of _ast_set to keep order...
@@ -74,7 +78,9 @@ class SemanticFilter:
         ''' Returns the fields of a object.
             * remove comments
         '''
-        assert(len(ast._fields) == 3)
+        if not ast._fields or len(ast._fields) != 3:
+            raise ValueError("""Parsing error: field not found. Please check your grammar and be cautious with multiline comments.
+                         AST: %s""" % ast)
         fields = ast._fields[1]
 
         # Filter Comments

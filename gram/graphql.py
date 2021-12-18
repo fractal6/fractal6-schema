@@ -190,6 +190,10 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _argument_(self):  # noqa
+
+        def block0():
+            self._LINE_COMMENT_()
+        self._closure(block0)
         self._name_()
         self._token(':')
         with self._group():
@@ -200,10 +204,10 @@ class GRAPHQLParser(Parser):
                     self._token('[')
                     self._value_()
 
-                    def block1():
+                    def block2():
                         self._token(',')
                         self._value_()
-                    self._closure(block1)
+                    self._closure(block2)
                     self._token(']')
                 self._error(
                     'expecting one of: '
@@ -252,8 +256,10 @@ class GRAPHQLParser(Parser):
 
     @tatsumasu()
     def _value_(self):  # noqa
-        with self._optional():
+
+        def block0():
             self._LINE_COMMENT_()
+        self._closure(block0)
         self.__value_()
 
     @tatsumasu()
