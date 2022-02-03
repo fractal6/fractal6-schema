@@ -25,15 +25,12 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   nameid: String! @search(by:[hash, regexp]) @id
   rootnameid: String! @search(by:[hash, regexp])
   parent: Node
-  children: [Node!] @hasInverse(field: parent)
   type_: NodeType! @search
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!] @hasInverse(field: receiver)
   about: String @search(by:[fulltext])
   mandate: Mandate
-  docs: [Blob]
   source: Blob
-  labels: [Label!]
   visibility: NodeVisibility! @search
   mode: NodeMode! @search
   rights: Int!
@@ -41,11 +38,16 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   isRoot: Boolean! @search
   isPersonal: Boolean @search
   userCanJoin: Boolean
+  children: [Node!] @hasInverse(field: parent)
+  docs: [Blob]
+  labels: [Label!]
+  roles: [RoleExt!]
+  role_ext: RoleExt
+  role_type: RoleType @search
+  color: String
   first_link: User
   second_link: User
   skills: [String!] @search(by:[term])
-  role_type: RoleType @search
-  role_ext: RoleExt
   contracts: [Vote!] @hasInverse(field: node)
   orga_agg: OrgaAgg
 }
@@ -63,7 +65,9 @@ type NodeFragment {
   type_: NodeType
   first_link: String
   second_link: String
+  role_ext: String
   role_type: RoleType
+  color: String
 }
 
 type Mandate {
@@ -92,8 +96,6 @@ type Label @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   color: String
   tensions: [Tension!] @hasInverse(field: labels)
   nodes: [Node!] @hasInverse(field: labels)
-  n_nodes: Int
-  n_tensions: Int
 }
 
 type RoleExt @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
@@ -114,8 +116,8 @@ type RoleExt @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   role_type: RoleType!
   color: String
   mandate: Mandate
-  nodes: [Node!] @hasInverse(field: role_ext)
-  n_nodes: Int
+  nodes: [Node!] @hasInverse(field: roles)
+  roles: [Node!] @hasInverse(field: role_ext)
 }
 
 type OrgaAgg {
@@ -186,8 +188,9 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
   assignees: [User!]
   labels: [Label!]
   blobs: [Blob!] @hasInverse(field: tension)
-  history: [Event!]! @hasInverse(field: tension)
+  history: [Event!] @hasInverse(field: tension)
   contracts: [Contract!] @hasInverse(field: tension)
+  subscribers: [User!] @hasInverse(field: subscriptions)
   n_comments: Int
   n_open_contracts: Int
 }
@@ -280,11 +283,16 @@ type Vote implements Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   data: [Int!]!
 }
 
-type User {
+type User @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryUser (filter: {username: {eq: $USERNAME}}) { username }
+    }"""
+}]
+}) {
   id: ID!
   createdAt: DateTime!
   lastAck: DateTime!
-  username: String! @search(by:[hash, regexp]) @id
+  username: String! @id @search(by:[hash, regexp])
   name: String @search(by:[regexp])
   password: String!
   email: String! @search(by:[hash])
@@ -292,13 +300,34 @@ type User {
   emailValidated: Boolean!
   bio: String
   utc: String
+  notifyByEmail: Boolean
+  subscriptions: [Tension!] @hasInverse(field: subscribers)
   rights: UserRights!
   roles: [Node!] @hasInverse(field: first_link)
   backed_roles: [Node!] @hasInverse(field: second_link)
   tensions_created: [Tension!] @hasInverse(field: createdBy)
   tensions_assigned: [Tension!] @hasInverse(field: assignees)
   contracts: [Contract!] @hasInverse(field: candidates)
+  events: [UserEvent!] @hasInverse(field: user)
+  markAllAsRead: String
 }
+
+type UserEvent @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryUserEvent {
+        user(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }"""
+}]
+}) {
+  id: ID!
+  createdAt: DateTime! @search
+  isRead: Boolean! @search
+  user: User!
+  event: [EventKind!]
+}
+
+union EventKind= Event| Contract
 
 type UserRights {
   canLogin: Boolean!
@@ -359,7 +388,7 @@ enum TensionType {
   Operational
   Governance
   Help
-
+  Alert
 
 }
 
@@ -444,4 +473,4 @@ enum UserType {
 
 }
 
-# Dgraph.Authorization {"VerificationKey":"checkJwkToken_or_pubkey","Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"HS256"}
+# Dgraph.Authorization {"Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"RS256","VerificationKey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqfBbJAanlwf2mYlBszBA\nxgHw3hTu6gZ9nmej+5fCCdyA85IXhw14+F14o+vLogPe/giFuPMpG9eCOPWKvL/T\nGyahW5Lm8TRB4Pf54fZq5+VKdf5/i9u2e8CelpFvT+zLRdBmNVy9H9MitOF9mSGK\nHviPH1nHzU6TGvuVf44s60LAKliiwagALF+T/3ReDFhoqdLb1J3w4JkxFO6Guw5p\n3aDT+RMjjz9W8XpT3+k8IHocWxcEsuWMKdhuNwOHX2l7yU+/yLOrK1nuAMH7KewC\nCT4gJOan1qFO8NKe37jeQgsuRbhtF5C+L6CKs3n+B2A3ZOYB4gzdJfMLXxW/wwr1\nRQIDAQAB\n-----END PUBLIC KEY-----"}

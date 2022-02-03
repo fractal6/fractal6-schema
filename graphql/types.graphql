@@ -67,10 +67,6 @@ type Node @auth(
   Link to the parent node. If parent is null, Node is a root node
   """
   parent: Node
-  """
-  List of chidren Node
-  """
-  children: [Node!]   @hasInverse(field: parent) # @DEBUG union for multi edge graph
   type_: NodeType!    @search
 
   # Edges
@@ -80,9 +76,7 @@ type Node @auth(
   # Documents, data, etc.
   about: String      @search(by: [fulltext])
   mandate: Mandate
-  docs: [Blob]
   source: Blob
-  labels: [Label!]
 
   # Node Permission
   visibility: NodeVisibility!   @search # rules of access (R/W)
@@ -95,14 +89,38 @@ type Node @auth(
   isPersonal: Boolean    @search # Help explore "official" orga - nameid ends with @{username}
   userCanJoin: Boolean   # Rather can ask to join
 
+  # Circle...is a branch
+  """
+  List of chidren Node
+  """
+  children: [Node!]   @hasInverse(field: parent) # @DEBUG union for multi edge graph
+  """
+  not implemented
+  """
+  docs: [Blob]
+  """
+  Record of available labels in this circle.
+  Available labels means that there are visible when creating and editing tension for example.
+  """
+  labels: [Label!]
+  """
+  Record of available roles (RoleExt) in this circle.
+  Available roles means that there are visible when creating and editing new roles in a circle.
+  """
+  roles: [RoleExt!]
+
   # Role... is a Leaf
+  role_ext: RoleExt
+  role_type: RoleType      @search # @DEBUG: Waiting Nested filter in Dgragh
+  color: String
   first_link: User
   second_link: User        # @TODO: User a list of users instead (think this as reserve)
   skills: [String!]        @search(by: [term])
-  role_type: RoleType      @search # @DEBUG: Waiting Nested filter in Dgragh
-  role_ext: RoleExt
-
-  # Interaction
+  """
+  Contract are used for user collaboration. When a action need a peer validation,
+  a contract is created in the corresponding tension. Each allowed user can vote to accept or reject the contract (or more eventually).
+  The vote are made on the behalf of the role member node, which are recorded in this field.
+  """
   contracts: [Vote!]  @hasInverse(field: node) # only for Member role -- named role (@...)
 
   # Aggregator
@@ -125,12 +143,15 @@ type NodeFragment {
   # For updates, one need to use the tension Event to update the circle.
 
   # Charac (only used for node creation).
+  # @warning: those are set with TensionEvdent old/new value.
   visibility: NodeVisibility
   mode: NodeMode
   type_: NodeType
   first_link: String
   second_link: String
+  role_ext : String
   role_type: RoleType
+  color: String
 }
 
 type Mandate {
@@ -165,10 +186,6 @@ type Label @auth(
   color: String         @x_alter
   tensions: [Tension!]  @hasInverse(field: labels) @x_ro
   nodes: [Node!]        @hasInverse(field: labels) @x_alter(r:"oneByOne")
-
-  # -- @debug : Aggregate count result.
-  n_nodes: Int     @x_ro
-  n_tensions: Int  @x_ro
 }
 
 type RoleExt @auth(
@@ -182,7 +199,6 @@ type RoleExt @auth(
         }
     }""" },
     # Authorize member and owner
-    # Note: when a node is removes from Label.nodes, there is an auth regression.
     { rule: """query ($ROOTIDS: [String]) {
         queryRoleExt(filter: {rootnameid: {in: $ROOTIDS}}) { id }
     }""" }
@@ -190,15 +206,14 @@ type RoleExt @auth(
 ) @hook_ {
   id: ID!
   rootnameid: String!   @search(by: [hash])
-  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_set(a:"lower")
+  name: String!         @search(by: [hash, term]) @x_alter(r:"unique", f:"rootnameid") @x_alter(r:"minLen", n:1) @w_alter(a:"lower")
   about: String         @x_alter(r:"maxLen", n:280)
   role_type: RoleType!  @x_alter
   color: String         @x_alter
   mandate: Mandate      @x_alter
-  nodes: [Node!]        @hasInverse(field: role_ext) @x_alter(r:"oneByOne")
+  nodes: [Node!]        @hasInverse(field: roles) @x_alter(r:"oneByOne")
+  roles: [Node!]        @hasInverse(field: role_ext)
 
-  # -- @debug : Aggregate count result.
-  n_nodes: Int  @x_ro
   # period of validity ? @future
   # validatedBy  ? @future (vote process...)
 }
@@ -292,9 +307,10 @@ type Tension implements Post @auth(
   assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
   labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved])
   blobs: [Blob!]         @hasInverse(field: tension) @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted])
-  history: [Event!]!     @hasInverse(field: tension) @x_alter # entry point
+  history: [Event!]      @hasInverse(field: tension) @x_alter # entry point
   # --
   contracts: [Contract!] @hasInverse(field: tension)
+  subscribers: [User!]   @hasInverse(field: subscriptions)
 
   # -- @debug : Aggregate count result.
   # We need thiss field to count things with DQL request since it is not yet
@@ -415,20 +431,31 @@ type Vote implements Post @auth(
 # User
 #
 
-type User {
+type User @auth(
+  update: { or: [
+    # Authorize root
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize author
+    { rule: """query ($USERNAME: String!) {
+      queryUser (filter: {username: {eq: $USERNAME}}) { username }
+    }""" }
+  ]}
+) @hook_ {
   id: ID!
   createdAt: DateTime!
   lastAck: DateTime!
-  username: String!         @search(by: [hash, regexp]) @id
-  name: String              @search(by: [regexp]) @x_patch(r:"isOwner")
-  password: String!         @hidden @x_patch(r:"isOwner")
+  username: String!     @id @search(by: [hash, regexp])
+  name: String              @search(by: [regexp]) @x_patch
+  password: String!         @hidden
   # @DEBUG: Dgraph now support multiple @id, to be tried...
-  email: String!            @hidden @search(by: [hash]) @x_patch(r:"isOwner")
+  email: String!            @hidden @search(by: [hash]) @x_patch
   emailHash: String         @hidden
   emailValidated: Boolean!  @hidden
   # Profile
-  bio: String  @x_patch(r:"isOwner")
-  utc: String  @x_patch(r:"isOwner")
+  bio: String               @x_patch
+  utc: String               @x_patch
+  notifyByEmail: Boolean    @x_patch
+  subscriptions: [Tension!] @x_patch @hasInverse(field: subscribers)
   #skills
   # User Rights
   rights: UserRights!
@@ -439,7 +466,45 @@ type User {
   tensions_created: [Tension!]   @hasInverse(field: createdBy)
   tensions_assigned: [Tension!]  @hasInverse(field: assignees)
   contracts: [Contract!]         @hasInverse(field: candidates)
+  # Notifications Events (Tensions and Contracts)
+  """
+  An event (UserEvent) will be pushed, for notification purpose, every times an
+  event (TensionEvent) occurs in a tension where the user falls into the following:
+    * a subscriber
+    * an assignee
+    * a receiver coordinator
+    * a emitter coordinator (only for created tension...)
+
+  Or an contract is created where the user fall into the following:
+    * a candidates.
+    * a coordinator with rights.
+  """
+  events: [UserEvent!]   @hasInverse(field: user) @x_alter
+
+  # Deep update not implemented: https://discuss.dgraph.io/t/feature-request-cascade-delete-deep-mutations-by-reference-directive/14658/3
+  markAllAsRead: String  @w_meta_patch(f:"markAllAsRead", k:"username") @x_alter # value ignored
 }
+
+type UserEvent @auth(
+  update: { or: [
+    # Authorize root
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize author
+    { rule: """query ($USERNAME: String!) {
+      queryUserEvent {
+        user(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }""" }
+  ]}
+) {
+  id: ID!
+  createdAt: DateTime! @search
+  isRead: Boolean! @search @x_alter
+  user: User!
+  event: [EventKind!] # event can be batched !
+}
+
+union EventKind = Event | Contract
 
 # Special rights
 type UserRights {
@@ -497,8 +562,8 @@ enum TensionType {
   Operational
   Governance
   Help
-  # Alert # BotAlert. Circle can emit tension ?
-  # Poll ?
+  Alert
+  # Poll, Annoucements
 }
 
 enum TensionAction {
@@ -585,4 +650,4 @@ enum UserType {
 }
 
 
-# Dgraph.Authorization {"VerificationKey":"checkJwkToken_or_pubkey","Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"HS256"}
+# Dgraph.Authorization {"Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"RS256","VerificationKey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqfBbJAanlwf2mYlBszBA\nxgHw3hTu6gZ9nmej+5fCCdyA85IXhw14+F14o+vLogPe/giFuPMpG9eCOPWKvL/T\nGyahW5Lm8TRB4Pf54fZq5+VKdf5/i9u2e8CelpFvT+zLRdBmNVy9H9MitOF9mSGK\nHviPH1nHzU6TGvuVf44s60LAKliiwagALF+T/3ReDFhoqdLb1J3w4JkxFO6Guw5p\n3aDT+RMjjz9W8XpT3+k8IHocWxcEsuWMKdhuNwOHX2l7yU+/yLOrK1nuAMH7KewC\nCT4gJOan1qFO8NKe37jeQgsuRbhtF5C+L6CKs3n+B2A3ZOYB4gzdJfMLXxW/wwr1\nRQIDAQAB\n-----END PUBLIC KEY-----"}

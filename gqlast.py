@@ -34,12 +34,11 @@ from gram.graphql import GRAPHQLParser
 sys.setrecursionlimit(10**4)
 
 
-_dgraph_directives = ['id', 'search', 'hasInverse', 'remote', 'custom', 'auth', 'lambda', 'generate', 'secret', 'dgraph', 'default', 'cacheControl']
+_dgraph_directives = ['id', 'search', 'hasInverse', 'remote', 'custom', 'auth', 'lambda', 'generate', 'secret', 'dgraph', 'default', 'cacheControl', 'withSubscription']
 _hook_prefix = "hook_"
 
-# IMPROVEMENT:
+# IMPROVMENT:
 # * Show the line when an assert error occurs...
-#
 
 class AST2(AST):
     # see https://github.com/neogeny/TatSu/issues/164#issuecomment-609044281
@@ -62,6 +61,7 @@ class SemanticFilter:
         self.types = OrderedDict()
         self.inputs = OrderedDict()
         self.enums = []
+        self.unions = []
         # Also :
         # {type}__directive : [query level directives] | Seek @_hook_prefix directive
         # {type}__implements : [implemented interfaces]
@@ -549,6 +549,22 @@ class GqlgenSemantics(GraphqlSemantics):
             return None
         else:
             self.sf.enums.append(name)
+
+        return ast
+
+    def union_type_definition(self, ast):
+        ''' Union handle
+            * filter out doublon
+        '''
+
+        assert(not isinstance(ast, AST))
+
+        name = ast[1].name
+        # Watch out duplicate !
+        if name in self.sf.unions:
+            return None
+        else:
+            self.sf.unions.append(name)
 
         return ast
 

@@ -8,14 +8,14 @@
 directive @hidden on FIELD_DEFINITION
 
 # Use for DQL requests.
-directive @meta(f: String!, k: String!) on FIELD_DEFINITION
+directive @meta(f: String!, k: String) on FIELD_DEFINITION
 
 # Return true if the user is a authorized validator for the given contract.
 directive @isContractValidator on FIELD_DEFINITION
 
 ###########################################################
 #
-# Writer directives -- work the input field level.
+# Writer directives -- work at input field level.
 #
 # add: apply on input fields of Add* queries
 # set: (not implemented) apply on input fields of update:set queries
@@ -32,11 +32,12 @@ directive @w_set(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_remove(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_patch(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_alter(a:String!) on INPUT_FIELD_DEFINITION
+directive @w_meta_patch(f:String!, k: String) on INPUT_FIELD_DEFINITION
 
 
 ###########################################################
 #
-# Authorization directives -- work the input field level.
+# Authorization directives -- work at the input field level.
 # --
 # Those directives are automagically generated on corresponding input types.
 # see the schema/gqlast.py parser for details.

@@ -1,34 +1,34 @@
-directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @cacheControl(maxAge: Int!) on QUERY
-
-directive @id(interface: Boolean) on FIELD_DEFINITION
-
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
-
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
-
-directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
-
 directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
 
 directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
+directive @remoteResponse(name: String) on FIELD_DEFINITION
+
+directive @cascade(fields: [String]) on FIELD
+
 directive @lambda on FIELD_DEFINITION
 
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
 
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @cascade(fields: [String]) on FIELD
-
 directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
+
+directive @cacheControl(maxAge: Int!) on QUERY
+
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @id(interface: Boolean) on FIELD_DEFINITION
+
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -118,8 +118,6 @@ input AddLabelInput {
   color: String
   tensions: [TensionRef!]
   nodes: [NodeRef!]
-  n_nodes: Int
-  n_tensions: Int
 }
 
 type AddLabelPayload {
@@ -151,7 +149,9 @@ input AddNodeFragmentInput {
   type_: NodeType
   first_link: String
   second_link: String
+  role_ext: String
   role_type: RoleType
+  color: String
 }
 
 type AddNodeFragmentPayload {
@@ -167,15 +167,12 @@ input AddNodeInput {
   nameid: String!
   rootnameid: String!
   parent: NodeRef
-  children: [NodeRef!]
   type_: NodeType!
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
-  docs: [BlobRef]
   source: BlobRef
-  labels: [LabelRef!]
   visibility: NodeVisibility!
   mode: NodeMode!
   rights: Int!
@@ -183,11 +180,16 @@ input AddNodeInput {
   isRoot: Boolean!
   isPersonal: Boolean
   userCanJoin: Boolean
+  children: [NodeRef!]
+  docs: [BlobRef]
+  labels: [LabelRef!]
+  roles: [RoleExtRef!]
+  role_ext: RoleExtRef
+  role_type: RoleType
+  color: String
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
-  role_type: RoleType
-  role_ext: RoleExtRef
   contracts: [VoteRef!]
   orga_agg: OrgaAggRef
 }
@@ -224,7 +226,7 @@ input AddRoleExtInput {
   color: String
   mandate: MandateRef
   nodes: [NodeRef!]
-  n_nodes: Int
+  roles: [NodeRef!]
 }
 
 type AddRoleExtPayload {
@@ -249,14 +251,27 @@ input AddTensionInput {
   assignees: [UserRef!]
   labels: [LabelRef!]
   blobs: [BlobRef!]
-  history: [EventRef!]!
+  history: [EventRef!]
   contracts: [ContractRef!]
+  subscribers: [UserRef!]
   n_comments: Int
   n_open_contracts: Int
 }
 
 type AddTensionPayload {
   tension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension]
+  numUids: Int
+}
+
+input AddUserEventInput {
+  createdAt: DateTime!
+  isRead: Boolean!
+  user: UserRef!
+  event: [EventKindRef!]
+}
+
+type AddUserEventPayload {
+  userEvent(filter: UserEventFilter, order: UserEventOrder, first: Int, offset: Int): [UserEvent]
   numUids: Int
 }
 
@@ -271,12 +286,16 @@ input AddUserInput {
   emailValidated: Boolean!
   bio: String
   utc: String
+  notifyByEmail: Boolean
+  subscriptions: [TensionRef!]
   rights: UserRightsRef!
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
   contracts: [ContractRef!]
+  events: [UserEventRef!]
+  markAllAsRead: String
 }
 
 type AddUserPayload {
@@ -764,6 +783,12 @@ type DeleteTensionPayload {
   numUids: Int
 }
 
+type DeleteUserEventPayload {
+  userEvent(filter: UserEventFilter, order: UserEventOrder, first: Int, offset: Int): [UserEvent]
+  msg: String
+  numUids: Int
+}
+
 type DeleteUserPayload {
   user(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   msg: String
@@ -903,6 +928,24 @@ enum EventHasFilter {
   new
 }
 
+union EventKind = Event | Contract
+
+input EventKindFilter {
+  memberTypes: [EventKindType!]
+  eventFilter: EventFilter
+  contractFilter: ContractFilter
+}
+
+input EventKindRef {
+  eventRef: EventRef
+  contractRef: ContractRef
+}
+
+enum EventKindType {
+  Event
+  Contract
+}
+
 input EventOrder {
   asc: EventOrderable
   desc: EventOrderable
@@ -1025,8 +1068,6 @@ type Label {
   color: String
   tensions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
-  n_nodes: Int
-  n_tensions: Int
   tensionsAggregate(filter: TensionFilter): TensionAggregateResult
   nodesAggregate(filter: NodeFilter): NodeAggregateResult
 }
@@ -1041,14 +1082,6 @@ type LabelAggregateResult {
   descriptionMax: String
   colorMin: String
   colorMax: String
-  n_nodesMin: Int
-  n_nodesMax: Int
-  n_nodesSum: Int
-  n_nodesAvg: Float
-  n_tensionsMin: Int
-  n_tensionsMax: Int
-  n_tensionsSum: Int
-  n_tensionsAvg: Float
 }
 
 input LabelFilter {
@@ -1068,8 +1101,6 @@ enum LabelHasFilter {
   color
   tensions
   nodes
-  n_nodes
-  n_tensions
 }
 
 input LabelOrder {
@@ -1083,8 +1114,6 @@ enum LabelOrderable {
   name
   description
   color
-  n_nodes
-  n_tensions
 }
 
 input LabelPatch {
@@ -1094,8 +1123,6 @@ input LabelPatch {
   color: String
   tensions: [TensionRef!]
   nodes: [NodeRef!]
-  n_nodes: Int
-  n_tensions: Int
 }
 
 input LabelRef {
@@ -1106,8 +1133,6 @@ input LabelRef {
   color: String
   tensions: [TensionRef!]
   nodes: [NodeRef!]
-  n_nodes: Int
-  n_tensions: Int
 }
 
 type Mandate {
@@ -1235,6 +1260,9 @@ type Mutation {
   addUser(input: [AddUserInput!]!, upsert: Boolean): AddUserPayload
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
+  addUserEvent(input: [AddUserEventInput!]!): AddUserEventPayload
+  updateUserEvent(input: UpdateUserEventInput!): UpdateUserEventPayload
+  deleteUserEvent(filter: UserEventFilter!): DeleteUserEventPayload
   addUserRights(input: [AddUserRightsInput!]!): AddUserRightsPayload
   updateUserRights(input: UpdateUserRightsInput!): UpdateUserRightsPayload
   deleteUserRights(filter: UserRightsFilter!): DeleteUserRightsPayload
@@ -1254,15 +1282,12 @@ type Node {
   nameid: String!
   rootnameid: String!
   parent(filter: NodeFilter): Node
-  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   type_: NodeType!
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_in(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   about: String
   mandate(filter: MandateFilter): Mandate
-  docs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
   source(filter: BlobFilter): Blob
-  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   visibility: NodeVisibility!
   mode: NodeMode!
   rights: Int!
@@ -1270,18 +1295,24 @@ type Node {
   isRoot: Boolean!
   isPersonal: Boolean
   userCanJoin: Boolean
+  children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
+  docs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
+  labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
+  roles(filter: RoleExtFilter, order: RoleExtOrder, first: Int, offset: Int): [RoleExt!]
+  role_ext(filter: RoleExtFilter): RoleExt
+  role_type: RoleType
+  color: String
   first_link(filter: UserFilter): User
   second_link(filter: UserFilter): User
   skills: [String!]
-  role_type: RoleType
-  role_ext(filter: RoleExtFilter): RoleExt
   contracts(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote!]
   orga_agg(filter: OrgaAggFilter): OrgaAgg
-  childrenAggregate(filter: NodeFilter): NodeAggregateResult
   tensions_outAggregate(filter: TensionFilter): TensionAggregateResult
   tensions_inAggregate(filter: TensionFilter): TensionAggregateResult
+  childrenAggregate(filter: NodeFilter): NodeAggregateResult
   docsAggregate(filter: BlobFilter): BlobAggregateResult
   labelsAggregate(filter: LabelFilter): LabelAggregateResult
+  rolesAggregate(filter: RoleExtFilter): RoleExtAggregateResult
   contractsAggregate(filter: VoteFilter): VoteAggregateResult
 }
 
@@ -1303,6 +1334,8 @@ type NodeAggregateResult {
   rightsMax: Int
   rightsSum: Int
   rightsAvg: Float
+  colorMin: String
+  colorMax: String
 }
 
 input NodeFilter {
@@ -1318,8 +1351,8 @@ input NodeFilter {
   isArchived: Boolean
   isRoot: Boolean
   isPersonal: Boolean
-  skills: StringTermFilter
   role_type: RoleType_hash
+  skills: StringTermFilter
   has: [NodeHasFilter]
   and: [NodeFilter]
   or: [NodeFilter]
@@ -1339,7 +1372,9 @@ type NodeFragment {
   type_: NodeType
   first_link: String
   second_link: String
+  role_ext: String
   role_type: RoleType
+  color: String
   childrenAggregate(filter: NodeFragmentFilter): NodeFragmentAggregateResult
 }
 
@@ -1355,6 +1390,10 @@ type NodeFragmentAggregateResult {
   first_linkMax: String
   second_linkMin: String
   second_linkMax: String
+  role_extMin: String
+  role_extMax: String
+  colorMin: String
+  colorMax: String
 }
 
 input NodeFragmentFilter {
@@ -1377,7 +1416,9 @@ enum NodeFragmentHasFilter {
   type_
   first_link
   second_link
+  role_ext
   role_type
+  color
 }
 
 input NodeFragmentOrder {
@@ -1392,6 +1433,8 @@ enum NodeFragmentOrderable {
   about
   first_link
   second_link
+  role_ext
+  color
 }
 
 input NodeFragmentPatch {
@@ -1406,7 +1449,9 @@ input NodeFragmentPatch {
   type_: NodeType
   first_link: String
   second_link: String
+  role_ext: String
   role_type: RoleType
+  color: String
 }
 
 input NodeFragmentRef {
@@ -1422,7 +1467,9 @@ input NodeFragmentRef {
   type_: NodeType
   first_link: String
   second_link: String
+  role_ext: String
   role_type: RoleType
+  color: String
 }
 
 enum NodeHasFilter {
@@ -1433,15 +1480,12 @@ enum NodeHasFilter {
   nameid
   rootnameid
   parent
-  children
   type_
   tensions_out
   tensions_in
   about
   mandate
-  docs
   source
-  labels
   visibility
   mode
   rights
@@ -1449,11 +1493,16 @@ enum NodeHasFilter {
   isRoot
   isPersonal
   userCanJoin
+  children
+  docs
+  labels
+  roles
+  role_ext
+  role_type
+  color
   first_link
   second_link
   skills
-  role_type
-  role_ext
   contracts
   orga_agg
 }
@@ -1482,6 +1531,7 @@ enum NodeOrderable {
   rootnameid
   about
   rights
+  color
 }
 
 input NodePatch {
@@ -1492,15 +1542,12 @@ input NodePatch {
   nameid: String
   rootnameid: String
   parent: NodeRef
-  children: [NodeRef!]
   type_: NodeType
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
-  docs: [BlobRef]
   source: BlobRef
-  labels: [LabelRef!]
   visibility: NodeVisibility
   mode: NodeMode
   rights: Int
@@ -1508,11 +1555,16 @@ input NodePatch {
   isRoot: Boolean
   isPersonal: Boolean
   userCanJoin: Boolean
+  children: [NodeRef!]
+  docs: [BlobRef]
+  labels: [LabelRef!]
+  roles: [RoleExtRef!]
+  role_ext: RoleExtRef
+  role_type: RoleType
+  color: String
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
-  role_type: RoleType
-  role_ext: RoleExtRef
   contracts: [VoteRef!]
   orga_agg: OrgaAggRef
 }
@@ -1526,15 +1578,12 @@ input NodeRef {
   nameid: String
   rootnameid: String
   parent: NodeRef
-  children: [NodeRef!]
   type_: NodeType
   tensions_out: [TensionRef!]
   tensions_in: [TensionRef!]
   about: String
   mandate: MandateRef
-  docs: [BlobRef]
   source: BlobRef
-  labels: [LabelRef!]
   visibility: NodeVisibility
   mode: NodeMode
   rights: Int
@@ -1542,11 +1591,16 @@ input NodeRef {
   isRoot: Boolean
   isPersonal: Boolean
   userCanJoin: Boolean
+  children: [NodeRef!]
+  docs: [BlobRef]
+  labels: [LabelRef!]
+  roles: [RoleExtRef!]
+  role_ext: RoleExtRef
+  role_type: RoleType
+  color: String
   first_link: UserRef
   second_link: UserRef
   skills: [String!]
-  role_type: RoleType
-  role_ext: RoleExtRef
   contracts: [VoteRef!]
   orga_agg: OrgaAggRef
 }
@@ -1803,6 +1857,9 @@ type Query {
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   aggregateUser(filter: UserFilter): UserAggregateResult
+  getUserEvent(id: ID!): UserEvent
+  queryUserEvent(filter: UserEventFilter, order: UserEventOrder, first: Int, offset: Int): [UserEvent]
+  aggregateUserEvent(filter: UserEventFilter): UserEventAggregateResult
   queryUserRights(filter: UserRightsFilter, order: UserRightsOrder, first: Int, offset: Int): [UserRights]
   aggregateUserRights(filter: UserRightsFilter): UserRightsAggregateResult
 }
@@ -1816,8 +1873,9 @@ type RoleExt {
   color: String
   mandate(filter: MandateFilter): Mandate
   nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
-  n_nodes: Int
+  roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   nodesAggregate(filter: NodeFilter): NodeAggregateResult
+  rolesAggregate(filter: NodeFilter): NodeAggregateResult
 }
 
 type RoleExtAggregateResult {
@@ -1830,10 +1888,6 @@ type RoleExtAggregateResult {
   aboutMax: String
   colorMin: String
   colorMax: String
-  n_nodesMin: Int
-  n_nodesMax: Int
-  n_nodesSum: Int
-  n_nodesAvg: Float
 }
 
 input RoleExtFilter {
@@ -1854,7 +1908,7 @@ enum RoleExtHasFilter {
   color
   mandate
   nodes
-  n_nodes
+  roles
 }
 
 input RoleExtOrder {
@@ -1868,7 +1922,6 @@ enum RoleExtOrderable {
   name
   about
   color
-  n_nodes
 }
 
 input RoleExtPatch {
@@ -1879,7 +1932,7 @@ input RoleExtPatch {
   color: String
   mandate: MandateRef
   nodes: [NodeRef!]
-  n_nodes: Int
+  roles: [NodeRef!]
 }
 
 input RoleExtRef {
@@ -1891,7 +1944,7 @@ input RoleExtRef {
   color: String
   mandate: MandateRef
   nodes: [NodeRef!]
-  n_nodes: Int
+  roles: [NodeRef!]
 }
 
 enum RoleType {
@@ -1975,8 +2028,9 @@ type Tension implements Post {
   assignees(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!]
-  history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]!
+  history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]
   contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
+  subscribers(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
   n_comments: Int
   n_open_contracts: Int
   commentsAggregate(filter: CommentFilter): CommentAggregateResult
@@ -1985,6 +2039,7 @@ type Tension implements Post {
   blobsAggregate(filter: BlobFilter): BlobAggregateResult
   historyAggregate(filter: EventFilter): EventAggregateResult
   contractsAggregate(filter: ContractFilter): ContractAggregateResult
+  subscribersAggregate(filter: UserFilter): UserAggregateResult
 }
 
 enum TensionAction {
@@ -2087,6 +2142,7 @@ enum TensionHasFilter {
   blobs
   history
   contracts
+  subscribers
   n_comments
   n_open_contracts
 }
@@ -2127,6 +2183,7 @@ input TensionPatch {
   blobs: [BlobRef!]
   history: [EventRef!]
   contracts: [ContractRef!]
+  subscribers: [UserRef!]
   n_comments: Int
   n_open_contracts: Int
 }
@@ -2151,6 +2208,7 @@ input TensionRef {
   blobs: [BlobRef!]
   history: [EventRef!]
   contracts: [ContractRef!]
+  subscribers: [UserRef!]
   n_comments: Int
   n_open_contracts: Int
 }
@@ -2169,6 +2227,7 @@ enum TensionType {
   Operational
   Governance
   Help
+  Alert
 }
 
 input TensionType_hash {
@@ -2330,6 +2389,17 @@ type UpdateTensionPayload {
   numUids: Int
 }
 
+input UpdateUserEventInput {
+  filter: UserEventFilter!
+  set: UserEventPatch
+  remove: UserEventPatch
+}
+
+type UpdateUserEventPayload {
+  userEvent(filter: UserEventFilter, order: UserEventOrder, first: Int, offset: Int): [UserEvent]
+  numUids: Int
+}
+
 input UpdateUserInput {
   filter: UserFilter!
   set: UserPatch
@@ -2375,17 +2445,23 @@ type User {
   emailValidated: Boolean!
   bio: String
   utc: String
+  notifyByEmail: Boolean
+  subscriptions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   rights(filter: UserRightsFilter): UserRights!
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   backed_roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   tensions_created(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   tensions_assigned(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
+  events(filter: UserEventFilter, order: UserEventOrder, first: Int, offset: Int): [UserEvent!]
+  markAllAsRead: String
+  subscriptionsAggregate(filter: TensionFilter): TensionAggregateResult
   rolesAggregate(filter: NodeFilter): NodeAggregateResult
   backed_rolesAggregate(filter: NodeFilter): NodeAggregateResult
   tensions_createdAggregate(filter: TensionFilter): TensionAggregateResult
   tensions_assignedAggregate(filter: TensionFilter): TensionAggregateResult
   contractsAggregate(filter: ContractFilter): ContractAggregateResult
+  eventsAggregate(filter: UserEventFilter): UserEventAggregateResult
 }
 
 type UserAggregateResult {
@@ -2408,6 +2484,64 @@ type UserAggregateResult {
   bioMax: String
   utcMin: String
   utcMax: String
+  markAllAsReadMin: String
+  markAllAsReadMax: String
+}
+
+type UserEvent {
+  id: ID!
+  createdAt: DateTime!
+  isRead: Boolean!
+  user(filter: UserFilter): User!
+  event(filter: EventKindFilter, first: Int, offset: Int): [EventKind!]
+}
+
+type UserEventAggregateResult {
+  count: Int
+  createdAtMin: DateTime
+  createdAtMax: DateTime
+}
+
+input UserEventFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  isRead: Boolean
+  has: [UserEventHasFilter]
+  and: [UserEventFilter]
+  or: [UserEventFilter]
+  not: UserEventFilter
+}
+
+enum UserEventHasFilter {
+  createdAt
+  isRead
+  user
+  event
+}
+
+input UserEventOrder {
+  asc: UserEventOrderable
+  desc: UserEventOrderable
+  then: UserEventOrder
+}
+
+enum UserEventOrderable {
+  createdAt
+}
+
+input UserEventPatch {
+  createdAt: DateTime
+  isRead: Boolean
+  user: UserRef
+  event: [EventKindRef!]
+}
+
+input UserEventRef {
+  id: ID
+  createdAt: DateTime
+  isRead: Boolean
+  user: UserRef
+  event: [EventKindRef!]
 }
 
 input UserFilter {
@@ -2432,12 +2566,16 @@ enum UserHasFilter {
   emailValidated
   bio
   utc
+  notifyByEmail
+  subscriptions
   rights
   roles
   backed_roles
   tensions_created
   tensions_assigned
   contracts
+  events
+  markAllAsRead
 }
 
 input UserOrder {
@@ -2456,6 +2594,7 @@ enum UserOrderable {
   emailHash
   bio
   utc
+  markAllAsRead
 }
 
 input UserPatch {
@@ -2469,12 +2608,16 @@ input UserPatch {
   emailValidated: Boolean
   bio: String
   utc: String
+  notifyByEmail: Boolean
+  subscriptions: [TensionRef!]
   rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
   contracts: [ContractRef!]
+  events: [UserEventRef!]
+  markAllAsRead: String
 }
 
 input UserRef {
@@ -2489,12 +2632,16 @@ input UserRef {
   emailValidated: Boolean
   bio: String
   utc: String
+  notifyByEmail: Boolean
+  subscriptions: [TensionRef!]
   rights: UserRightsRef
   roles: [NodeRef!]
   backed_roles: [NodeRef!]
   tensions_created: [TensionRef!]
   tensions_assigned: [TensionRef!]
   contracts: [ContractRef!]
+  events: [UserEventRef!]
+  markAllAsRead: String
 }
 
 type UserRights {
