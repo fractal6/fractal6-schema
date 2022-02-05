@@ -522,17 +522,26 @@ class GqlgenSemantics(GraphqlSemantics):
 
         if name.startswith('Add') and name.endswith('Input'):
             # This match the input field for the 'Add' mutations
+            # - only copy directive with arguments as add input are allowed by default.
             type_name = re.match(r'Add(\w*)Input', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_(add|alter)')
-                # If there no rule, ignore the directive as add input are allowed by default.
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_(add|alter)', with_args=True)
         elif name.endswith('Patch'):
             # This match the input field for the 'Update' and 'Remove' mutations
+            # - set_defaust protect field with no auth directives as read_only
             type_name = re.match(r'(\w*)Patch', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_(?!add)')
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_(?!add)', set_default=True)
+
+        elif name.endswith('Ref'):
+            # This match the input field for the 'Update' and 'Remove' mutations
+            type_name = re.match(r'(\w*)Ref', name).groups()[0]
+            # Ignore Unions
+            if type_name and not type_name in self.sf.unions:
+                self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_')
+                self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_')
 
         return ast
 

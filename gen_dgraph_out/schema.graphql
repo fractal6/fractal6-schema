@@ -1,34 +1,34 @@
+directive @lambda on FIELD_DEFINITION
+
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+
+directive @cacheControl(maxAge: Int!) on QUERY
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
+
 directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @id(interface: Boolean) on FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
+
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
 directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
 
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
 
 directive @remoteResponse(name: String) on FIELD_DEFINITION
 
 directive @cascade(fields: [String]) on FIELD
 
-directive @lambda on FIELD_DEFINITION
-
-directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
-
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
-
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
-
-directive @cacheControl(maxAge: Int!) on QUERY
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @id(interface: Boolean) on FIELD_DEFINITION
-
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
-
-directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -225,8 +225,8 @@ input AddRoleExtInput {
   role_type: RoleType!
   color: String
   mandate: MandateRef
-  nodes: [NodeRef!]
   roles: [NodeRef!]
+  nodes: [NodeRef!]
 }
 
 type AddRoleExtPayload {
@@ -1872,10 +1872,10 @@ type RoleExt {
   role_type: RoleType!
   color: String
   mandate(filter: MandateFilter): Mandate
-  nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
-  nodesAggregate(filter: NodeFilter): NodeAggregateResult
+  nodes(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   rolesAggregate(filter: NodeFilter): NodeAggregateResult
+  nodesAggregate(filter: NodeFilter): NodeAggregateResult
 }
 
 type RoleExtAggregateResult {
@@ -1907,8 +1907,8 @@ enum RoleExtHasFilter {
   role_type
   color
   mandate
-  nodes
   roles
+  nodes
 }
 
 input RoleExtOrder {
@@ -1931,8 +1931,8 @@ input RoleExtPatch {
   role_type: RoleType
   color: String
   mandate: MandateRef
-  nodes: [NodeRef!]
   roles: [NodeRef!]
+  nodes: [NodeRef!]
 }
 
 input RoleExtRef {
@@ -1943,8 +1943,8 @@ input RoleExtRef {
   role_type: RoleType
   color: String
   mandate: MandateRef
-  nodes: [NodeRef!]
   roles: [NodeRef!]
+  nodes: [NodeRef!]
 }
 
 enum RoleType {

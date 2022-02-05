@@ -16,6 +16,9 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
         }
     }"""
 }]
+}, add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+}, update:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+}, delete:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 }) {
   id: ID!
   createdBy: User!
@@ -116,8 +119,8 @@ type RoleExt @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   role_type: RoleType!
   color: String
   mandate: Mandate
-  nodes: [Node!] @hasInverse(field: roles)
   roles: [Node!] @hasInverse(field: role_ext)
+  nodes: [Node!] @hasInverse(field: roles)
 }
 
 type OrgaAgg {
@@ -283,11 +286,13 @@ type Vote implements Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   data: [Int!]!
 }
 
-type User @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+type User @auth(add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+}, update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query ($USERNAME: String!) {
       queryUser (filter: {username: {eq: $USERNAME}}) { username }
     }"""
 }]
+}, delete:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 }) {
   id: ID!
   createdAt: DateTime!
@@ -312,7 +317,14 @@ type User @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   markAllAsRead: String
 }
 
-type UserEvent @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+type UserEvent @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryUserEvent {
+        user(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }"""
+}]
+}, update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query ($USERNAME: String!) {
       queryUserEvent {
         user(filter: {username: {eq: $USERNAME}}) { username }

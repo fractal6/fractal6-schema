@@ -1,6 +1,6 @@
 # <!> Schema Depencies <!>
-# * fractal6.go/db/api: hardocded query
-# * fractal6.go/graph/model/auth: hardocded struct
+# * fractal6.go/db/api: hardocoded query
+# * fractal6.go/graph/model/auth: hardcoded struct
 # * fractal6.go/graph/tension_auth/EMAP: propagated fields
 # * fractal6-ui.elm: query and case on enum object
 # * database/script: hardocded dict
@@ -41,7 +41,10 @@ type Node @auth(
           }
         }
     }""" }
-  ]}
+  ]},
+  add: {rule: "{ $USERTYPE: {eq: \"Root\"} }"},
+  update: {rule: "{ $USERTYPE: {eq: \"Root\"} }"},
+  delete: {rule: "{ $USERTYPE: {eq: \"Root\"} }"}
 ){
   id: ID!
   """
@@ -173,7 +176,7 @@ type Label @auth(
         }
     }""" },
     # Authorize member and owner
-    # Note: when a node is removes from Label.nodes, there is an auth regression.
+    # Note: when a node is removed from Label.nodes, there is an auth regression.
     { rule: """query ($ROOTIDS: [String]) {
         queryLabel(filter: {rootnameid: {in: $ROOTIDS}}) { id }
     }""" }
@@ -185,7 +188,7 @@ type Label @auth(
   description: String   @x_alter(r:"maxLen", n:280)
   color: String         @x_alter
   tensions: [Tension!]  @hasInverse(field: labels) @x_ro
-  nodes: [Node!]        @hasInverse(field: labels) @x_alter(r:"oneByOne")
+  nodes: [Node!]        @hasInverse(field: labels) @x_alter(r:"oneByOne") @x_alter(r:"ref")
 }
 
 type RoleExt @auth(
@@ -211,8 +214,8 @@ type RoleExt @auth(
   role_type: RoleType!  @x_alter
   color: String         @x_alter
   mandate: Mandate      @x_alter
-  nodes: [Node!]        @hasInverse(field: roles) @x_alter(r:"oneByOne")
-  roles: [Node!]        @hasInverse(field: role_ext)
+  roles: [Node!]        @hasInverse(field: role_ext) @x_ro
+  nodes: [Node!]        @hasInverse(field: roles) @x_alter(r:"oneByOne") @x_alter(r:"ref")
 
   # period of validity ? @future
   # validatedBy  ? @future (vote process...)
@@ -305,11 +308,11 @@ type Tension implements Post @auth(
 
   comments: [Comment!]   @x_alter(r:"hasEvent", e:[Created, CommentPushed])         @x_alter(r:"oneByOne")
   assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
-  labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved])
+  labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
   blobs: [Blob!]         @hasInverse(field: tension) @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted])
   history: [Event!]      @hasInverse(field: tension) @x_alter # entry point
   # --
-  contracts: [Contract!] @hasInverse(field: tension)
+  contracts: [Contract!] @hasInverse(field: tension) @x_add(r:"ref")
   subscribers: [User!]   @hasInverse(field: subscriptions)
 
   # -- @debug : Aggregate count result.
@@ -335,7 +338,7 @@ type Comment implements Post @auth(
 }
 
 type Blob implements Post {
-  tension: Tension!
+  tension: Tension!        @x_add(r:"ref")
   blob_type: BlobType!     @search
   pushedFlag: DateTime     @search
   archivedFlag: DateTime   @search
@@ -346,7 +349,7 @@ type Blob implements Post {
 }
 
 type Event implements Post {
-  tension: Tension!
+  tension: Tension! @x_add(r:"ref")
   event_type: TensionEvent! @search
   old: String # Store blobid for Commit and Pushed event
   new: String # updated value
@@ -391,8 +394,8 @@ type Contract implements Post @auth(
   # {contractid} is used to perform upsert update of vote and prevent for creating several
   # auto similar contract. Contractid is set to its uid once the contract is closed to prevent blocking
   # the creation of new contract.
-  contractid: String! @id # {tid}#{TensionEvent}#old#new
-  tension: Tension!
+  contractid: String!          @id # {tid}#{TensionEvent}#old#new
+  tension: Tension!            @x_add(r:"ref")
   status: ContractStatus!      @search
   contract_type: ContractType! @search
   closedAt: DateTime           @search
@@ -421,9 +424,9 @@ type Vote implements Post @auth(
   ]}
 ) @hook_ {
   # @debug: a vote should trigger a notification but its not evented (contract updated ?)
-  voteid: String!  @id # {contractid}#{nameid}
-  contract: Contract!
-  node: Node! # Named Role (@...)
+  voteid: String!     @id # {contractid}#{nameid}
+  contract: Contract! @x_add(r:"ref")
+  node: Node!         @x_add(r:"ref") # Named Role (@...)
   data: [Int!]! # Vote results. Maximum len equal len of candidates.
 }
 
@@ -432,14 +435,15 @@ type Vote implements Post @auth(
 #
 
 type User @auth(
+  add: {rule: "{ $USERTYPE: {eq: \"Root\"} }"},
   update: { or: [
     # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
     # Authorize author
     { rule: """query ($USERNAME: String!) {
       queryUser (filter: {username: {eq: $USERNAME}}) { username }
-    }""" }
-  ]}
+    }""" } ]},
+  delete: {rule: "{ $USERTYPE: {eq: \"Root\"} }"}
 ) @hook_ {
   id: ID!
   createdAt: DateTime!
@@ -455,17 +459,17 @@ type User @auth(
   bio: String               @x_patch
   utc: String               @x_patch
   notifyByEmail: Boolean    @x_patch
-  subscriptions: [Tension!] @x_patch @hasInverse(field: subscribers)
+  subscriptions: [Tension!] @x_patch @hasInverse(field: subscribers) @x_alter(r:"ref")
   #skills
   # User Rights
   rights: UserRights!
   # User Roles
-  roles: [Node!]                 @hasInverse(field: first_link)
-  backed_roles: [Node!]          @hasInverse(field: second_link)
+  roles: [Node!]                 @hasInverse(field: first_link) @x_add(r:"ref")
+  backed_roles: [Node!]          @hasInverse(field: second_link) @x_add(r:"ref")
   # User Tensions
-  tensions_created: [Tension!]   @hasInverse(field: createdBy)
-  tensions_assigned: [Tension!]  @hasInverse(field: assignees)
-  contracts: [Contract!]         @hasInverse(field: candidates)
+  tensions_created: [Tension!]   @hasInverse(field: createdBy) @x_add(r:"ref")
+  tensions_assigned: [Tension!]  @hasInverse(field: assignees) @x_add(r:"ref")
+  contracts: [Contract!]         @hasInverse(field: candidates) @x_add(r:"ref")
   # Notifications Events (Tensions and Contracts)
   """
   An event (UserEvent) will be pushed, for notification purpose, every times an
@@ -486,6 +490,16 @@ type User @auth(
 }
 
 type UserEvent @auth(
+  add: { or: [
+    # Authorize root
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize author
+    { rule: """query ($USERNAME: String!) {
+      queryUserEvent {
+        user(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }""" }
+  ]},
   update: { or: [
     # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
@@ -501,7 +515,7 @@ type UserEvent @auth(
   createdAt: DateTime! @search
   isRead: Boolean! @search @x_alter
   user: User!
-  event: [EventKind!] # event can be batched !
+  event: [EventKind!] @x_add(r:"ref") # event can be batched !
 }
 
 union EventKind = Event | Contract
