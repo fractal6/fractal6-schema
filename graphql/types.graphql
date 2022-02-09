@@ -1,9 +1,8 @@
 # <!> Schema Depencies <!>
-# * fractal6.go/db/api: hardocoded query
-# * fractal6.go/graph/model/auth: hardcoded struct
+# * fractal6.go/db/api: hardcoded query
 # * fractal6.go/graph/tension_auth/EMAP: propagated fields
 # * fractal6-ui.elm: query and case on enum object
-# * database/script: hardocded dict
+# * database/script: hardcoded spec
 
 
 # Universe (graph of graph)

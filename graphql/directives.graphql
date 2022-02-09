@@ -38,6 +38,7 @@ directive @w_set(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_remove(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_patch(a:String!) on INPUT_FIELD_DEFINITION
 directive @w_alter(a:String!) on INPUT_FIELD_DEFINITION
+# Use for post hook execution.
 directive @w_meta_patch(f:String!, k: String) on INPUT_FIELD_DEFINITION
 
 
