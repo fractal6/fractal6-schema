@@ -68,6 +68,7 @@ type Node @auth(
   """
   Link to the parent node. If parent is null, Node is a root node
   """
+  isRoot: Boolean!       @search
   parent: Node
   type_: NodeType!    @search
 
@@ -85,9 +86,9 @@ type Node @auth(
   mode: NodeMode!               @search # Governance mode (Interpratation of role_type)
   rights: Int!                  # Only used for Bot (v0.5). The right value is a binary AND between all event authorized it the same order they appear in the schema.
   isArchived: Boolean!          @search # Blob source is archived
+
   # Root node only
   #network: [Network]     @hasInverse(field: nodes)
-  isRoot: Boolean!       @search
   isPersonal: Boolean    @search # Help explore "official" orga - nameid ends with @{username}
   userCanJoin: Boolean   # Rather can ask to join
 
@@ -127,6 +128,7 @@ type Node @auth(
 
   # Aggregator
   orga_agg: OrgaAgg  @meta(f:"getOrgaAgg", k:"nameid")
+  events_history: [Event!]  @meta(f:"getNodeHistory", k:"nameid")
 }
 
 type NodeFragment {
@@ -301,7 +303,7 @@ type Tension implements Post @auth(
   receiverid: String!    @search(by: [hash, regexp]) # @DEBUG: Waiting Nested filter in Dgragh
 
   title: String!         @search(by: [fulltext])
-  type_: TensionType!    @search
+  type_: TensionType!    @search @x_alter(r:"tensionTypeCheck")
   status: TensionStatus! @search
   action: TensionAction
 
@@ -488,6 +490,14 @@ type User @auth(
   markAllAsRead: String  @w_meta_patch(f:"markAllAsRead", k:"username") @x_alter # value ignored
 }
 
+type UserRights {
+  type_: UserType!
+  canLogin: Boolean!  # Managed in web/auth handler functions
+  canCreateRoot: Boolean! # Bypass input Node authorization/limitation.
+  maxPublicOrga: Int! # maximum of private organisation
+  hasEmailNotifications: Boolean!
+}
+
 type UserEvent @auth(
   add: { or: [
     # Authorize root
@@ -517,17 +527,15 @@ type UserEvent @auth(
   event: [EventKind!] @x_add(r:"ref") # event can be batched !
 }
 
-union EventKind = Event | Contract
+# @debug: Each new union type need a decoder in the mapstructure decoder.
+# this function is pass in the decoder confif in the db.dgraph.QueyGql function.
+union EventKind = Event | Contract | Notif
 
-# Special rights
-type UserRights {
-  # Managed in auth handler functions
-  canLogin: Boolean!
-  # Managed by directives
-  canCreateRoot: Boolean! # Bypass input Node authorization/limitation.
-  maxPublicOrga: Int! # maximum of private organisation
-  type_: UserType!
+type Notif implements Post {
+  tension_: Tension   # Graphql validation error because option tension field conflict with mandatory one.
+  contract: Contract
 }
+
 
 #
 # Enum

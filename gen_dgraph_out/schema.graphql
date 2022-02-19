@@ -1,32 +1,32 @@
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+
 directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
 
-directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
+directive @cascade(fields: [String]) on FIELD
 
-directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @id(interface: Boolean) on FIELD_DEFINITION
 
 directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
 
-directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @cascade(fields: [String]) on FIELD
-
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
-
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @remoteResponse(name: String) on FIELD_DEFINITION
 
 directive @cacheControl(maxAge: Int!) on QUERY
+
+directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
+
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
 
 directive @lambda on FIELD_DEFINITION
 
@@ -166,6 +166,7 @@ input AddNodeInput {
   name: String!
   nameid: String!
   rootnameid: String!
+  isRoot: Boolean!
   parent: NodeRef
   type_: NodeType!
   tensions_out: [TensionRef!]
@@ -177,7 +178,6 @@ input AddNodeInput {
   mode: NodeMode!
   rights: Int!
   isArchived: Boolean!
-  isRoot: Boolean!
   isPersonal: Boolean
   userCanJoin: Boolean
   children: [NodeRef!]
@@ -192,10 +192,25 @@ input AddNodeInput {
   skills: [String!]
   contracts: [VoteRef!]
   orga_agg: OrgaAggRef
+  events_history: [EventRef!]
 }
 
 type AddNodePayload {
   node(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node]
+  numUids: Int
+}
+
+input AddNotifInput {
+  createdBy: UserRef!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  message: String
+  tension_: TensionRef
+  contract: ContractRef
+}
+
+type AddNotifPayload {
+  notif(filter: NotifFilter, order: NotifOrder, first: Int, offset: Int): [Notif]
   numUids: Int
 }
 
@@ -304,10 +319,11 @@ type AddUserPayload {
 }
 
 input AddUserRightsInput {
+  type_: UserType!
   canLogin: Boolean!
   canCreateRoot: Boolean!
   maxPublicOrga: Int!
-  type_: UserType!
+  hasEmailNotifications: Boolean!
 }
 
 type AddUserRightsPayload {
@@ -753,6 +769,12 @@ type DeleteNodePayload {
   numUids: Int
 }
 
+type DeleteNotifPayload {
+  notif(filter: NotifFilter, order: NotifOrder, first: Int, offset: Int): [Notif]
+  msg: String
+  numUids: Int
+}
+
 type DeleteOrgaAggPayload {
   orgaAgg(filter: OrgaAggFilter, order: OrgaAggOrder, first: Int, offset: Int): [OrgaAgg]
   msg: String
@@ -928,22 +950,25 @@ enum EventHasFilter {
   new
 }
 
-union EventKind = Event | Contract
+union EventKind = Event | Contract | Notif
 
 input EventKindFilter {
   memberTypes: [EventKindType!]
   eventFilter: EventFilter
   contractFilter: ContractFilter
+  notifFilter: NotifFilter
 }
 
 input EventKindRef {
   eventRef: EventRef
   contractRef: ContractRef
+  notifRef: NotifRef
 }
 
 enum EventKindType {
   Event
   Contract
+  Notif
 }
 
 input EventOrder {
@@ -1260,12 +1285,15 @@ type Mutation {
   addUser(input: [AddUserInput!]!, upsert: Boolean): AddUserPayload
   updateUser(input: UpdateUserInput!): UpdateUserPayload
   deleteUser(filter: UserFilter!): DeleteUserPayload
-  addUserEvent(input: [AddUserEventInput!]!): AddUserEventPayload
-  updateUserEvent(input: UpdateUserEventInput!): UpdateUserEventPayload
-  deleteUserEvent(filter: UserEventFilter!): DeleteUserEventPayload
   addUserRights(input: [AddUserRightsInput!]!): AddUserRightsPayload
   updateUserRights(input: UpdateUserRightsInput!): UpdateUserRightsPayload
   deleteUserRights(filter: UserRightsFilter!): DeleteUserRightsPayload
+  addUserEvent(input: [AddUserEventInput!]!): AddUserEventPayload
+  updateUserEvent(input: UpdateUserEventInput!): UpdateUserEventPayload
+  deleteUserEvent(filter: UserEventFilter!): DeleteUserEventPayload
+  addNotif(input: [AddNotifInput!]!): AddNotifPayload
+  updateNotif(input: UpdateNotifInput!): UpdateNotifPayload
+  deleteNotif(filter: NotifFilter!): DeleteNotifPayload
 }
 
 input NearFilter {
@@ -1281,6 +1309,7 @@ type Node {
   name: String!
   nameid: String!
   rootnameid: String!
+  isRoot: Boolean!
   parent(filter: NodeFilter): Node
   type_: NodeType!
   tensions_out(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
@@ -1292,7 +1321,6 @@ type Node {
   mode: NodeMode!
   rights: Int!
   isArchived: Boolean!
-  isRoot: Boolean!
   isPersonal: Boolean
   userCanJoin: Boolean
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
@@ -1307,6 +1335,7 @@ type Node {
   skills: [String!]
   contracts(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int): [Vote!]
   orga_agg(filter: OrgaAggFilter): OrgaAgg
+  events_history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]
   tensions_outAggregate(filter: TensionFilter): TensionAggregateResult
   tensions_inAggregate(filter: TensionFilter): TensionAggregateResult
   childrenAggregate(filter: NodeFilter): NodeAggregateResult
@@ -1314,6 +1343,7 @@ type Node {
   labelsAggregate(filter: LabelFilter): LabelAggregateResult
   rolesAggregate(filter: RoleExtFilter): RoleExtAggregateResult
   contractsAggregate(filter: VoteFilter): VoteAggregateResult
+  events_historyAggregate(filter: EventFilter): EventAggregateResult
 }
 
 type NodeAggregateResult {
@@ -1344,12 +1374,12 @@ input NodeFilter {
   name: StringTermFilter
   nameid: StringHashFilter_StringRegExpFilter
   rootnameid: StringHashFilter_StringRegExpFilter
+  isRoot: Boolean
   type_: NodeType_hash
   about: StringFullTextFilter
   visibility: NodeVisibility_hash
   mode: NodeMode_hash
   isArchived: Boolean
-  isRoot: Boolean
   isPersonal: Boolean
   role_type: RoleType_hash
   skills: StringTermFilter
@@ -1479,6 +1509,7 @@ enum NodeHasFilter {
   name
   nameid
   rootnameid
+  isRoot
   parent
   type_
   tensions_out
@@ -1490,7 +1521,6 @@ enum NodeHasFilter {
   mode
   rights
   isArchived
-  isRoot
   isPersonal
   userCanJoin
   children
@@ -1505,6 +1535,7 @@ enum NodeHasFilter {
   skills
   contracts
   orga_agg
+  events_history
 }
 
 enum NodeMode {
@@ -1541,6 +1572,7 @@ input NodePatch {
   name: String
   nameid: String
   rootnameid: String
+  isRoot: Boolean
   parent: NodeRef
   type_: NodeType
   tensions_out: [TensionRef!]
@@ -1552,7 +1584,6 @@ input NodePatch {
   mode: NodeMode
   rights: Int
   isArchived: Boolean
-  isRoot: Boolean
   isPersonal: Boolean
   userCanJoin: Boolean
   children: [NodeRef!]
@@ -1567,6 +1598,7 @@ input NodePatch {
   skills: [String!]
   contracts: [VoteRef!]
   orga_agg: OrgaAggRef
+  events_history: [EventRef!]
 }
 
 input NodeRef {
@@ -1577,6 +1609,7 @@ input NodeRef {
   name: String
   nameid: String
   rootnameid: String
+  isRoot: Boolean
   parent: NodeRef
   type_: NodeType
   tensions_out: [TensionRef!]
@@ -1588,7 +1621,6 @@ input NodeRef {
   mode: NodeMode
   rights: Int
   isArchived: Boolean
-  isRoot: Boolean
   isPersonal: Boolean
   userCanJoin: Boolean
   children: [NodeRef!]
@@ -1603,6 +1635,7 @@ input NodeRef {
   skills: [String!]
   contracts: [VoteRef!]
   orga_agg: OrgaAggRef
+  events_history: [EventRef!]
 }
 
 enum NodeType {
@@ -1624,6 +1657,76 @@ enum NodeVisibility {
 input NodeVisibility_hash {
   eq: NodeVisibility
   in: [NodeVisibility]
+}
+
+type Notif implements Post {
+  id: ID!
+  createdBy(filter: UserFilter): User!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  message: String
+  tension_(filter: TensionFilter): Tension
+  contract(filter: ContractFilter): Contract
+}
+
+type NotifAggregateResult {
+  count: Int
+  createdAtMin: DateTime
+  createdAtMax: DateTime
+  updatedAtMin: DateTime
+  updatedAtMax: DateTime
+  messageMin: String
+  messageMax: String
+}
+
+input NotifFilter {
+  id: [ID!]
+  createdAt: DateTimeFilter
+  message: StringFullTextFilter
+  has: [NotifHasFilter]
+  and: [NotifFilter]
+  or: [NotifFilter]
+  not: NotifFilter
+}
+
+enum NotifHasFilter {
+  createdBy
+  createdAt
+  updatedAt
+  message
+  tension_
+  contract
+}
+
+input NotifOrder {
+  asc: NotifOrderable
+  desc: NotifOrderable
+  then: NotifOrder
+}
+
+enum NotifOrderable {
+  createdAt
+  updatedAt
+  message
+}
+
+input NotifPatch {
+  createdBy: UserRef
+  createdAt: DateTime
+  updatedAt: DateTime
+  message: String
+  tension_: TensionRef
+  contract: ContractRef
+}
+
+input NotifRef {
+  id: ID
+  createdBy: UserRef
+  createdAt: DateTime
+  updatedAt: DateTime
+  message: String
+  tension_: TensionRef
+  contract: ContractRef
 }
 
 type OrgaAgg {
@@ -1857,11 +1960,14 @@ type Query {
   getUser(id: ID, username: String): User
   queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User]
   aggregateUser(filter: UserFilter): UserAggregateResult
+  queryUserRights(filter: UserRightsFilter, order: UserRightsOrder, first: Int, offset: Int): [UserRights]
+  aggregateUserRights(filter: UserRightsFilter): UserRightsAggregateResult
   getUserEvent(id: ID!): UserEvent
   queryUserEvent(filter: UserEventFilter, order: UserEventOrder, first: Int, offset: Int): [UserEvent]
   aggregateUserEvent(filter: UserEventFilter): UserEventAggregateResult
-  queryUserRights(filter: UserRightsFilter, order: UserRightsOrder, first: Int, offset: Int): [UserRights]
-  aggregateUserRights(filter: UserRightsFilter): UserRightsAggregateResult
+  getNotif(id: ID!): Notif
+  queryNotif(filter: NotifFilter, order: NotifOrder, first: Int, offset: Int): [Notif]
+  aggregateNotif(filter: NotifFilter): NotifAggregateResult
 }
 
 type RoleExt {
@@ -2334,6 +2440,17 @@ type UpdateNodePayload {
   numUids: Int
 }
 
+input UpdateNotifInput {
+  filter: NotifFilter!
+  set: NotifPatch
+  remove: NotifPatch
+}
+
+type UpdateNotifPayload {
+  notif(filter: NotifFilter, order: NotifOrder, first: Int, offset: Int): [Notif]
+  numUids: Int
+}
+
 input UpdateOrgaAggInput {
   filter: OrgaAggFilter!
   set: OrgaAggPatch
@@ -2645,10 +2762,11 @@ input UserRef {
 }
 
 type UserRights {
+  type_: UserType!
   canLogin: Boolean!
   canCreateRoot: Boolean!
   maxPublicOrga: Int!
-  type_: UserType!
+  hasEmailNotifications: Boolean!
 }
 
 type UserRightsAggregateResult {
@@ -2667,10 +2785,11 @@ input UserRightsFilter {
 }
 
 enum UserRightsHasFilter {
+  type_
   canLogin
   canCreateRoot
   maxPublicOrga
-  type_
+  hasEmailNotifications
 }
 
 input UserRightsOrder {
@@ -2684,17 +2803,19 @@ enum UserRightsOrderable {
 }
 
 input UserRightsPatch {
+  type_: UserType
   canLogin: Boolean
   canCreateRoot: Boolean
   maxPublicOrga: Int
-  type_: UserType
+  hasEmailNotifications: Boolean
 }
 
 input UserRightsRef {
+  type_: UserType
   canLogin: Boolean
   canCreateRoot: Boolean
   maxPublicOrga: Int
-  type_: UserType
+  hasEmailNotifications: Boolean
 }
 
 enum UserType {
