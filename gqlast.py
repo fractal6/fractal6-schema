@@ -36,6 +36,7 @@ sys.setrecursionlimit(10**4)
 
 _dgraph_directives = ['id', 'search', 'hasInverse', 'remote', 'custom', 'auth', 'lambda', 'generate', 'secret', 'dgraph', 'default', 'cacheControl', 'withSubscription']
 _hook_prefix = "hook_"
+_input_names = ["input", "filter"]
 
 # IMPROVMENT:
 # * Show the line when an assert error occurs...
@@ -353,7 +354,12 @@ class SemanticFilter:
                         pre_directive_name = _hook_prefix +  op + type_ + 'Input'
                         self._ast_set(pre_directive, '_name', pre_directive_name) # @warning: breaks the original Grammar syntax.
                         args = list(self.get_args(f['ast'].field)) # tuple are non mutable !
-                        args.insert(len(args)-1, pre_directive)
+                        # Directive should apply on either input or filter argument (not on eventual upsert)
+                        for i, a in enumerate(args):
+                            if isinstance(a, dict) and hasattr(a, "field") and self.get_name(a.field) in _input_names:
+                                args.insert(i+1, pre_directive)
+                                break
+
                         self._ast_set(f['ast'].field, 'args', args)
 
                         # Push the directive definition
