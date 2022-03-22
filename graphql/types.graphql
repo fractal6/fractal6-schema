@@ -408,10 +408,6 @@ type Contract implements Post @auth(
   isValidator: Boolean         @isContractValidator
 }
 
-type PendingUser {
-  email: String
-}
-
 type Vote implements Post @auth(
   add: { or: [
     # Authorize root
@@ -449,17 +445,15 @@ type User @auth(
   id: ID!
   createdAt: DateTime!
   lastAck: DateTime!
-  username: String!     @id @search(by: [hash, regexp])
+  username: String!     @id @search(by: [hash, regexp]) @w_add(a:"lower")
   name: String              @search(by: [regexp]) @x_patch
   password: String!         @hidden
-  # @DEBUG: Dgraph now support multiple @id, to be tried...
-  email: String!            @hidden @search(by: [hash]) @x_patch
-  emailHash: String         @hidden
+  email: String!        @id @hidden @search(by: [hash]) @w_alter(a:"lower")
   emailValidated: Boolean!  @hidden
   # Profile
   bio: String               @x_patch
   utc: String               @x_patch
-  notifyByEmail: Boolean    @x_patch
+  notifyByEmail: Boolean!   @x_patch
   subscriptions: [Tension!] @x_patch @hasInverse(field: subscribers) @x_alter(r:"ref")
   #skills
   # User Rights
@@ -488,6 +482,17 @@ type User @auth(
 
   # Deep update not implemented: https://discuss.dgraph.io/t/feature-request-cascade-delete-deep-mutations-by-reference-directive/14658/3
   markAllAsRead: String  @w_meta_patch(f:"markAllAsRead", k:"username") @x_alter # value ignored
+}
+
+type PendingUser {
+  id: ID!
+  updatedAt: DateTime
+  username: String @id @w_alter(a:"lower")
+  password: String @hidden
+  email: String @id @hidden @w_alter(a:"lower")
+  email_token: String @hidden @search(by: [hash])
+  token: String @hidden @search(by: [hash])
+  contracts: [Contract!]
 }
 
 type UserRights {

@@ -269,10 +269,6 @@ type Contract implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root
   isValidator: Boolean
 }
 
-type PendingUser {
-  email: String
-}
-
 type Vote implements Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query ($USERNAME: String!) {
       queryVote {
@@ -301,12 +297,11 @@ type User @auth(add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   username: String! @id @search(by:[hash, regexp])
   name: String @search(by:[regexp])
   password: String!
-  email: String! @search(by:[hash])
-  emailHash: String
+  email: String! @id @search(by:[hash])
   emailValidated: Boolean!
   bio: String
   utc: String
-  notifyByEmail: Boolean
+  notifyByEmail: Boolean!
   subscriptions: [Tension!] @hasInverse(field: subscribers)
   rights: UserRights!
   roles: [Node!] @hasInverse(field: first_link)
@@ -316,6 +311,17 @@ type User @auth(add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   contracts: [Contract!] @hasInverse(field: candidates)
   events: [UserEvent!] @hasInverse(field: user)
   markAllAsRead: String
+}
+
+type PendingUser {
+  id: ID!
+  updatedAt: DateTime
+  username: String @id
+  password: String
+  email: String @id
+  email_token: String @search(by:[hash])
+  token: String @search(by:[hash])
+  contracts: [Contract!]
 }
 
 type UserRights {

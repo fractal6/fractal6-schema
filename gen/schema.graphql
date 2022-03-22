@@ -301,10 +301,6 @@ type Contract {
   commentsAggregate(filter: CommentFilter): CommentAggregateResult
 }
 
-type PendingUser {
-  email: String
-}
-
 type Vote {
   voteid: String!
   contract(filter: ContractFilter): Contract!
@@ -325,11 +321,10 @@ type User {
   name: String
   password: String! @hidden
   email: String! @hidden
-  emailHash: String @hidden
   emailValidated: Boolean! @hidden
   bio: String
   utc: String
-  notifyByEmail: Boolean
+  notifyByEmail: Boolean!
   subscriptions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   rights(filter: UserRightsFilter): UserRights!
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
@@ -347,6 +342,19 @@ type User {
   tensions_assignedAggregate(filter: TensionFilter): TensionAggregateResult
   contractsAggregate(filter: ContractFilter): ContractAggregateResult
   eventsAggregate(filter: UserEventFilter): UserEventAggregateResult
+}
+
+type PendingUser {
+  id: ID!
+  updatedAt: DateTime
+  username: String
+  password: String @hidden
+  email: String @hidden
+  email_token: String @hidden
+  token: String @hidden
+  contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
+
+  contractsAggregate(filter: ContractFilter): ContractAggregateResult
 }
 
 type UserRights {
@@ -516,37 +524,37 @@ enum UserType {
 
 # Dgraph.Authorization {"Header":"X-Frac6-Auth","Namespace":"https://fractale.co/jwt/claims","Algo":"RS256","VerificationKey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqfBbJAanlwf2mYlBszBA\nxgHw3hTu6gZ9nmej+5fCCdyA85IXhw14+F14o+vLogPe/giFuPMpG9eCOPWKvL/T\nGyahW5Lm8TRB4Pf54fZq5+VKdf5/i9u2e8CelpFvT+zLRdBmNVy9H9MitOF9mSGK\nHviPH1nHzU6TGvuVf44s60LAKliiwagALF+T/3ReDFhoqdLb1J3w4JkxFO6Guw5p\n3aDT+RMjjz9W8XpT3+k8IHocWxcEsuWMKdhuNwOHX2l7yU+/yLOrK1nuAMH7KewC\nCT4gJOan1qFO8NKe37jeQgsuRbhtF5C+L6CKs3n+B2A3ZOYB4gzdJfMLXxW/wwr1\nRQIDAQAB\n-----END PUBLIC KEY-----"}
 
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
+directive @withSubscription on OBJECT|INTERFACE|FIELD_DEFINITION
 
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT|INTERFACE
-
-directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT|INTERFACE
-
-directive @cascade(fields: [String]) on FIELD
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+directive @remote on OBJECT|INTERFACE|UNION|INPUT_OBJECT|ENUM
 
 directive @id(interface: Boolean) on FIELD_DEFINITION
 
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
-
-directive @withSubscription on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
 directive @remoteResponse(name: String) on FIELD_DEFINITION
 
 directive @cacheControl(maxAge: Int!) on QUERY
 
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @cascade(fields: [String]) on FIELD
+
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT|INTERFACE
+
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT|INTERFACE
 
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
 
-directive @remote on OBJECT|INTERFACE|UNION|INPUT_OBJECT|ENUM
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT|INTERFACE
 
 directive @lambda on FIELD_DEFINITION
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -743,7 +751,13 @@ type AddOrgaAggPayload {
 }
 
 input AddPendingUserInput {
-  email: String
+  updatedAt: DateTime
+  username: String @w_alter(a:"lower")
+  password: String
+  email: String @w_alter(a:"lower")
+  email_token: String
+  token: String
+  contracts: [ContractRef!]
 }
 
 type AddPendingUserPayload {
@@ -811,15 +825,14 @@ type AddUserEventPayload {
 input AddUserInput {
   createdAt: DateTime!
   lastAck: DateTime!
-  username: String!
+  username: String! @w_add(a:"lower")
   name: String
   password: String!
-  email: String!
-  emailHash: String
+  email: String! @w_alter(a:"lower")
   emailValidated: Boolean!
   bio: String
   utc: String
-  notifyByEmail: Boolean
+  notifyByEmail: Boolean!
   subscriptions: [TensionRef!] @x_alter(r:"ref")
   rights: UserRightsRef!
   roles: [NodeRef!] @x_add(r:"ref")
@@ -1676,18 +1689,18 @@ type Mutation {
   addEventFragment(input: [AddEventFragmentInput!]!): AddEventFragmentPayload
   updateEventFragment(input: UpdateEventFragmentInput!): UpdateEventFragmentPayload
   deleteEventFragment(filter: EventFragmentFilter!): DeleteEventFragmentPayload
-  addContract(input: [AddContractInput!]!, upsert: Boolean @hook_addContractInput): AddContractPayload @hook_addContract
+  addContract(input: [AddContractInput!]! @hook_addContractInput, upsert: Boolean): AddContractPayload @hook_addContract
   updateContract(input: UpdateContractInput! @hook_updateContractInput): UpdateContractPayload @hook_updateContract
   deleteContract(filter: ContractFilter! @hook_deleteContractInput): DeleteContractPayload @hook_deleteContract
-  addPendingUser(input: [AddPendingUserInput!]!): AddPendingUserPayload
-  updatePendingUser(input: UpdatePendingUserInput!): UpdatePendingUserPayload
-  deletePendingUser(filter: PendingUserFilter!): DeletePendingUserPayload
-  addVote(input: [AddVoteInput!]!, upsert: Boolean @hook_addVoteInput): AddVotePayload @hook_addVote
+  addVote(input: [AddVoteInput!]! @hook_addVoteInput, upsert: Boolean): AddVotePayload @hook_addVote
   updateVote(input: UpdateVoteInput! @hook_updateVoteInput): UpdateVotePayload @hook_updateVote
   deleteVote(filter: VoteFilter! @hook_deleteVoteInput): DeleteVotePayload @hook_deleteVote
-  addUser(input: [AddUserInput!]!, upsert: Boolean @hook_addUserInput): AddUserPayload @hook_addUser
+  addUser(input: [AddUserInput!]! @hook_addUserInput, upsert: Boolean): AddUserPayload @hook_addUser
   updateUser(input: UpdateUserInput! @hook_updateUserInput): UpdateUserPayload @hook_updateUser
   deleteUser(filter: UserFilter! @hook_deleteUserInput): DeleteUserPayload @hook_deleteUser
+  addPendingUser(input: [AddPendingUserInput!]!, upsert: Boolean): AddPendingUserPayload
+  updatePendingUser(input: UpdatePendingUserInput!): UpdatePendingUserPayload
+  deletePendingUser(filter: PendingUserFilter!): DeletePendingUserPayload
   addUserRights(input: [AddUserRightsInput!]!): AddUserRightsPayload
   updateUserRights(input: UpdateUserRightsInput!): UpdateUserRightsPayload
   deleteUserRights(filter: UserRightsFilter!): DeleteUserRightsPayload
@@ -2089,11 +2102,26 @@ input OrgaAggRef {
 
 type PendingUserAggregateResult {
   count: Int
+  updatedAtMin: DateTime
+  updatedAtMax: DateTime
+  usernameMin: String
+  usernameMax: String
+  passwordMin: String
+  passwordMax: String
   emailMin: String
   emailMax: String
+  email_tokenMin: String
+  email_tokenMax: String
+  tokenMin: String
+  tokenMax: String
 }
 
 input PendingUserFilter {
+  id: [ID!]
+  username: StringHashFilter
+  email: StringHashFilter
+  email_token: StringHashFilter
+  token: StringHashFilter
   has: [PendingUserHasFilter]
   and: [PendingUserFilter]
   or: [PendingUserFilter]
@@ -2101,7 +2129,13 @@ input PendingUserFilter {
 }
 
 enum PendingUserHasFilter {
+  updatedAt
+  username
+  password
   email
+  email_token
+  token
+  contracts
 }
 
 input PendingUserOrder {
@@ -2111,15 +2145,33 @@ input PendingUserOrder {
 }
 
 enum PendingUserOrderable {
+  updatedAt
+  username
+  password
   email
+  email_token
+  token
 }
 
 input PendingUserPatch {
-  email: String @x_patch_ro
+  updatedAt: DateTime @x_patch_ro
+  username: String @w_alter(a:"lower")
+  password: String @x_patch_ro
+  email: String @w_alter(a:"lower")
+  email_token: String @x_patch_ro
+  token: String @x_patch_ro
+  contracts: [ContractRef!] @x_patch_ro
 }
 
 input PendingUserRef {
-  email: String
+  id: ID
+  updatedAt: DateTime
+  username: String @w_alter(a:"lower")
+  password: String
+  email: String @w_alter(a:"lower")
+  email_token: String
+  token: String
+  contracts: [ContractRef!]
 }
 
 type Point {
@@ -2220,22 +2272,22 @@ type Query {
   getMandate(id: ID!): Mandate
   queryMandate(filter: MandateFilter, order: MandateOrder, first: Int, offset: Int): [Mandate]
   aggregateMandate(filter: MandateFilter): MandateAggregateResult
-  getLabel(id: ID! @hook_getLabelInput): Label
-  queryLabel(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int @hook_queryLabelInput): [Label]
+  getLabel(id: ID!): Label
+  queryLabel(filter: LabelFilter @hook_queryLabelInput, order: LabelOrder, first: Int, offset: Int): [Label]
   aggregateLabel(filter: LabelFilter): LabelAggregateResult
-  getRoleExt(id: ID! @hook_getRoleExtInput): RoleExt
-  queryRoleExt(filter: RoleExtFilter, order: RoleExtOrder, first: Int, offset: Int @hook_queryRoleExtInput): [RoleExt]
+  getRoleExt(id: ID!): RoleExt
+  queryRoleExt(filter: RoleExtFilter @hook_queryRoleExtInput, order: RoleExtOrder, first: Int, offset: Int): [RoleExt]
   aggregateRoleExt(filter: RoleExtFilter): RoleExtAggregateResult
   queryOrgaAgg(filter: OrgaAggFilter, order: OrgaAggOrder, first: Int, offset: Int): [OrgaAgg]
   aggregateOrgaAgg(filter: OrgaAggFilter): OrgaAggAggregateResult
   getPost(id: ID!): Post
   queryPost(filter: PostFilter, order: PostOrder, first: Int, offset: Int): [Post]
   aggregatePost(filter: PostFilter): PostAggregateResult
-  getTension(id: ID! @hook_getTensionInput): Tension
-  queryTension(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int @hook_queryTensionInput): [Tension]
+  getTension(id: ID!): Tension
+  queryTension(filter: TensionFilter @hook_queryTensionInput, order: TensionOrder, first: Int, offset: Int): [Tension]
   aggregateTension(filter: TensionFilter): TensionAggregateResult
-  getComment(id: ID! @hook_getCommentInput): Comment
-  queryComment(filter: CommentFilter, order: CommentOrder, first: Int, offset: Int @hook_queryCommentInput): [Comment]
+  getComment(id: ID!): Comment
+  queryComment(filter: CommentFilter @hook_queryCommentInput, order: CommentOrder, first: Int, offset: Int): [Comment]
   aggregateComment(filter: CommentFilter): CommentAggregateResult
   getBlob(id: ID!): Blob
   queryBlob(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
@@ -2245,17 +2297,18 @@ type Query {
   aggregateEvent(filter: EventFilter): EventAggregateResult
   queryEventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
   aggregateEventFragment(filter: EventFragmentFilter): EventFragmentAggregateResult
-  getContract(id: ID, contractid: String @hook_getContractInput): Contract
-  queryContract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int @hook_queryContractInput): [Contract]
+  getContract(id: ID, contractid: String): Contract
+  queryContract(filter: ContractFilter @hook_queryContractInput, order: ContractOrder, first: Int, offset: Int): [Contract]
   aggregateContract(filter: ContractFilter): ContractAggregateResult
+  getVote(id: ID, voteid: String): Vote
+  queryVote(filter: VoteFilter @hook_queryVoteInput, order: VoteOrder, first: Int, offset: Int): [Vote]
+  aggregateVote(filter: VoteFilter): VoteAggregateResult
+  getUser(id: ID, username: String, email: String): User
+  queryUser(filter: UserFilter @hook_queryUserInput, order: UserOrder, first: Int, offset: Int): [User]
+  aggregateUser(filter: UserFilter): UserAggregateResult
+  getPendingUser(id: ID, username: String, email: String): PendingUser
   queryPendingUser(filter: PendingUserFilter, order: PendingUserOrder, first: Int, offset: Int): [PendingUser]
   aggregatePendingUser(filter: PendingUserFilter): PendingUserAggregateResult
-  getVote(id: ID, voteid: String @hook_getVoteInput): Vote
-  queryVote(filter: VoteFilter, order: VoteOrder, first: Int, offset: Int @hook_queryVoteInput): [Vote]
-  aggregateVote(filter: VoteFilter): VoteAggregateResult
-  getUser(id: ID, username: String @hook_getUserInput): User
-  queryUser(filter: UserFilter, order: UserOrder, first: Int, offset: Int @hook_queryUserInput): [User]
-  aggregateUser(filter: UserFilter): UserAggregateResult
   queryUserRights(filter: UserRightsFilter, order: UserRightsOrder, first: Int, offset: Int): [UserRights]
   aggregateUserRights(filter: UserRightsFilter): UserRightsAggregateResult
   getUserEvent(id: ID!): UserEvent
@@ -2754,8 +2807,6 @@ type UserAggregateResult {
   passwordMax: String
   emailMin: String
   emailMax: String
-  emailHashMin: String
-  emailHashMax: String
   bioMin: String
   bioMax: String
   utcMin: String
@@ -2830,7 +2881,6 @@ enum UserHasFilter {
   name
   password
   email
-  emailHash
   emailValidated
   bio
   utc
@@ -2859,7 +2909,6 @@ enum UserOrderable {
   name
   password
   email
-  emailHash
   bio
   utc
   markAllAsRead
@@ -2871,8 +2920,7 @@ input UserPatch {
   username: String @x_patch_ro
   name: String @x_patch
   password: String @x_patch_ro
-  email: String @x_patch
-  emailHash: String @x_patch_ro
+  email: String @w_alter(a:"lower")
   emailValidated: Boolean @x_patch_ro
   bio: String @x_patch
   utc: String @x_patch
@@ -2892,11 +2940,10 @@ input UserRef {
   id: ID
   createdAt: DateTime
   lastAck: DateTime
-  username: String
+  username: String @w_add(a:"lower")
   name: String @x_patch
   password: String
-  email: String @x_patch
-  emailHash: String
+  email: String @w_alter(a:"lower")
   emailValidated: Boolean
   bio: String @x_patch
   utc: String @x_patch
