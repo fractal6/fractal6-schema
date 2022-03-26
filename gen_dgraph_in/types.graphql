@@ -298,7 +298,6 @@ type User @auth(add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   name: String @search(by:[regexp])
   password: String!
   email: String! @id @search(by:[hash])
-  emailValidated: Boolean!
   bio: String
   utc: String
   notifyByEmail: Boolean!

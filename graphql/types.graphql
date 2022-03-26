@@ -448,8 +448,7 @@ type User @auth(
   username: String!     @id @search(by: [hash, regexp]) @w_add(a:"lower")
   name: String              @search(by: [regexp]) @x_patch
   password: String!         @hidden
-  email: String!        @id @hidden @search(by: [hash]) @w_alter(a:"lower")
-  emailValidated: Boolean!  @hidden
+  email: String!        @id @hidden @search(by: [hash]) @w_add(a:"lower")
   # Profile
   bio: String               @x_patch
   utc: String               @x_patch
@@ -500,7 +499,7 @@ type UserRights {
   canLogin: Boolean!  # Managed in web/auth handler functions
   canCreateRoot: Boolean! # Bypass input Node authorization/limitation.
   maxPublicOrga: Int! # maximum of private organisation
-  hasEmailNotifications: Boolean!
+  hasEmailNotifications: Boolean! # if email has been validated
 }
 
 type UserEvent @auth(
