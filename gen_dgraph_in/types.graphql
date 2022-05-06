@@ -15,6 +15,14 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
           }
         }
     }"""
+},{ rule:"""query {
+        queryNode {
+          children(filter: {role_type: {eq: Bot}}) { id }
+        }
+    }"""
+},{ rule:"""query {
+        queryNode(filter: {role_type: {eq: Bot}}) { id }
+    }"""
 }]
 }, add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 }, update:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
@@ -145,6 +153,11 @@ interface Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 }
 
 type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryTension {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }"""
 },{ rule:"""query ($OWNIDS: [String]) {
         queryTension {
           receiver(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
@@ -233,6 +246,11 @@ type EventFragment {
 }
 
 type Contract implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query ($USERNAME: String!) {
+      queryContract {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }"""
 },{ rule:"""query ($OWNIDS: [String]) {
         queryContract {
           tension { receiver(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id } }

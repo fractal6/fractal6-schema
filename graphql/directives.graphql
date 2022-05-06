@@ -7,7 +7,7 @@
 #  Make the field unable to read
 directive @hidden on FIELD_DEFINITION
 
-# Only owbner can view the field
+# Only owner can view the field
 directive @private on FIELD_DEFINITION
 
 # Use for DQL requests.

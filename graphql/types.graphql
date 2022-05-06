@@ -39,6 +39,19 @@ type Node @auth(
               first_link(filter: {username: {eq: $USERNAME}}) { username }
           }
         }
+    }""" },
+    # Authorization for Bot
+    # - the circle that contains a Bot (Bot make the circle public (mandate...) (but not its tension or children))
+    # e.g the receiver for the "external" tension.
+    { rule: """query {
+        queryNode {
+          children(filter: {role_type: {eq: Bot}}) { id }
+        }
+    }""" },
+    # - authorize the Bot
+    # e.g. the emitter for the "external" tension.
+    { rule: """query {
+        queryNode(filter: {role_type: {eq: Bot}}) { id }
     }""" }
   ]},
   add: {rule: "{ $USERTYPE: {eq: \"Root\"} }"},
@@ -255,6 +268,12 @@ type Tension implements Post @auth(
   query: { or: [
     # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize author
+    { rule: """query ($USERNAME: String!) {
+      queryTension {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }""" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
         queryTension {
@@ -366,6 +385,12 @@ type Contract implements Post @auth(
   query: { or: [
     # Authorize root
     { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize author
+    { rule: """query ($USERNAME: String!) {
+      queryContract {
+        createdBy(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }""" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
         queryContract {
