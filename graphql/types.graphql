@@ -447,8 +447,8 @@ type User @auth(
   lastAck: DateTime!
   username: String!     @id @search(by: [hash, regexp]) @w_add(a:"lower")
   name: String              @search(by: [regexp]) @x_patch
+  email: String!        @id @private @search(by: [hash]) @w_add(a:"lower")
   password: String!         @hidden
-  email: String!        @id @hidden @search(by: [hash]) @w_add(a:"lower")
   # Profile
   bio: String               @x_patch
   utc: String               @x_patch
