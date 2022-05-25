@@ -11,9 +11,38 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query ($USERNAME: String!) {
         queryNode(filter: {visibility: {eq: Secret}}) {
           children {
-              first_link(filter: {username: {eq: $USERNAME}}) { username }
+            first_link(filter: {username: {eq: $USERNAME}}) { username }
           }
         }
+    }"""
+},{ rule:"""query ($USERNAME: String!) {
+        queryNode(filter: {visibility: {eq: Secret}}) {
+          parent {
+            children {
+              first_link(filter: {username: {eq: $USERNAME}}) { username }
+            }
+          }
+        }
+    }"""
+},{ rule:"""query ($USERNAME: String!) {
+      queryNode {
+        tensions_in {
+          contracts(filter: {status: {eq: Open}}) {
+            candidates(filter: {username: {eq: $USERNAME}}) { username }
+          }
+        }
+      }
+    }"""
+},{ rule:"""query ($USERNAME: String!) {
+      queryNode {
+        parent {
+          tensions_in {
+            contracts(filter: {status: {eq: Open}}) {
+              candidates(filter: {username: {eq: $USERNAME}}) { username }
+            }
+          }
+        }
+      }
     }"""
 },{ rule:"""query {
         queryNode {
@@ -49,6 +78,7 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   isArchived: Boolean! @search
   isPersonal: Boolean @search
   userCanJoin: Boolean
+  guestCanCreateTension: Boolean
   children: [Node!] @hasInverse(field: parent)
   docs: [Blob]
   labels: [Label!]
@@ -172,10 +202,17 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
         queryTension {
           receiver(filter: {visibility: {eq: Secret}}) {
             children {
-                first_link(filter: {username: {eq: $USERNAME}}) { username }
+              first_link(filter: {username: {eq: $USERNAME}}) { username }
             }
           }
         }
+    }"""
+},{ rule:"""query ($USERNAME: String!) {
+      queryTension {
+        contracts(filter: {status: {eq: Open}}) {
+          candidates(filter: {username: {eq: $USERNAME}}) { username }
+        }
+      }
     }"""
 }]
 }, add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
@@ -251,6 +288,11 @@ type Contract implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root
         createdBy(filter: {username: {eq: $USERNAME}}) { username }
       }
     }"""
+},{ rule:"""query ($USERNAME: String!) {
+      queryContract {
+        candidates(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }"""
 },{ rule:"""query ($OWNIDS: [String]) {
         queryContract {
           tension { receiver(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id } }
@@ -266,7 +308,7 @@ type Contract implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root
           tension {
             receiver(filter: {visibility: {eq: Secret}}) {
               children {
-                  first_link(filter: {username: {eq: $USERNAME}}) { username }
+                first_link(filter: {username: {eq: $USERNAME}}) { username }
               }
             }
           }

@@ -33,22 +33,56 @@ type Node @auth(
         queryNode(filter: {visibility: {eq: Private}, and: [{rootnameid: {in: $ROOTIDS}}]}) { id }
     }""" },
     # Authorize secret data (explicit member only)
+    # -- parent
     { rule: """query ($USERNAME: String!) {
         queryNode(filter: {visibility: {eq: Secret}}) {
           children {
-              first_link(filter: {username: {eq: $USERNAME}}) { username }
+            first_link(filter: {username: {eq: $USERNAME}}) { username }
           }
         }
     }""" },
+    # -- children (including secret circle!)
+    { rule: """query ($USERNAME: String!) {
+        queryNode(filter: {visibility: {eq: Secret}}) {
+          parent {
+            children {
+              first_link(filter: {username: {eq: $USERNAME}}) { username }
+            }
+          }
+        }
+    }""" },
+    # Authorize candidates
+    # -- parent
+    { rule: """query ($USERNAME: String!) {
+      queryNode {
+        tensions_in {
+          contracts(filter: {status: {eq: Open}}) {
+            candidates(filter: {username: {eq: $USERNAME}}) { username }
+          }
+        }
+      }
+    }""" },
+    # -- children
+    { rule: """query ($USERNAME: String!) {
+      queryNode {
+        parent {
+          tensions_in {
+            contracts(filter: {status: {eq: Open}}) {
+              candidates(filter: {username: {eq: $USERNAME}}) { username }
+            }
+          }
+        }
+      }
+    }""" },
     # Authorization for Bot
-    # - the circle that contains a Bot (Bot make the circle public (mandate...) (but not its tension or children))
+    # -- the circle that contains a Bot (Bot make the circle public (mandate...) (but not its tension or children))
     # e.g the receiver for the "external" tension.
     { rule: """query {
         queryNode {
           children(filter: {role_type: {eq: Bot}}) { id }
         }
     }""" },
-    # - authorize the Bot
+    # -- authorize the Bot
     # e.g. the emitter for the "external" tension.
     { rule: """query {
         queryNode(filter: {role_type: {eq: Bot}}) { id }
@@ -103,7 +137,8 @@ type Node @auth(
   # Root node only
   #network: [Network]     @hasInverse(field: nodes)
   isPersonal: Boolean    @search # Help explore "official" orga - nameid ends with @{username}
-  userCanJoin: Boolean   # Rather can ask to join
+  userCanJoin: Boolean
+  guestCanCreateTension: Boolean
 
   # Circle...is a branch
   """
@@ -160,7 +195,7 @@ type NodeFragment {
   # For updates, one need to use the tension Event to update the circle.
 
   # Charac (only used for node creation).
-  # @warning: those are set with TensionEvdent old/new value.
+  # @warning: those are set with TensionEvent old/new value.
   visibility: NodeVisibility
   mode: NodeMode
   type_: NodeType
@@ -291,10 +326,18 @@ type Tension implements Post @auth(
         queryTension {
           receiver(filter: {visibility: {eq: Secret}}) {
             children {
-                first_link(filter: {username: {eq: $USERNAME}}) { username }
+              first_link(filter: {username: {eq: $USERNAME}}) { username }
             }
           }
         }
+    }""" },
+    # Authorize candidates
+    { rule: """query ($USERNAME: String!) {
+      queryTension {
+        contracts(filter: {status: {eq: Open}}) {
+          candidates(filter: {username: {eq: $USERNAME}}) { username }
+        }
+      }
     }""" }
   ]},
   add: { or: [
@@ -329,8 +372,8 @@ type Tension implements Post @auth(
   comments: [Comment!]   @x_alter(r:"hasEvent", e:[Created, CommentPushed])         @x_alter(r:"oneByOne")
   assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
   labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
-  blobs: [Blob!]         @hasInverse(field: tension) @x_alter(r:"oneByOne") @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted])
-  history: [Event!]      @hasInverse(field: tension) @x_alter # entry point
+  blobs: [Blob!]         @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted]) @x_alter(r:"oneByOne") @hasInverse(field: tension)
+  history: [Event!]      @x_alter @hasInverse(field: tension) # entry point
   # --
   contracts: [Contract!] @hasInverse(field: tension) @x_add(r:"ref")
   subscribers: [User!]   @hasInverse(field: subscriptions)
@@ -391,6 +434,12 @@ type Contract implements Post @auth(
         createdBy(filter: {username: {eq: $USERNAME}}) { username }
       }
     }""" },
+    # Authorize candidates
+    { rule: """query ($USERNAME: String!) {
+      queryContract {
+        candidates(filter: {username: {eq: $USERNAME}}) { username }
+      }
+    }""" },
     # Authorize public data OR Owner
     { rule: """query ($OWNIDS: [String]) {
         queryContract {
@@ -409,7 +458,7 @@ type Contract implements Post @auth(
           tension {
             receiver(filter: {visibility: {eq: Secret}}) {
               children {
-                  first_link(filter: {username: {eq: $USERNAME}}) { username }
+                first_link(filter: {username: {eq: $USERNAME}}) { username }
               }
             }
           }
@@ -478,7 +527,8 @@ type User @auth(
   bio: String               @x_patch
   utc: String               @x_patch
   notifyByEmail: Boolean!   @x_patch
-  subscriptions: [Tension!] @x_patch @hasInverse(field: subscribers) @x_alter(r:"ref")
+  """ Tension must comply with tension @auth rules to be added. """
+  subscriptions: [Tension!] @x_patch @private @hasInverse(field: subscribers) @x_alter(r:"ref")
   #skills
   # User Rights
   rights: UserRights!
@@ -486,9 +536,9 @@ type User @auth(
   roles: [Node!]                 @hasInverse(field: first_link) @x_add(r:"ref")
   backed_roles: [Node!]          @hasInverse(field: second_link) @x_add(r:"ref")
   # User Tensions
-  tensions_created: [Tension!]   @hasInverse(field: createdBy) @x_add(r:"ref")
-  tensions_assigned: [Tension!]  @hasInverse(field: assignees) @x_add(r:"ref")
-  contracts: [Contract!]         @hasInverse(field: candidates) @x_add(r:"ref")
+  tensions_created: [Tension!]   @hasInverse(field: createdBy) @x_add(r:"ref") @private
+  tensions_assigned: [Tension!]  @hasInverse(field: assignees) @x_add(r:"ref") @private
+  contracts: [Contract!]         @hasInverse(field: candidates) @x_add(r:"ref") @private
   # Notifications Events (Tensions and Contracts)
   """
   An event (UserEvent) will be pushed, for notification purpose, every times an
@@ -502,7 +552,7 @@ type User @auth(
     * a candidates.
     * a coordinator with rights.
   """
-  events: [UserEvent!]   @hasInverse(field: user) @x_alter
+  events: [UserEvent!]   @hasInverse(field: user) @x_alter @private
 
   # Deep update not implemented: https://discuss.dgraph.io/t/feature-request-cascade-delete-deep-mutations-by-reference-directive/14658/3
   markAllAsRead: String  @w_meta_patch(f:"markAllAsRead", k:"username") @x_alter # value ignored

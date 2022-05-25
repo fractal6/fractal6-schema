@@ -1,14 +1,6 @@
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
-
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
-directive @id(interface: Boolean) on FIELD_DEFINITION
-
-directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
 
 directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
 
@@ -18,17 +10,25 @@ directive @cacheControl(maxAge: Int!) on QUERY
 
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
 
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+directive @id(interface: Boolean) on FIELD_DEFINITION
 
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
+
+directive @cascade(fields: [String]) on FIELD
 
 directive @lambda on FIELD_DEFINITION
 
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
 directive @remoteResponse(name: String) on FIELD_DEFINITION
 
-directive @cascade(fields: [String]) on FIELD
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -180,6 +180,7 @@ input AddNodeInput {
   isArchived: Boolean!
   isPersonal: Boolean
   userCanJoin: Boolean
+  guestCanCreateTension: Boolean
   children: [NodeRef!]
   docs: [BlobRef]
   labels: [LabelRef!]
@@ -1327,6 +1328,7 @@ type Node {
   isArchived: Boolean!
   isPersonal: Boolean
   userCanJoin: Boolean
+  guestCanCreateTension: Boolean
   children(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
   docs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob]
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
@@ -1527,6 +1529,7 @@ enum NodeHasFilter {
   isArchived
   isPersonal
   userCanJoin
+  guestCanCreateTension
   children
   docs
   labels
@@ -1590,6 +1593,7 @@ input NodePatch {
   isArchived: Boolean
   isPersonal: Boolean
   userCanJoin: Boolean
+  guestCanCreateTension: Boolean
   children: [NodeRef!]
   docs: [BlobRef]
   labels: [LabelRef!]
@@ -1627,6 +1631,7 @@ input NodeRef {
   isArchived: Boolean
   isPersonal: Boolean
   userCanJoin: Boolean
+  guestCanCreateTension: Boolean
   children: [NodeRef!]
   docs: [BlobRef]
   labels: [LabelRef!]
