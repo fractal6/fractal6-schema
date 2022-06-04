@@ -1,34 +1,34 @@
-directive @hasInverse(field: String!) on FIELD_DEFINITION
+directive @cascade(fields: [String]) on FIELD
+
+directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @id(interface: Boolean) on FIELD_DEFINITION
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @remoteResponse(name: String) on FIELD_DEFINITION
+
+directive @lambda on FIELD_DEFINITION
+
+directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
+
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+
+directive @cacheControl(maxAge: Int!) on QUERY
+
+directive @hasInverse(field: String!) on FIELD_DEFINITION
 
 directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
 
 directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
-directive @cacheControl(maxAge: Int!) on QUERY
-
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
 
-directive @id(interface: Boolean) on FIELD_DEFINITION
-
 directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
-
-directive @cascade(fields: [String]) on FIELD
-
-directive @lambda on FIELD_DEFINITION
-
-directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
-
-directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
-
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -305,8 +305,12 @@ input AddUserInput {
   email: String!
   password: String!
   bio: String
+  location: String
   utc: String
+  links: [String!]
+  skills: [String!]
   notifyByEmail: Boolean!
+  lang: Lang!
   subscriptions: [TensionRef!]
   rights: UserRightsRef!
   roles: [NodeRef!]
@@ -1163,6 +1167,12 @@ input LabelRef {
   color: String
   tensions: [TensionRef!]
   nodes: [NodeRef!]
+}
+
+enum Lang {
+  EN
+  FR
+  IT
 }
 
 type Mandate {
@@ -2616,8 +2626,12 @@ type User {
   email: String!
   password: String!
   bio: String
+  location: String
   utc: String
+  links: [String!]
+  skills: [String!]
   notifyByEmail: Boolean!
+  lang: Lang!
   subscriptions(filter: TensionFilter, order: TensionOrder, first: Int, offset: Int): [Tension!]
   rights(filter: UserRightsFilter): UserRights!
   roles(filter: NodeFilter, order: NodeOrder, first: Int, offset: Int): [Node!]
@@ -2652,6 +2666,8 @@ type UserAggregateResult {
   passwordMax: String
   bioMin: String
   bioMax: String
+  locationMin: String
+  locationMax: String
   utcMin: String
   utcMax: String
   markAllAsReadMin: String
@@ -2733,8 +2749,12 @@ enum UserHasFilter {
   email
   password
   bio
+  location
   utc
+  links
+  skills
   notifyByEmail
+  lang
   subscriptions
   rights
   roles
@@ -2760,6 +2780,7 @@ enum UserOrderable {
   email
   password
   bio
+  location
   utc
   markAllAsRead
 }
@@ -2772,8 +2793,12 @@ input UserPatch {
   email: String
   password: String
   bio: String
+  location: String
   utc: String
+  links: [String!]
+  skills: [String!]
   notifyByEmail: Boolean
+  lang: Lang
   subscriptions: [TensionRef!]
   rights: UserRightsRef
   roles: [NodeRef!]
@@ -2794,8 +2819,12 @@ input UserRef {
   email: String
   password: String
   bio: String
+  location: String
   utc: String
+  links: [String!]
+  skills: [String!]
   notifyByEmail: Boolean
+  lang: Lang
   subscriptions: [TensionRef!]
   rights: UserRightsRef
   roles: [NodeRef!]
