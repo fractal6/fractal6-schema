@@ -270,7 +270,6 @@ type RoleExt @auth(
   # validatedBy  ? @future (vote process...)
 }
 
-
 type OrgaAgg {
   n_members: Int  # count Guest role (root)
   n_guests: Int   # count member role (root)
@@ -531,6 +530,9 @@ type User @auth(
   skills: [String!]         @x_patch
   notifyByEmail: Boolean!   @x_patch
   lang: Lang!               @x_patch
+  # Preference
+  # @TODO...
+  # orgas_settings: [OrgaSetting] # order, window_pos...
   """ Tension must comply with tension @auth rules to be added. """
   subscriptions: [Tension!] @x_patch @private @hasInverse(field: subscribers) @x_alter(r:"ref")
   # User Rights
@@ -748,8 +750,10 @@ enum ContractType { # Validation type
 ### User
 
 enum UserType {
-  Regular
-  Root  # Sytem only
+  Regular # Free
+  Pro
+  # --
+  Root  # Sytem only / Admin
 }
 
 enum Lang {

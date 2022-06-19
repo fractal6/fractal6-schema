@@ -557,6 +557,9 @@ enum ContractType {
 
 enum UserType {
   Regular
+
+  Pro
+
   Root
 
 }
