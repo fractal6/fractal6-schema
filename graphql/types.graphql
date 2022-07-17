@@ -2,7 +2,7 @@
 # * fractal6.go/db/api: hardcoded query
 # * fractal6.go/graph/tension_auth/EMAP: propagated fields
 # * fractal6-ui.elm: query and case on enum object
-# * database/script: hardcoded spec
+# * fractal6-db/script: hardcoded spec
 
 
 #type Network {

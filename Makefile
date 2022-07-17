@@ -13,11 +13,11 @@ schema_all: dgraph schema
 
 dgraph: gen_dgraph_in/types.graphql
 	# Populate dgraph and fetch schema out
-	cd ../database && \
+	cd ../fractal6-db && \
 		make update && \
 		make fetch_schema && \
 		cd - && \
-		cp ../database/schema/schema_out.graphql gen_dgraph_out/schema.graphql
+		cp ../fractal6-db/schema/schema_out.graphql gen_dgraph_out/schema.graphql
 
 gqlgen_in:
 	# Generate Gqlgen compatible GraphQL files with dgraph generated Query and Mutation.
