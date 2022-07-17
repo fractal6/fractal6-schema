@@ -5,9 +5,6 @@
 # * database/script: hardcoded spec
 
 
-# Universe (graph of graph)
-# @DEBUG: with Union and Node/Leaf (Node = Circle | Role)
-#
 #type Network {
 #  name: String
 #  nameid: String
@@ -722,6 +719,7 @@ enum BlobType {
   OnNode
   OnAbout
   OnMandate
+  OnAboutAndMandate
   # Doc (md, spreadsheet, etc)
   OnDoc
   #OnDocTitle ?
