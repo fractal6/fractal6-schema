@@ -1,32 +1,32 @@
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
-
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
-
-directive @hasInverse(field: String!) on FIELD_DEFINITION
-
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @id(interface: Boolean) on FIELD_DEFINITION
-
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
+
+directive @cascade(fields: [String]) on FIELD
+
+directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
 
 directive @lambda on FIELD_DEFINITION
 
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
 
-directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
+directive @hasInverse(field: String!) on FIELD_DEFINITION
+
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+
+directive @remoteResponse(name: String) on FIELD_DEFINITION
+
+directive @id(interface: Boolean) on FIELD_DEFINITION
 
 directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
 
-directive @cascade(fields: [String]) on FIELD
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
 
 directive @cacheControl(maxAge: Int!) on QUERY
 
@@ -81,6 +81,16 @@ input AddContractInput {
 
 type AddContractPayload {
   contract(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract]
+  numUids: Int
+}
+
+input AddEventCountInput {
+  unread_events: Int
+  pending_contracts: Int
+}
+
+type AddEventCountPayload {
+  eventCount(filter: EventCountFilter, order: EventCountOrder, first: Int, offset: Int): [EventCount]
   numUids: Int
 }
 
@@ -208,6 +218,7 @@ input AddNotifInput {
   message: String
   tension_: TensionRef
   contract: ContractRef
+  link: String
 }
 
 type AddNotifPayload {
@@ -320,6 +331,7 @@ input AddUserInput {
   contracts: [ContractRef!]
   events: [UserEventRef!]
   markAllAsRead: String
+  event_count: EventCountRef
 }
 
 type AddUserPayload {
@@ -743,6 +755,12 @@ type DeleteContractPayload {
   numUids: Int
 }
 
+type DeleteEventCountPayload {
+  eventCount(filter: EventCountFilter, order: EventCountOrder, first: Int, offset: Int): [EventCount]
+  msg: String
+  numUids: Int
+}
+
 type DeleteEventFragmentPayload {
   eventFragment(filter: EventFragmentFilter, order: EventFragmentOrder, first: Int, offset: Int): [EventFragment]
   msg: String
@@ -885,6 +903,56 @@ type EventAggregateResult {
   oldMax: String
   newMin: String
   newMax: String
+}
+
+type EventCount {
+  unread_events: Int
+  pending_contracts: Int
+}
+
+type EventCountAggregateResult {
+  count: Int
+  unread_eventsMin: Int
+  unread_eventsMax: Int
+  unread_eventsSum: Int
+  unread_eventsAvg: Float
+  pending_contractsMin: Int
+  pending_contractsMax: Int
+  pending_contractsSum: Int
+  pending_contractsAvg: Float
+}
+
+input EventCountFilter {
+  has: [EventCountHasFilter]
+  and: [EventCountFilter]
+  or: [EventCountFilter]
+  not: EventCountFilter
+}
+
+enum EventCountHasFilter {
+  unread_events
+  pending_contracts
+}
+
+input EventCountOrder {
+  asc: EventCountOrderable
+  desc: EventCountOrderable
+  then: EventCountOrder
+}
+
+enum EventCountOrderable {
+  unread_events
+  pending_contracts
+}
+
+input EventCountPatch {
+  unread_events: Int
+  pending_contracts: Int
+}
+
+input EventCountRef {
+  unread_events: Int
+  pending_contracts: Int
 }
 
 input EventFilter {
@@ -1173,7 +1241,6 @@ input LabelRef {
 enum Lang {
   EN
   FR
-  IT
 }
 
 type Mandate {
@@ -1310,6 +1377,9 @@ type Mutation {
   addNotif(input: [AddNotifInput!]!): AddNotifPayload
   updateNotif(input: UpdateNotifInput!): UpdateNotifPayload
   deleteNotif(filter: NotifFilter!): DeleteNotifPayload
+  addEventCount(input: [AddEventCountInput!]!): AddEventCountPayload
+  updateEventCount(input: UpdateEventCountInput!): UpdateEventCountPayload
+  deleteEventCount(filter: EventCountFilter!): DeleteEventCountPayload
 }
 
 input NearFilter {
@@ -1687,6 +1757,7 @@ type Notif implements Post {
   message: String
   tension_(filter: TensionFilter): Tension
   contract(filter: ContractFilter): Contract
+  link: String
 }
 
 type NotifAggregateResult {
@@ -1697,6 +1768,8 @@ type NotifAggregateResult {
   updatedAtMax: DateTime
   messageMin: String
   messageMax: String
+  linkMin: String
+  linkMax: String
 }
 
 input NotifFilter {
@@ -1716,6 +1789,7 @@ enum NotifHasFilter {
   message
   tension_
   contract
+  link
 }
 
 input NotifOrder {
@@ -1728,6 +1802,7 @@ enum NotifOrderable {
   createdAt
   updatedAt
   message
+  link
 }
 
 input NotifPatch {
@@ -1737,6 +1812,7 @@ input NotifPatch {
   message: String
   tension_: TensionRef
   contract: ContractRef
+  link: String
 }
 
 input NotifRef {
@@ -1747,6 +1823,7 @@ input NotifRef {
   message: String
   tension_: TensionRef
   contract: ContractRef
+  link: String
 }
 
 type OrgaAgg {
@@ -2036,6 +2113,8 @@ type Query {
   getNotif(id: ID!): Notif
   queryNotif(filter: NotifFilter, order: NotifOrder, first: Int, offset: Int): [Notif]
   aggregateNotif(filter: NotifFilter): NotifAggregateResult
+  queryEventCount(filter: EventCountFilter, order: EventCountOrder, first: Int, offset: Int): [EventCount]
+  aggregateEventCount(filter: EventCountFilter): EventCountAggregateResult
 }
 
 type RoleExt {
@@ -2442,6 +2521,17 @@ type UpdateContractPayload {
   numUids: Int
 }
 
+input UpdateEventCountInput {
+  filter: EventCountFilter!
+  set: EventCountPatch
+  remove: EventCountPatch
+}
+
+type UpdateEventCountPayload {
+  eventCount(filter: EventCountFilter, order: EventCountOrder, first: Int, offset: Int): [EventCount]
+  numUids: Int
+}
+
 input UpdateEventFragmentInput {
   filter: EventFragmentFilter!
   set: EventFragmentPatch
@@ -2642,6 +2732,7 @@ type User {
   contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
   events(filter: UserEventFilter, order: UserEventOrder, first: Int, offset: Int): [UserEvent!]
   markAllAsRead: String
+  event_count(filter: EventCountFilter): EventCount
   subscriptionsAggregate(filter: TensionFilter): TensionAggregateResult
   rolesAggregate(filter: NodeFilter): NodeAggregateResult
   backed_rolesAggregate(filter: NodeFilter): NodeAggregateResult
@@ -2765,6 +2856,7 @@ enum UserHasFilter {
   contracts
   events
   markAllAsRead
+  event_count
 }
 
 input UserOrder {
@@ -2809,6 +2901,7 @@ input UserPatch {
   contracts: [ContractRef!]
   events: [UserEventRef!]
   markAllAsRead: String
+  event_count: EventCountRef
 }
 
 input UserRef {
@@ -2835,6 +2928,7 @@ input UserRef {
   contracts: [ContractRef!]
   events: [UserEventRef!]
   markAllAsRead: String
+  event_count: EventCountRef
 }
 
 type UserRights {
