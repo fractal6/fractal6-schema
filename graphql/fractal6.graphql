@@ -1,8 +1,9 @@
 # <!> Schema Depencies <!>
-# * fractal6.go/db/api: hardcoded query
+# * fractal6.go/db/api: hardcoded query, mutation and delete (fields)
 # * fractal6.go/graph/tension_auth/EMAP: propagated fields
 # * fractal6-ui.elm: query and case on enum object
 # * fractal6-db/script: hardcoded spec
+# * fractal6.go/graph/tensions_op: Each event need to be individually processed in `TensionEventHook`
 
 
 #type Network {
@@ -152,7 +153,7 @@ type Node @auth(
   """
   labels: [Label!]
   """
-  Record of available roles (RoleExt) in this circle.
+  Record of available template roles (RoleExt) in this circle.
   Available roles means that there are visible when creating and editing new roles in a circle.
   """
   roles: [RoleExt!]
@@ -370,6 +371,7 @@ type Tension implements Post @auth(
   labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
   blobs: [Blob!]         @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted]) @x_alter(r:"oneByOne") @hasInverse(field: tension)
   history: [Event!]      @x_alter @hasInverse(field: tension) # entry point
+  mentions: [Event!]     @hasInverse(field: mentioned)
   # --
   contracts: [Contract!] @hasInverse(field: tension) @x_add(r:"ref")
   subscribers: [User!]   @hasInverse(field: subscriptions)
@@ -410,6 +412,7 @@ type Blob implements Post {
 type Event implements Post {
   tension: Tension! @x_add(r:"ref")
   event_type: TensionEvent! @search
+  mentioned: Tension @x_add(r:"ref")
   old: String # Store blobid for Commit and Pushed event
   new: String # updated value
 }
@@ -710,6 +713,7 @@ enum TensionEvent {
   LabelRemoved
   BlobCreated
   BlobCommitted
+  Mentioned
   # --- Trigger Action ---
   BlobPushed
   BlobArchived

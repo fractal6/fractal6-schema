@@ -1,6 +1,13 @@
 
 
 
+enum ErrorBla {
+  ContactCoordo
+  OrgaLimitReached
+  UserLimitReached
+  StorageLimitReached
+}
+
 type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 },{ rule:"""query ($OWNIDS: [String]) {
         queryNode(filter: {visibility: {eq: Public}, or: [{rootnameid: {in: $OWNIDS}}]}) { id }
@@ -243,6 +250,7 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
   labels: [Label!]
   blobs: [Blob!] @hasInverse(field: tension)
   history: [Event!] @hasInverse(field: tension)
+  mentions: [Event!] @hasInverse(field: mentioned)
   contracts: [Contract!] @hasInverse(field: tension)
   subscribers: [User!] @hasInverse(field: subscriptions)
   n_comments: Int
@@ -272,6 +280,7 @@ type Blob implements Post {
 type Event implements Post {
   tension: Tension!
   event_type: TensionEvent! @search
+  mentioned: Tension
   old: String
   new: String
 }
@@ -520,6 +529,7 @@ enum TensionEvent {
   LabelRemoved
   BlobCreated
   BlobCommitted
+  Mentioned
 
   BlobPushed
   BlobArchived

@@ -1,34 +1,34 @@
+directive @id(interface: Boolean) on FIELD_DEFINITION
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
+
+directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
+
+directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
+
+directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
 
 directive @secret(field: String!, pred: String) on OBJECT | INTERFACE
 
-directive @cascade(fields: [String]) on FIELD
-
-directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
-
-directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT | INTERFACE
+directive @remoteResponse(name: String) on FIELD_DEFINITION
 
 directive @lambda on FIELD_DEFINITION
 
-directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
+directive @cacheControl(maxAge: Int!) on QUERY
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
-directive @dgraph(type: String, pred: String) on OBJECT | INTERFACE | FIELD_DEFINITION
+directive @withSubscription on OBJECT | INTERFACE | FIELD_DEFINITION
 
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
-
-directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @id(interface: Boolean) on FIELD_DEFINITION
+directive @cascade(fields: [String]) on FIELD
 
 directive @remote on OBJECT | INTERFACE | UNION | INPUT_OBJECT | ENUM
 
-directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT | INTERFACE
-
-directive @cacheControl(maxAge: Int!) on QUERY
+directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT | INTERFACE
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -112,6 +112,7 @@ input AddEventInput {
   message: String
   tension: TensionRef!
   event_type: TensionEvent!
+  mentioned: TensionRef
   old: String
   new: String
 }
@@ -285,6 +286,7 @@ input AddTensionInput {
   labels: [LabelRef!]
   blobs: [BlobRef!]
   history: [EventRef!]
+  mentions: [EventRef!]
   contracts: [ContractRef!]
   subscribers: [UserRef!]
   n_comments: Int
@@ -879,6 +881,13 @@ enum DgraphIndex {
   geo
 }
 
+enum ErrorBla {
+  ContactCoordo
+  OrgaLimitReached
+  UserLimitReached
+  StorageLimitReached
+}
+
 type Event implements Post {
   id: ID!
   createdBy(filter: UserFilter): User!
@@ -887,6 +896,7 @@ type Event implements Post {
   message: String
   tension(filter: TensionFilter): Tension!
   event_type: TensionEvent!
+  mentioned(filter: TensionFilter): Tension
   old: String
   new: String
 }
@@ -1024,6 +1034,7 @@ enum EventHasFilter {
   message
   tension
   event_type
+  mentioned
   old
   new
 }
@@ -1070,6 +1081,7 @@ input EventPatch {
   message: String
   tension: TensionRef
   event_type: TensionEvent
+  mentioned: TensionRef
   old: String
   new: String
 }
@@ -1082,6 +1094,7 @@ input EventRef {
   message: String
   tension: TensionRef
   event_type: TensionEvent
+  mentioned: TensionRef
   old: String
   new: String
 }
@@ -2282,6 +2295,7 @@ type Tension implements Post {
   labels(filter: LabelFilter, order: LabelOrder, first: Int, offset: Int): [Label!]
   blobs(filter: BlobFilter, order: BlobOrder, first: Int, offset: Int): [Blob!]
   history(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]
+  mentions(filter: EventFilter, order: EventOrder, first: Int, offset: Int): [Event!]
   contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
   subscribers(filter: UserFilter, order: UserOrder, first: Int, offset: Int): [User!]
   n_comments: Int
@@ -2291,6 +2305,7 @@ type Tension implements Post {
   labelsAggregate(filter: LabelFilter): LabelAggregateResult
   blobsAggregate(filter: BlobFilter): BlobAggregateResult
   historyAggregate(filter: EventFilter): EventAggregateResult
+  mentionsAggregate(filter: EventFilter): EventAggregateResult
   contractsAggregate(filter: ContractFilter): ContractAggregateResult
   subscribersAggregate(filter: UserFilter): UserAggregateResult
 }
@@ -2344,6 +2359,7 @@ enum TensionEvent {
   LabelRemoved
   BlobCreated
   BlobCommitted
+  Mentioned
   BlobPushed
   BlobArchived
   BlobUnarchived
@@ -2394,6 +2410,7 @@ enum TensionHasFilter {
   labels
   blobs
   history
+  mentions
   contracts
   subscribers
   n_comments
@@ -2435,6 +2452,7 @@ input TensionPatch {
   labels: [LabelRef!]
   blobs: [BlobRef!]
   history: [EventRef!]
+  mentions: [EventRef!]
   contracts: [ContractRef!]
   subscribers: [UserRef!]
   n_comments: Int
@@ -2460,6 +2478,7 @@ input TensionRef {
   labels: [LabelRef!]
   blobs: [BlobRef!]
   history: [EventRef!]
+  mentions: [EventRef!]
   contracts: [ContractRef!]
   subscribers: [UserRef!]
   n_comments: Int

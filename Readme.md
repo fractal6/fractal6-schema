@@ -1,13 +1,14 @@
-# Fractal6 Schema
+ Fractal6 Schema
 
 This repo contains the core schema of the project and the binary [gqlast.py](gqlast.py) that parses and generates GraphQL files from source schema to feed the libraries in use such as `gqlgen`, `elm-graphql` and `dgraph`.
 
 
 ### Input schema
 
-User defined schema are located in:
-* [graphql/types.graphql](graphql/types.graphql): Defines the main data structures of Fractal6, such as the graph structures of organisations the tensions etc.
-* [graphql/directives.graphql](graphql/directives.graphql): defines the custom directives implemented in the Business Logic Layer.
+User defined schemas are located into the directory `graphql/`:
+* [graphql/fractal6.graphql](graphql/fractal6.graphql): Defines the main data structures of Fractal6, such as the graph structures of organisations the tensions etc.
+* [graphql/errors.graphql](graphql/errors.graphql) : Defines structured errors for client interpretation.
+* [graphql/directives.graphql](graphql/directives.graphql): [used by gqlgen only] Defines the custom directives implemented in the Business Logic Layer.
 
 ### GraphQL applications
 

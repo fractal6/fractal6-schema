@@ -1,7 +1,7 @@
 .ONESHELL:
 SHELL := /bin/bash
 
-.PHONY: gen_dgraph_in/types.graphql
+.PHONY: dgraph_in
 
 # 1. make dgraph
 # 2. make schema
@@ -11,7 +11,8 @@ all: parser dgraph schema
 schema: gqlgen_in
 schema_all: dgraph schema
 
-dgraph: gen_dgraph_in/types.graphql
+# Populate Dgraph schema
+dgraph: dgraph_in
 	# Populate dgraph and fetch schema out
 	cd ../fractal6-db && \
 		make update && \
@@ -19,16 +20,18 @@ dgraph: gen_dgraph_in/types.graphql
 		cd - && \
 		cp ../fractal6-db/schema/schema_out.graphql gen_dgraph_out/schema.graphql
 
+# Generate Dgraph input schema
+dgraph_in:
+	# Generate Dgraph input GraphQL.
+	./gqlast.py --dgraph <(cat graphql/errors.graphql graphql/fractal6.graphql) > gen_dgraph_in/schema.graphql
+	# Filter-in dgraph directives
+	#sed -Ei "s/#.*$$//g; s/^directive .*$$//g; s/@(id|search|hasInverse)/§\1/Ig; s/@[[:alnum:]_]+\([^\)]+\)//g; s/@[[:alnum:]_]+//g; s/§(id|search|hasinverse)/@\1/Ig;" $@
+
+# Build final schema by mergin everithing.
 gqlgen_in:
 	# Generate Gqlgen compatible GraphQL files with dgraph generated Query and Mutation.
 	# Fish shell: use `(cat .. | psub)` instead.
-	./gqlast.py <(cat graphql/directives.graphql graphql/types.graphql gen_dgraph_out/schema.graphql) > gen/schema.graphql
-
-gen_dgraph_in/types.graphql:
-	# Generate Dgraph input GraphQL.
-	./gqlast.py --dgraph graphql/types.graphql > $@
-	# Filter-in dgraph directives
-	#sed -Ei "s/#.*$$//g; s/^directive .*$$//g; s/@(id|search|hasInverse)/§\1/Ig; s/@[[:alnum:]_]+\([^\)]+\)//g; s/@[[:alnum:]_]+//g; s/§(id|search|hasinverse)/@\1/Ig;" $@
+	./gqlast.py <(cat graphql/directives.graphql graphql/fractal6.graphql gen_dgraph_out/schema.graphql) > gen/schema.graphql
 
 
 #
@@ -40,7 +43,7 @@ parser:
 	python3 -m tatsu gram/graphql.ebnf -o gram/graphql.py
 	# help: gram/graphql.py --help
 	# list rule: gram/graphql.py -l
-	# parse file rule: gram/graphql.py types.graphql document
+	# parse file rule: gram/graphql.py schema.graphql document
 
 _gram:
 	# <!>Warning<!>
