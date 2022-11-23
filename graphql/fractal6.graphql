@@ -1,10 +1,14 @@
-# <!> Schema Depencies <!>
-# * fractal6.go/db/api: hardcoded query, mutation and delete (fields)
+# <!> Schema Dependencies <!>
 # * fractal6.go/graph/tension_auth/EMAP: propagated fields
+# * fractal6.go/graph/tensions_op: Each event need to be individually processed in `TensionEventHook`
 # * fractal6-ui.elm: query and case on enum object
 # * fractal6-db/script: hardcoded spec
-# * fractal6.go/graph/tensions_op: Each event need to be individually processed in `TensionEventHook`
+# * fractal6.go/db/api: hardcoded query, mutation and delete (fields)
 
+# <!> Security Notes <!>
+# Schema authorization is a mix between the Dgraph authorization rules (RBAC and GBAC),
+# fractal6.go authorization directives `@x_`, for field level protection, handled in graph/FieldAuthorization.
+# fractal6.go authorization directives `@hook_`, to manage more complex scenario at type level, handled in graph/**resolver**,
 
 #type Network {
 #  name: String
@@ -12,7 +16,6 @@
 #  nodes: [Node!] @hasInverse(field: network) # root nodes only
 #  category: [String!]
 #}
-
 
 #
 # Node Interface (Role and Circle)
@@ -80,10 +83,10 @@ type Node @auth(
           children(filter: {role_type: {eq: Bot}}) { id }
         }
     }""" },
-    # -- authorize the Bot
+    # -- authorize the Bot | except if it is Secret (In this case, it serves just to make a node public, but not its tensions)
     # e.g. the emitter for the "external" tension.
     { rule: """query {
-        queryNode(filter: {role_type: {eq: Bot}}) { id }
+        queryNode(filter: {role_type: {eq: Bot}, not: {visibility: {eq: Secret}}}) { id }
     }""" }
   ]},
   add: {rule: "{ $USERTYPE: {eq: \"Root\"} }"},
@@ -171,6 +174,9 @@ type Node @auth(
   The vote are made on the behalf of the role member node, which are recorded in this field.
   """
   contracts: [Vote!]  @hasInverse(field: node) # only for Member role -- named role (@...)
+
+  # Watchers
+  watchers: [User!] @hasInverse(field: watching)
 
   # Aggregator
   orga_agg: OrgaAgg  @meta(f:"getOrgaAgg", k:"nameid")
@@ -377,8 +383,8 @@ type Tension implements Post @auth(
   subscribers: [User!]   @hasInverse(field: subscriptions)
 
   # -- @debug : Aggregate count result.
-  # We need thiss field to count things with DQL request since it is not yet
-  # possible to return a Aggregate cout result in the DQL response.
+  # We need this field to count things with DQL request since it is not yet
+  # possible to return a Aggregate count result in the DQL response.
   n_comments: Int
   n_open_contracts: Int
 }
@@ -535,6 +541,7 @@ type User @auth(
   # orgas_settings: [OrgaSetting] # order, window_pos...
   """ Tension must comply with tension @auth rules to be added. """
   subscriptions: [Tension!] @x_patch @private @hasInverse(field: subscribers) @x_alter(r:"ref")
+  watching: [Node!] @x_patch @private @hasInverse(field: watchers) @x_alter(r:"ref")
   # User Rights
   rights: UserRights!
   # User Roles
@@ -581,7 +588,8 @@ type UserRights {
   type_: UserType!
   canLogin: Boolean!  # Managed in web/auth handler functions
   canCreateRoot: Boolean! # Bypass input Node authorization/limitation.
-  maxPublicOrga: Int! # maximum of private organisation
+  maxPublicOrga: Int! # maximum of public organisation
+  maxPrivateOrga: Int! # maximum of private organisation
   hasEmailNotifications: Boolean! # if email has been validated
 }
 
@@ -648,10 +656,10 @@ enum RoleType { # LeafType
   Guest # member with no roles
   Retired # Retired member
   Pending # Invited member
-  # Role
-  Coordinator # Local admin Role
+  # Local Role
+  Coordinator # Admin Role
   Peer # Regular Role
-  Bot # Aggregator, Bridge etc
+  Bot # Collector, Bridge etc
 }
 
 enum NodeVisibility {
@@ -677,7 +685,8 @@ enum TensionType {
   Governance
   Help
   Alert
-  # Poll, Annoucements
+  Announcement
+  # Poll, Event ?
 }
 
 enum TensionAction {
