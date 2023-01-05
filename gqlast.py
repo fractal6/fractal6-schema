@@ -53,7 +53,7 @@ class AST2(AST):
 
 
 class SemanticFilter:
-    ''' Semantic based the EBNF Grammar defined at gram/graphql.ebnf '''
+    ''' Semantic based on the EBNF Grammar defined at gram/graphql.ebnf '''
 
     def __init__(self):
 
@@ -246,7 +246,7 @@ class SemanticFilter:
             # working on the child AST.
             fields.append(deepcopy(fd))
 
-            ## Current field
+            # Current field
             curfd = [x.field for x in fields if name == self.get_name(x.field)][0]
 
             # Inherit a directive
@@ -366,7 +366,6 @@ class SemanticFilter:
                         if pre_directive_name not in self.extra_directives:
                             directive_definition = "directive @%s on ARGUMENT_DEFINITION" % (pre_directive_name)
                             self.extra_directives.append(directive_definition)
-
 
                         # Only add Post Hook for Mutation queries
                         if op in ('add', 'update', 'delete'):
@@ -510,8 +509,8 @@ class GqlgenSemantics(GraphqlSemantics):
         ''' Input handle
             * filter out doublon
             * add filtered directive
-                - @x_* directive work with *Patch input (we assumed that AddInput are managed by the BLA)
-                - @w_* directieve work Add*Input input *Patch inputs, (used to alter a input field)
+                - @x_* directive work with *Patch input (we assumed that AddInput are managed by the BLA).
+                - @w_* directieve work with Add*Input and *Patch inputs (used to alter a input field).
         '''
         assert(isinstance(ast, AST))
         ast = AST2(ast)
@@ -528,14 +527,14 @@ class GqlgenSemantics(GraphqlSemantics):
 
         if name.startswith('Add') and name.endswith('Input'):
             # This match the input field for the 'Add' mutations
-            # - only copy directive with arguments as add input are allowed by default.
+            # - only copy directive x_* with arguments as add input are allowed by default.
             type_name = re.match(r'Add(\w*)Input', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_(add|alter)')
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_(add|alter)', with_args=True)
         elif name.endswith('Patch'):
             # This match the input field for the 'Update' and 'Remove' mutations
-            # - set_defaust protect field with no auth directives as read_only
+            # - set_defaut protect field with no auth directives as read_only
             type_name = re.match(r'(\w*)Patch', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_(?!add)')
@@ -584,7 +583,7 @@ class GqlgenSemantics(GraphqlSemantics):
         return ast
 
     def directive(self, ast):
-        ''' Filter  non-dgraph directive. '''
+        ''' Filter non-dgraph directive. '''
         if ast._name.name in _dgraph_directives:
             return ''
         else:

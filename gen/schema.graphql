@@ -65,18 +65,6 @@ directive @meta(f: String!, k: String) on FIELD_DEFINITION
 
 directive @isContractValidator on FIELD_DEFINITION
 
-directive @w_add(a: String!) on INPUT_FIELD_DEFINITION
-
-directive @w_set(a: String!) on INPUT_FIELD_DEFINITION
-
-directive @w_remove(a: String!) on INPUT_FIELD_DEFINITION
-
-directive @w_patch(a: String!) on INPUT_FIELD_DEFINITION
-
-directive @w_alter(a: String!) on INPUT_FIELD_DEFINITION
-
-directive @w_meta_patch(f: String!, k: String) on INPUT_FIELD_DEFINITION
-
 directive @x_add(r: String, f: String, e: [TensionEvent!], n: Int) on INPUT_FIELD_DEFINITION
 
 directive @x_set(r: String, f: String, e: [TensionEvent!], n: Int) on INPUT_FIELD_DEFINITION
@@ -90,6 +78,18 @@ directive @x_alter(r: String, f: String, e: [TensionEvent!], n: Int) on INPUT_FI
 directive @x_patch_ro on INPUT_FIELD_DEFINITION
 
 directive @x_ro on INPUT_FIELD_DEFINITION
+
+directive @w_add(a: String!) on INPUT_FIELD_DEFINITION
+
+directive @w_set(a: String!) on INPUT_FIELD_DEFINITION
+
+directive @w_remove(a: String!) on INPUT_FIELD_DEFINITION
+
+directive @w_patch(a: String!) on INPUT_FIELD_DEFINITION
+
+directive @w_alter(a: String!) on INPUT_FIELD_DEFINITION
+
+directive @w_meta_patch(f: String!, k: String) on INPUT_FIELD_DEFINITION
 
 type Node {
   id: ID!
@@ -367,6 +367,7 @@ type PendingUser {
   email_token: String @hidden
   token: String @hidden
   contracts(filter: ContractFilter, order: ContractOrder, first: Int, offset: Int): [Contract!]
+  subscribe: Boolean
 
   contractsAggregate(filter: ContractFilter): ContractAggregateResult
 }
@@ -404,6 +405,7 @@ type Notif {
 type EventCount {
   unread_events: Int
   pending_contracts: Int
+  assigned_tensions: Int
 }
 
 enum NodeType {
@@ -558,35 +560,35 @@ enum Lang {
 
 directive @hasInverse(field: String!) on FIELD_DEFINITION
 
+directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+
+directive @cascade(fields: [String]) on FIELD
+
+directive @lambda on FIELD_DEFINITION
+
 directive @search(by: [DgraphIndex!]) on FIELD_DEFINITION
+
+directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT|INTERFACE
 
 directive @custom(http: CustomHTTP, dql: String) on FIELD_DEFINITION
 
 directive @remote on OBJECT|INTERFACE|UNION|INPUT_OBJECT|ENUM
 
-directive @remoteResponse(name: String) on FIELD_DEFINITION
-
-directive @cascade(fields: [String]) on FIELD
-
-directive @dgraph(type: String, pred: String) on OBJECT|INTERFACE|FIELD_DEFINITION
+directive @id(interface: Boolean) on FIELD_DEFINITION
 
 directive @withSubscription on OBJECT|INTERFACE|FIELD_DEFINITION
 
-directive @auth(password: AuthRule, query: AuthRule, add: AuthRule, update: AuthRule, delete: AuthRule) on OBJECT|INTERFACE
+directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
 
 directive @lambdaOnMutate(add: Boolean, update: Boolean, delete: Boolean) on OBJECT|INTERFACE
 
-directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
-
-directive @secret(field: String!, pred: String) on OBJECT|INTERFACE
-
-directive @lambda on FIELD_DEFINITION
-
 directive @cacheControl(maxAge: Int!) on QUERY
 
-directive @id(interface: Boolean) on FIELD_DEFINITION
-
 directive @generate(query: GenerateQueryParams, mutation: GenerateMutationParams, subscription: Boolean) on OBJECT|INTERFACE
+
+directive @default(add: DgraphDefault, update: DgraphDefault) on FIELD_DEFINITION
+
+directive @remoteResponse(name: String) on FIELD_DEFINITION
 
 input AddBlobInput {
   createdBy: UserRef!
@@ -645,6 +647,7 @@ type AddContractPayload {
 input AddEventCountInput {
   unread_events: Int
   pending_contracts: Int
+  assigned_tensions: Int
 }
 
 type AddEventCountPayload {
@@ -804,6 +807,7 @@ input AddPendingUserInput {
   email_token: String
   token: String
   contracts: [ContractRef!]
+  subscribe: Boolean
 }
 
 type AddPendingUserPayload {
@@ -841,8 +845,8 @@ input AddTensionInput {
   status: TensionStatus!
   action: TensionAction
   comments: [CommentRef!] @x_alter(r:"hasEvent", e:[Created, CommentPushed]) @x_alter(r:"oneByOne")
-  assignees: [UserRef!] @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
-  labels: [LabelRef!] @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
+  assignees: [UserRef!] @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
+  labels: [LabelRef!] @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
   blobs: [BlobRef!] @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted]) @x_alter(r:"oneByOne")
   history: [EventRef!]
   mentions: [EventRef!]
@@ -1402,6 +1406,10 @@ type EventCountAggregateResult {
   pending_contractsMax: Int
   pending_contractsSum: Int
   pending_contractsAvg: Float
+  assigned_tensionsMin: Int
+  assigned_tensionsMax: Int
+  assigned_tensionsSum: Int
+  assigned_tensionsAvg: Float
 }
 
 input EventCountFilter {
@@ -1414,6 +1422,7 @@ input EventCountFilter {
 enum EventCountHasFilter {
   unread_events
   pending_contracts
+  assigned_tensions
 }
 
 input EventCountOrder {
@@ -1425,16 +1434,19 @@ input EventCountOrder {
 enum EventCountOrderable {
   unread_events
   pending_contracts
+  assigned_tensions
 }
 
 input EventCountPatch {
   unread_events: Int @x_patch_ro
   pending_contracts: Int @x_patch_ro
+  assigned_tensions: Int @x_patch_ro
 }
 
 input EventCountRef {
   unread_events: Int
   pending_contracts: Int
+  assigned_tensions: Int
 }
 
 input EventFilter {
@@ -2266,6 +2278,7 @@ enum PendingUserHasFilter {
   email_token
   token
   contracts
+  subscribe
 }
 
 input PendingUserOrder {
@@ -2291,6 +2304,7 @@ input PendingUserPatch {
   email_token: String @x_patch_ro
   token: String @x_patch_ro
   contracts: [ContractRef!] @x_patch_ro
+  subscribe: Boolean @x_patch_ro
 }
 
 input PendingUserRef {
@@ -2302,6 +2316,7 @@ input PendingUserRef {
   email_token: String
   token: String
   contracts: [ContractRef!]
+  subscribe: Boolean
 }
 
 type Point {
@@ -2672,8 +2687,8 @@ input TensionPatch {
   status: TensionStatus @x_patch_ro
   action: TensionAction @x_patch_ro
   comments: [CommentRef!] @x_alter(r:"hasEvent", e:[Created, CommentPushed]) @x_alter(r:"oneByOne")
-  assignees: [UserRef!] @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
-  labels: [LabelRef!] @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
+  assignees: [UserRef!] @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
+  labels: [LabelRef!] @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
   blobs: [BlobRef!] @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted]) @x_alter(r:"oneByOne")
   history: [EventRef!] @x_alter
   mentions: [EventRef!] @x_patch_ro
@@ -2698,8 +2713,8 @@ input TensionRef {
   status: TensionStatus
   action: TensionAction
   comments: [CommentRef!] @x_alter(r:"hasEvent", e:[Created, CommentPushed]) @x_alter(r:"oneByOne")
-  assignees: [UserRef!] @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
-  labels: [LabelRef!] @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
+  assignees: [UserRef!] @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
+  labels: [LabelRef!] @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
   blobs: [BlobRef!] @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted]) @x_alter(r:"oneByOne")
   history: [EventRef!] @x_alter
   mentions: [EventRef!]

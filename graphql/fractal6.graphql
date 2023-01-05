@@ -116,7 +116,7 @@ type Node @auth(
   """
   Link to the parent node. If parent is null, Node is a root node
   """
-  isRoot: Boolean!       @search
+  isRoot: Boolean!    @search
   parent: Node
   type_: NodeType!    @search
 
@@ -176,7 +176,7 @@ type Node @auth(
   contracts: [Vote!]  @hasInverse(field: node) # only for Member role -- named role (@...)
 
   # Watchers
-  watchers: [User!] @hasInverse(field: watching)
+  watchers: [User!]  @hasInverse(field: watching)
 
   # Aggregator
   orga_agg: OrgaAgg  @meta(f:"getOrgaAgg", k:"nameid")
@@ -373,8 +373,8 @@ type Tension implements Post @auth(
   action: TensionAction
 
   comments: [Comment!]   @x_alter(r:"hasEvent", e:[Created, CommentPushed])         @x_alter(r:"oneByOne")
-  assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne")
-  labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
+  assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
+  labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved])   @x_alter(r:"oneByOne") @x_alter(r:"ref")
   blobs: [Blob!]         @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted]) @x_alter(r:"oneByOne") @hasInverse(field: tension)
   history: [Event!]      @x_alter @hasInverse(field: tension) # entry point
   mentions: [Event!]     @hasInverse(field: mentioned)
@@ -582,6 +582,7 @@ type PendingUser {
   email_token: String @hidden @search(by: [hash])
   token: String @hidden @search(by: [hash])
   contracts: [Contract!]
+  subscribe: Boolean
 }
 
 type UserRights {
@@ -636,6 +637,7 @@ type Notif implements Post {
 type EventCount	 {
   unread_events: Int
   pending_contracts: Int
+  assigned_tensions: Int
 }
 
 #
