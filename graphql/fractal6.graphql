@@ -14,7 +14,7 @@
 #  name: String
 #  nameid: String
 #  nodes: [Node!] @hasInverse(field: network) # root nodes only
-#  category: [String!]
+#  category: [String!] @search(by: [term])
 #}
 
 #
@@ -108,9 +108,15 @@ type Node @auth(
   updatedAt: DateTime
 
   # Node naming/ID
-  name: String!       @search(by: [term])
   nameid: String!     @search(by: [hash, regexp]) @id
   rootnameid: String! @search(by: [hash, regexp]) # Convenience to recursively access children
+
+  # Data (name, about, mandate etc)
+  source: Blob
+  # For Search feature (@debug: source redundancy...)
+  name: String!       @search(by: [fulltext])
+  about: String @search(by: [fulltext])
+  skills: [String!]  @search(by: [term])
 
   # Node linking
   """
@@ -124,11 +130,6 @@ type Node @auth(
   tensions_out: [Tension!] @hasInverse(field: emitter)
   tensions_in: [Tension!]  @hasInverse(field: receiver)
 
-  # Documents, data, etc.
-  about: String @search(by: [fulltext])
-  mandate: Mandate
-  source: Blob
-
   # Node Permission
   visibility: NodeVisibility! @search # rules of access (R/W)
   mode: NodeMode!             @search # Governance mode (Interpratation of role_type)
@@ -140,16 +141,14 @@ type Node @auth(
   isPersonal: Boolean @search # Help explore "official" orga - nameid ends with @{username}
   userCanJoin: Boolean
   guestCanCreateTension: Boolean
+  # Watchers
+  watchers: [User!] @hasInverse(field: watching)
 
-  # Circle...is a branch
+  # Circle only...is a branch
   """
   List of chidren Node
   """
   children: [Node!] @hasInverse(field: parent) # @DEBUG union for multi edge graph
-  """
-  not implemented
-  """
-  docs: [Blob]
   """
   Record of available labels in this circle.
   Available labels means that there are visible when creating and editing tension for example.
@@ -160,14 +159,17 @@ type Node @auth(
   Available roles means that there are visible when creating and editing new roles in a circle.
   """
   roles: [RoleExt!]
+  """ List of projects """
+  projects: [Project!]
+  """ List of pinned tensions """
+  pinned: [Tension!] @x_add(r:"ref")
 
-  # Role... is a Leaf
+  # Role only... is a Leaf
   role_ext: RoleExt
   role_type: RoleType @search # @DEBUG: Waiting Nested filter in Dgragh
   color: String
   first_link: User
-  second_link: User # @TODO: User a list of users instead (think this as reserve)
-  skills: [String!]  @search(by: [term])
+  #second_links: [User!] @hasInverse(field: backed_roles)
   """
   Contract are used for user collaboration. When a action need a peer validation,
   a contract is created in the corresponding tension. Each allowed user can vote to accept or reject the contract (or more eventually).
@@ -175,11 +177,7 @@ type Node @auth(
   """
   contracts: [Vote!] @hasInverse(field: node) # only for Member role -- named role (@...)
 
-  # Watchers
-  watchers: [User!] @hasInverse(field: watching)
-
-  # Aggregator
-  orga_agg: OrgaAgg @meta(f:"getOrgaAgg", k:"nameid")
+  # Aggregators
   events_history: [Event!] @meta(f:"getNodeHistory", k:"nameid")
 }
 
@@ -191,20 +189,14 @@ type NodeFragment {
   mandate: Mandate  @x_alter
   skills: [String!] @x_alter
 
-  # For Circles
-  children: [NodeFragment!] @x_alter # Role only for sub-cirles
-
-  # All the literal below are took into account
-  # only when adding a circle.
+  # All the literal below are took into account only when adding a circle.
   # For updates, one need to use the tension Event to update the circle.
-
-  # Charac (only used for node creation).
   # @warning: those are set with TensionEvent old/new value.
+  # @obsolete ?!
   visibility: NodeVisibility
   mode: NodeMode
   type_: NodeType
   first_link: String
-  second_link: String
   role_ext : String
   role_type: RoleType
   color: String
@@ -274,9 +266,76 @@ type RoleExt @auth(
   # validatedBy  ? @future (vote process...)
 }
 
-type OrgaAgg {
-  n_members: Int  # Count Guest role (root)
-  n_guests: Int   # Count Member role (root)
+type Project @auth(
+  query: { or: [
+    # Authorize root
+    { rule: "{ $USERTYPE: {eq: \"Root\"} }" },
+    # Authorize public data
+    { rule: """query {
+        queryProject {
+          nodes(filter: {visibility: {eq: Public}}) { id }
+        }
+    }""" },
+    # Authorize member and owner
+    { rule: """query ($ROOTIDS: [String]) {
+        queryProject(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }""" }
+  ]}
+) @hook_ {
+  id: ID!
+  createdBy: User!
+  createdAt: DateTime! @search
+  updatedAt: DateTime!
+  rootnameid: String!    @search(by: [hash])
+  parentnameid: String!  @search(by: [hash])
+  nameid: String!        @search(by: [hash]) @x_alter(r:"unique", f:"parentnameid") @x_alter(r:"minLen", n:1) @w_alter(a:"lower")
+  name: String!          @search(by: [fulltext]) @x_alter(r:"maxLen", n:100)
+  description: String    @x_alter(r:"maxLen", n:280)
+  status: ProjectStatus! @search @x_alter
+  columns: [ProjectColumn!] @hasInverse(field: project) @x_alter
+  fields: [ProjectField!]
+  # @TODO: project view are different filter, and view preference about one project.
+  #views: [ProjectView!]
+  """ Extra auth """
+  leaders: [Node!]     @x_alter(r:"ref") # @Debug: Role vs User selection ...
+  nodes: [Node!]       @hasInverse(field: projects) @x_alter(r:"oneByOne") @x_alter(r:"ref")
+}
+
+type ProjectColumn {
+  id: ID!
+  name: String!   @id
+  description: String @x_alter(r:"maxLen", n:280)
+  color: String @x_alter
+  pos: Int! @x_alter
+  tensions: [ProjectTension!] @hasInverse(field: pc)
+  project: Project!
+}
+
+type ProjectField {
+  type_: ProjectFieldType!
+  isVisible: Boolean!
+  values: [ProjectFieldValue!] @hasInverse(field: field)
+}
+
+type ProjectFieldValue {
+  field: ProjectField!
+  value: String!
+}
+
+type ProjectTension {
+  id: ID!
+  tension: Tension! @x_alter(r:"ref")
+  pos: Int! @x_alter
+  pc: ProjectColumn!
+  """ Generalisation of boards's column status """
+  values: [ProjectFieldValue!]
+}
+
+enum ProjectFieldType {
+  INT
+  STRING
+  DATE
+  SINGLE_SELECT
 }
 
 #
@@ -372,22 +431,23 @@ type Tension implements Post @auth(
   status: TensionStatus! @search
   action: TensionAction
 
+  assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"ref")
+  labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"ref")
   comments: [Comment!]   @x_alter(r:"hasEvent", e:[Created, CommentPushed]) @x_alter(r:"oneByOne")
-  assignees: [User!]     @x_alter(r:"hasEvent", e:[AssigneeAdded, AssigneeRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
-  labels: [Label!]       @x_alter(r:"hasEvent", e:[LabelAdded, LabelRemoved]) @x_alter(r:"oneByOne") @x_alter(r:"ref")
   blobs: [Blob!]         @x_alter(r:"hasEvent", e:[BlobCreated, BlobCommitted]) @x_alter(r:"oneByOne") @hasInverse(field: tension)
   history: [Event!]      @x_alter @hasInverse(field: tension) # entry point
 
   # Relations
   mentions: [Event!]     @hasInverse(field: mentioned)
   contracts: [Contract!] @hasInverse(field: tension) @x_add(r:"ref")
-  subscribers: [User!]   @hasInverse(field: subscriptions)
+  subscribers: [User!]   @hasInverse(field: subscriptions) @x_add(r:"ref")
+  projects: [ProjectTension!] @hasInverse(field: tension) @x_add(r:"ref")
 
-  # -- @debug : Aggregate count result.
+  # Aggregators
   # We need this field to count things with DQL request since it is not yet
   # possible to return a Aggregate count result in the DQL response.
+  # -- @debug : Aggregate count result.
   n_comments: Int
-  n_open_contracts: Int
 }
 
 type Comment implements Post @auth(
@@ -422,7 +482,7 @@ type Reaction @auth(
     }""" }
 ) @hook_ {
   id: ID!
-  reactionid: String @id # username#cid#type_
+  reactionid: String! @id # username#cid#type_
   user: User!        @x_add(r:"ref")
   comment: Comment!  @x_add(r:"ref")
   type_: Int!
@@ -569,13 +629,13 @@ type User @auth(
   # User Rights
   rights: UserRights!
   # User Roles
-  roles: [Node!]                 @hasInverse(field: first_link) @x_add(r:"ref")
-  backed_roles: [Node!]          @hasInverse(field: second_link) @x_add(r:"ref")
+  roles: [Node!]                @hasInverse(field: first_link) @x_add(r:"ref")
+  #backed_roles: [Node!]         @hasInverse(field: second_link) @x_add(r:"ref")
   # User Tensions
-  tensions_created: [Tension!]   @hasInverse(field: createdBy) @x_add(r:"ref") @private
-  tensions_assigned: [Tension!]  @hasInverse(field: assignees) @x_add(r:"ref") @private
-  contracts: [Contract!]         @hasInverse(field: candidates) @x_add(r:"ref") @private
-  reactions: [Reaction!]         @hasInverse(field: user) @x_alter
+  tensions_created: [Tension!]  @hasInverse(field: createdBy) @x_add(r:"ref") @private
+  tensions_assigned: [Tension!] @hasInverse(field: assignees) @x_add(r:"ref") @private
+  contracts: [Contract!]        @hasInverse(field: candidates) @x_add(r:"ref") @private
+  reactions: [Reaction!]        @hasInverse(field: user) @x_alter
   # Notifications Events (Tensions and Contracts)
   """
   An event (UserEvent) will be pushed, for notification purpose, every times an
@@ -594,16 +654,16 @@ type User @auth(
   # Deep update not implemented: https://discuss.dgraph.io/t/feature-request-cascade-delete-deep-mutations-by-reference-directive/14658/3
   markAllAsRead: String @w_meta_patch(f:"markAllAsRead", k:"username") @x_alter # value ignored
 
-  # Aggregator
+  # Aggregators
   event_count: EventCount @meta(f:"getEventCount", k:"username")
 }
 
 type PendingUser {
   id: ID!
   updatedAt: DateTime
-  username: String @id @w_alter(a:"lower")
+  username: String! @id @w_alter(a:"lower")
   password: String @hidden
-  email: String @id @hidden @w_alter(a:"lower")
+  email: String! @id @hidden @w_alter(a:"lower")
   email_token: String @hidden @search(by: [hash])
   token: String @hidden @search(by: [hash])
   contracts: [Contract!]
@@ -649,7 +709,7 @@ type UserEvent @auth(
 }
 
 # @debug: Each new union type need a decoder in the mapstructure decoder.
-# this function is pass in the decoder confif in the db.dgraph.QueyGql function.
+# this function is pass in the decoder config in the db.dgraph.QueyGql function.
 union EventKind = Event | Contract | Notif
 
 type Notif implements Post {
@@ -750,6 +810,8 @@ enum TensionEvent {
   BlobCreated
   BlobCommitted
   Mentioned
+  Pinned
+  Unpinned
   # --- Trigger Action ---
   BlobPushed
   BlobArchived
@@ -772,6 +834,13 @@ enum BlobType {
   # Doc (md, spreadsheet, etc)
   OnDoc
   #OnDocTitle ?
+}
+
+### Project
+
+enum ProjectStatus {
+  Open
+  Closed
 }
 
 ### Contract

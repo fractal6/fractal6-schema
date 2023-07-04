@@ -27,7 +27,7 @@ dgraph_in:
 	# Filter-in dgraph directives
 	#sed -Ei "s/#.*$$//g; s/^directive .*$$//g; s/@(id|search|hasInverse)/§\1/Ig; s/@[[:alnum:]_]+\([^\)]+\)//g; s/@[[:alnum:]_]+//g; s/§(id|search|hasinverse)/@\1/Ig;" $@
 
-# Build final schema by mergin everithing.
+# Build final schema by mergin everything.
 gqlgen_in:
 	# Generate Gqlgen compatible GraphQL files with dgraph generated Query and Mutation.
 	# Fish shell: use `(cat .. | psub)` instead.

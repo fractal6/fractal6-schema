@@ -21,6 +21,7 @@ Options:
 import sys
 import re
 import itertools
+from loguru import logger
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
 from pprint import pprint
@@ -303,7 +304,8 @@ class SemanticFilter:
                 break
 
         if not _fields:
-            raise ValueError('Type `%s` unknown' % name_in)
+            logger.warning('Type `%s` unknown' % name_in)
+            return
 
         data_out = getattr(self, data_type_out)
         for f in data_out[name_out]:
@@ -510,7 +512,7 @@ class GqlgenSemantics(GraphqlSemantics):
             * filter out doublon
             * add filtered directive
                 - @x_* directive work with *Patch input (we assumed that AddInput are managed by the BLA).
-                - @w_* directieve work with Add*Input and *Patch inputs (used to alter a input field).
+                - @w_* directive work with Add*Input, *Patch and *Filter inputs (used to alter a input field).
         '''
         assert(isinstance(ast, AST))
         ast = AST2(ast)
@@ -523,25 +525,30 @@ class GqlgenSemantics(GraphqlSemantics):
             self.sf.populate_data('inputs', name, ast, filter_directives=False)
 
         type_name = None
-
-
         if name.startswith('Add') and name.endswith('Input'):
-            # This match the input field for the 'Add' mutations
+            # This match the fields for the 'Add' mutations
             # - only copy directive x_* with arguments as add input are allowed by default.
             type_name = re.match(r'Add(\w*)Input', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_(add|alter)')
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_(add|alter)', with_args=True)
         elif name.endswith('Patch'):
-            # This match the input field for the 'Update' and 'Remove' mutations
+            # This match the `input` field for the 'Update' and 'Remove' mutations
             # - set_defaut protect field with no auth directives as read_only
             type_name = re.match(r'(\w*)Patch', name).groups()[0]
             if type_name:
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_(?!add)')
                 self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^x_(?!add)', set_default=True)
 
+        elif name.endswith('Filter'):
+            # This match the `filter` field for the 'Update' and 'Remove' mutations
+            type_name = re.match(r'(\w*)Filter', name).groups()[0]
+            # Ignore Unions
+            if type_name and not type_name in self.sf.unions:
+                self.sf.copy_directives(type_name, ['types', 'interfaces'], name, 'inputs', r'^w_')
+
         elif name.endswith('Ref'):
-            # This match the input field for the 'Update' and 'Remove' mutations
+            # This match the fields for the 'Update' and 'Remove' mutations
             type_name = re.match(r'(\w*)Ref', name).groups()[0]
             # Ignore Unions
             if type_name and not type_name in self.sf.unions:

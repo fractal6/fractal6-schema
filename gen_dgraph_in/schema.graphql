@@ -72,7 +72,7 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   nameid: String! @search(by:[hash, regexp]) @id
   rootnameid: String! @search(by:[hash, regexp])
   source: Blob
-  name: String! @search(by:[term])
+  name: String! @search(by:[fulltext])
   about: String @search(by:[fulltext])
   skills: [String!] @search(by:[term])
   isRoot: Boolean! @search
@@ -91,14 +91,13 @@ type Node @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   children: [Node!] @hasInverse(field: parent)
   labels: [Label!]
   roles: [RoleExt!]
+  projects: [Project!]
   pinned: [Tension!]
   role_ext: RoleExt
   role_type: RoleType @search
   color: String
   first_link: User
-  second_link: User
   contracts: [Vote!] @hasInverse(field: node)
-  orga_agg: OrgaAgg
   events_history: [Event!]
 }
 
@@ -113,7 +112,6 @@ type NodeFragment {
   mode: NodeMode
   type_: NodeType
   first_link: String
-  second_link: String
   role_ext: String
   role_type: RoleType
   color: String
@@ -169,9 +167,67 @@ type RoleExt @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   nodes: [Node!] @hasInverse(field: roles)
 }
 
-type OrgaAgg {
-  n_members: Int
-  n_guests: Int
+type Project @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
+},{ rule:"""query {
+        queryProject {
+          nodes(filter: {visibility: {eq: Public}}) { id }
+        }
+    }"""
+},{ rule:"""query ($ROOTIDS: [String]) {
+        queryProject(filter: {rootnameid: {in: $ROOTIDS}}) { id }
+    }"""
+}]
+}) {
+  id: ID!
+  createdBy: User!
+  createdAt: DateTime! @search
+  updatedAt: DateTime!
+  rootnameid: String! @search(by:[hash])
+  parentnameid: String! @search(by:[hash])
+  nameid: String! @search(by:[hash])
+  name: String! @search(by:[fulltext])
+  description: String
+  status: ProjectStatus! @search
+  columns: [ProjectColumn!] @hasInverse(field: project)
+  fields: [ProjectField!]
+  leaders: [Node!]
+  nodes: [Node!] @hasInverse(field: projects)
+}
+
+type ProjectColumn {
+  id: ID!
+  name: String! @id
+  description: String
+  color: String
+  pos: Int!
+  tensions: [ProjectTension!] @hasInverse(field: pc)
+  project: Project!
+}
+
+type ProjectField {
+  type_: ProjectFieldType!
+  isVisible: Boolean!
+  values: [ProjectFieldValue!] @hasInverse(field: field)
+}
+
+type ProjectFieldValue {
+  field: ProjectField!
+  value: String!
+}
+
+type ProjectTension {
+  id: ID!
+  tension: Tension!
+  pos: Int!
+  pc: ProjectColumn!
+  values: [ProjectFieldValue!]
+}
+
+enum ProjectFieldType {
+  INT
+  STRING
+  DATE
+  SINGLE_SELECT
 }
 
 interface Post @auth(add:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
@@ -253,8 +309,8 @@ type Tension implements Post @auth(query:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\
   mentions: [Event!] @hasInverse(field: mentioned)
   contracts: [Contract!] @hasInverse(field: tension)
   subscribers: [User!] @hasInverse(field: subscriptions)
+  projects: [ProjectTension!] @hasInverse(field: tension)
   n_comments: Int
-  n_open_contracts: Int
 }
 
 type Comment implements Post @auth(update:{ or:[{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
@@ -281,7 +337,7 @@ type Reaction @auth(add:{ rule:"""query ($USERNAME: String!) {
     }"""
 }) {
   id: ID!
-  reactionid: String @id
+  reactionid: String! @id
   user: User!
   comment: Comment!
   type_: Int!
@@ -397,7 +453,6 @@ type User @auth(add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
   watching: [Node!] @hasInverse(field: watchers)
   rights: UserRights!
   roles: [Node!] @hasInverse(field: first_link)
-  backed_roles: [Node!] @hasInverse(field: second_link)
   tensions_created: [Tension!] @hasInverse(field: createdBy)
   tensions_assigned: [Tension!] @hasInverse(field: assignees)
   contracts: [Contract!] @hasInverse(field: candidates)
@@ -410,9 +465,9 @@ type User @auth(add:{ rule:"{ $USERTYPE: {eq: \"Root\"} }"
 type PendingUser {
   id: ID!
   updatedAt: DateTime
-  username: String @id
+  username: String! @id
   password: String
-  email: String @id
+  email: String! @id
   email_token: String @search(by:[hash])
   token: String @search(by:[hash])
   contracts: [Contract!]
@@ -579,6 +634,11 @@ enum BlobType {
 
   OnDoc
 
+}
+
+enum ProjectStatus {
+  Open
+  Closed
 }
 
 enum ContractStatus {
