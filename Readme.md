@@ -1,5 +1,7 @@
 # Fractale Schema
 
+> This repository has been merged in https://github.com/fractal6/fractal6.go
+
 This repo contains the core schema of the project and the binary [gqlast.py](gqlast.py) that parses and generates GraphQL files from source schema to feed the libraries in use such as `gqlgen`, `elm-graphql` and `dgraph`.
 
 ### Commands
